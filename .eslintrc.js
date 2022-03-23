@@ -19,9 +19,10 @@ module.exports = {
     'plugin:@typescript-eslint/eslint-recommended',
     'plugin:import/recommended',
     'plugin:import/typescript',
+    'plugin:jest/recommended',
     '.eslintrc.fp.js',
   ],
-  plugins: ['@typescript-eslint', 'import'],
+  plugins: ['@typescript-eslint', 'import', 'jest'],
   rules: {
     // TypeScript
     '@typescript-eslint/ban-ts-comment': 'off',
