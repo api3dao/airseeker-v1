@@ -1,0 +1,1 @@
+0 2 * * * logrotate -s /app/.pm2/logrotate.status /etc/logrotate.conf

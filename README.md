@@ -1,1 +1,51 @@
-# airseeker
+# Airseeker
+
+A tool to update a beacons with signed responses from Airnode's gateway
+
+# Installation
+
+```sh
+yarn install
+```
+
+## Build
+
+```sh
+yarn build
+```
+
+## Usage
+
+```sh
+yarn start
+```
+
+### Running with process mamnager
+
+You can use [PM2](https://pm2.keymetrics.io/) process manager to run Airseeker. PM2 is also used in the
+[Dockerized](#docker) version.
+
+```sh
+# Starting Airseeker
+yarn pm2:start
+# PM2 status
+yarn pm2:status
+# Logs
+yarn pm2:logs
+# Stopping Airseeker
+yarn pm2:stop
+```
+
+## Docker
+
+The container is running the Airseeker with the [PM2](https://pm2.keymetrics.io/) process manager and running a cronjob
+taking care of log rotation with [logrotate](https://linux.die.net/man/8/logrotate). We're using a default
+[generated logrotate configuration from PM2](https://pm2.keymetrics.io/docs/usage/log-management/#setting-up-a-native-logrotate).
+
+### Build
+
+```sh
+yarn docker:build
+```
+
+Resulting image is named `api3/airseeker`.
