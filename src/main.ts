@@ -1,3 +1,6 @@
+import * as path from 'path';
+import { loadConfig } from './config';
+
 const DATA_FETCH_FREQUENCY_MS = 5000;
 const BEACON_UPDATE_FREQUENCY_MS = 10_000;
 
@@ -27,6 +30,13 @@ const updateBeacons = async () => {
     }, BEACON_UPDATE_FREQUENCY_MS);
   }
 };
+
+// ============================
+// Load configuration
+// ============================
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const config = loadConfig(path.join(__dirname, '..', 'config', 'config.json'), process.env);
+// do something with config
 
 fetchData();
 updateBeacons();

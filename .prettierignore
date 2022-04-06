@@ -13,3 +13,6 @@
 
 # Log files
 *.log
+
+config.json
+secrets.env
