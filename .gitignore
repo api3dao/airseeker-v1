@@ -24,3 +24,8 @@ cache
 # Ignore log files
 logs
 *.log
+
+# Terraform
+.terraform*
+terraform.tfstate*
+*.tfvars
