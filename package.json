@@ -20,18 +20,22 @@
     "eslint": "eslint . --ext .js,.ts",
     "eslint:fix": "eslint . --ext .js,.ts --fix",
     "postinstall": "husky install",
-    "pm2:logs": "yarn pm2 logs",
-    "pm2:start": "yarn pm2 start ecosystem.config.js",
-    "pm2:status": "yarn pm2 status",
-    "pm2:stop": "yarn pm2 delete ecosystem.config.js",
+    "pm2:logs": "pm2 logs",
+    "pm2:start": "scripts/run-locally.sh pm2 start ecosystem.config.js",
+    "pm2:status": "pm2 status",
+    "pm2:stop": "pm2 delete ecosystem.config.js",
     "prettier": "prettier --check \"./**/*.{js,ts,md,yml,json}\"",
     "prettier:fix": "prettier --write \"./**/*.{js,ts,md,yml,json}\" --ignore-unknown",
-    "start": "ts-node src/main.ts",
+    "start": "scripts/run-locally.sh ts-node src/main.ts",
     "test": "jest"
   },
-  "dependencies": {},
+  "dependencies": {
+    "lodash": "^4.17.21",
+    "zod": "^3.14.3"
+  },
   "devDependencies": {
     "@types/jest": "^27.4.1",
+    "@types/lodash": "^4.14.181",
     "@types/node": "^17.0.23",
     "@typescript-eslint/eslint-plugin": "^5.17.0",
     "@typescript-eslint/parser": "^5.17.0",
