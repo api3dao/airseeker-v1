@@ -17,7 +17,7 @@ export const beaconSchema = z
 export const beaconsSchema = z.record(evmBeaconIdSchema, beaconSchema);
 
 // TODO: Will be refined once we start supporting beacon sets
-export const beaonSetsSchema = emptyObjectSchema;
+export const beaconSetsSchema = emptyObjectSchema;
 
 export const chainSchema = z
   .object({
@@ -87,7 +87,7 @@ export const triggersSchema = z.object({
 export const configSchema = z
   .object({
     beacons: beaconsSchema,
-    beaconSets: beaonSetsSchema,
+    beaconSets: beaconSetsSchema,
     chains: chainsSchema,
     gateways: gatewaysSchema,
     templates: templatesSchema,
@@ -107,3 +107,7 @@ export type Templates = z.infer<typeof templatesSchema>;
 export type BeaconUpdate = z.infer<typeof beaconUpdateSchema>;
 export type BeaconUpdates = z.infer<typeof beaconUpdatesSchema>;
 export type Triggers = z.infer<typeof triggersSchema>;
+export type Address = z.infer<typeof evmAddressSchema>;
+export type BeaconId = z.infer<typeof evmBeaconIdSchema>;
+export type TemplateId = z.infer<typeof evmTemplateIdSchema>;
+export type EndpointId = z.infer<typeof evmEndpointIdSchema>;
