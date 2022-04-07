@@ -170,7 +170,7 @@ describe('fetchBeaconData', () => {
 });
 
 describe('fetchBeaconDataInLoop', () => {
-  it('calls itself in a loop', async () => {
+  it('calls fetchBeaconData in a loop', async () => {
     let requestCount = 0;
     jest.spyOn(api, 'fetchBeaconData');
     jest.spyOn(makeRequestApi, 'makeSignedDataGatewayRequest').mockImplementation(async () => {
