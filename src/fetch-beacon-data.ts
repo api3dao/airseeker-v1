@@ -52,16 +52,20 @@ export const fetchBeaconData = async (config: Config, beaconId: string) => {
   const template = config.templates[templateId];
 
   const infinityRetries = 100_000;
-  const goRes = await go(() => makeSignedDataGatewayRequest(gateway, template), {
-    attemptTimeoutMs: 5_000,
+  const timeoutMs = 5_000;
+  const goRes = await go(() => makeSignedDataGatewayRequest(gateway, template, timeoutMs), {
+    attemptTimeoutMs: timeoutMs,
     retries: infinityRetries,
     delay: { type: 'random', minDelayMs: 0, maxDelayMs: 2_500 },
     totalTimeoutMs: fetchInterval * 1_000,
   });
-
   if (!goRes.success) {
     console.log(`Unable to call signed data gateway. Reason: "${goRes.error}"`);
-  } else {
-    updateState((state) => ({ ...state, beaconValues: { ...state.beaconValues, [beaconId]: goRes.data } }));
+    return;
+  }
+
+  const { data } = goRes;
+  if (data) {
+    updateState((state) => ({ ...state, beaconValues: { ...state.beaconValues, [beaconId]: data } }));
   }
 };

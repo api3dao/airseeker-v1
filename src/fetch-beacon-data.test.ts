@@ -1,8 +1,8 @@
-import { success } from '@api3/promise-utils';
 import * as api from './fetch-beacon-data';
 import { Config } from './validation';
 import * as makeRequestApi from './make-request';
 import * as state from './state';
+import { validSignedData } from '../test/fixtures';
 
 const config: Config = {
   beacons: {
@@ -174,13 +174,13 @@ describe('fetchBeaconData', () => {
 
   it('updates state with the api response value', async () => {
     jest.spyOn(makeRequestApi, 'makeSignedDataGatewayRequest').mockImplementation(async () => {
-      return success(123);
+      return validSignedData;
     });
 
     await api.fetchBeaconData(config, '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2');
 
     expect(state.getState().beaconValues).toEqual({
-      '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2': success(123),
+      '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2': validSignedData,
     });
   });
 });
@@ -191,7 +191,7 @@ describe('fetchBeaconDataInLoop', () => {
     jest.spyOn(api, 'fetchBeaconData');
     jest.spyOn(makeRequestApi, 'makeSignedDataGatewayRequest').mockImplementation(async () => {
       requestCount++;
-      return success(requestCount * 123);
+      return validSignedData;
     });
     jest.spyOn(state, 'getState').mockImplementation(() => {
       if (requestCount === 2) {

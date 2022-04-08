@@ -1,7 +1,6 @@
-import { BeaconId } from './validation';
+import { BeaconId, SignedData } from './validation';
 
-export type BeaconValue = any; // TODO: type
-export type BeaconValueStorage = Record<BeaconId, BeaconValue>;
+export type BeaconValueStorage = Record<BeaconId, SignedData>;
 
 export interface State {
   stopSignalReceived: boolean;

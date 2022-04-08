@@ -95,6 +95,13 @@ export const configSchema = z
   })
   .strict();
 
+export const encodedValueSchema = z.string().regex(/^0x[a-fA-F0-9]{64}$/);
+export const signatureSchema = z.string().regex(/^0x[a-fA-F0-9]+$/);
+export const signedDataSchema = z.object({
+  data: z.object({ timestamp: z.string(), value: encodedValueSchema }),
+  signature: signatureSchema,
+});
+
 export type Config = z.infer<typeof configSchema>;
 export type Beacon = z.infer<typeof beaconSchema>;
 export type Beacons = z.infer<typeof beaconsSchema>;
@@ -111,3 +118,4 @@ export type Address = z.infer<typeof evmAddressSchema>;
 export type BeaconId = z.infer<typeof evmBeaconIdSchema>;
 export type TemplateId = z.infer<typeof evmTemplateIdSchema>;
 export type EndpointId = z.infer<typeof evmEndpointIdSchema>;
+export type SignedData = z.infer<typeof signedDataSchema>;
