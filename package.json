@@ -31,7 +31,7 @@
     "test:debug": "jest \"fetch-beacon-data.test.ts\""
   },
   "dependencies": {
-    "@api3/promise-utils": "^0.1.0",
+    "@api3/promise-utils": "^0.2.0",
     "lodash": "^4.17.21",
     "zod": "^3.14.3"
   },

@@ -1,4 +1,4 @@
-import { fail, success } from '@api3/promise-utils';
+import { success } from '@api3/promise-utils';
 import * as api from './fetch-beacon-data';
 import { Config } from './validation';
 import * as makeRequestApi from './make-request';
@@ -11,10 +11,11 @@ const config: Config = {
       templateId: '0xea30f92923ece1a97af69d450a8418db31be5a26a886540a13c09c739ba8eaaa',
       fetchInterval: 25,
     },
-    '0x9ec34b00a5019442dcd05a4860ff2bf015164b368cb83fcb756088fc6fbd6480': {
+    '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2': {
       airnode: '0x5656D3A378B1AAdFDDcF4196ea364A9d78617290',
       templateId: '0xea30f92923ece1a97af69d450a8418db31be5a26a886540a13c09c739ba8eaaa',
-      fetchInterval: 1,
+      // Artificially low interval to make the tests run fast without mocking
+      fetchInterval: 0.5,
     },
     '0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469be4d6f214e': {
       airnode: '0x5656D3A378B1AAdFDDcF4196ea364A9d78617290',
@@ -101,7 +102,7 @@ const config: Config = {
               heartbeatInterval: 86400,
             },
             {
-              beaconId: '0x9ec34b00a5019442dcd05a4860ff2bf015164b368cb83fcb756088fc6fbd6480',
+              beaconId: '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2',
               deviationThreshold: 0.7,
               heartbeatInterval: 15_000,
             },
@@ -137,7 +138,7 @@ describe('initiateFetchingBeaconData', () => {
 
     expect(fetchBeaconDataIds).toEqual([
       '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c',
-      '0x9ec34b00a5019442dcd05a4860ff2bf015164b368cb83fcb756088fc6fbd6480',
+      '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2',
     ]);
   });
 });
@@ -145,15 +146,30 @@ describe('initiateFetchingBeaconData', () => {
 describe('fetchBeaconData', () => {
   it('does nothing if signed data call fails', async () => {
     jest.spyOn(makeRequestApi, 'makeSignedDataGatewayRequest').mockImplementation(async () => {
-      return fail(new Error('API timeout'));
+      throw new Error('API timeout');
     });
     jest.spyOn(console, 'log');
     jest.spyOn(state, 'updateState');
 
-    await api.fetchBeaconData(config, '0x9ec34b00a5019442dcd05a4860ff2bf015164b368cb83fcb756088fc6fbd6480');
+    await api.fetchBeaconData(config, '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2');
 
-    expect(console.log).toHaveBeenCalledWith(`Unable to call signed data gateway. Reason: "Error: API timeout"`);
+    expect(console.log).toHaveBeenCalledWith(
+      `Unable to call signed data gateway. Reason: "Error: Full timeout exceeded"`
+    );
     expect(state.updateState).not.toHaveBeenCalled();
+  });
+
+  it('updates retries multiple times', async () => {
+    jest.spyOn(makeRequestApi, 'makeSignedDataGatewayRequest').mockImplementation(async () => {
+      throw new Error('some error');
+    });
+    // 0.08 * 2_500 (max wait time) = 200 (actual wait time)
+    // This means that 2 retries should definitely be done in 500ms
+    jest.spyOn(global.Math, 'random').mockImplementation(() => 0.08);
+
+    await api.fetchBeaconData(config, '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2');
+
+    expect(makeRequestApi.makeSignedDataGatewayRequest).toHaveBeenCalledTimes(3);
   });
 
   it('updates state with the api response value', async () => {
@@ -161,10 +177,10 @@ describe('fetchBeaconData', () => {
       return success(123);
     });
 
-    await api.fetchBeaconData(config, '0x9ec34b00a5019442dcd05a4860ff2bf015164b368cb83fcb756088fc6fbd6480');
+    await api.fetchBeaconData(config, '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2');
 
     expect(state.getState().beaconValues).toEqual({
-      '0x9ec34b00a5019442dcd05a4860ff2bf015164b368cb83fcb756088fc6fbd6480': 123,
+      '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2': success(123),
     });
   });
 });
@@ -191,7 +207,7 @@ describe('fetchBeaconDataInLoop', () => {
       }
     });
 
-    await api.fetchBeaconDataInLoop(config, '0x9ec34b00a5019442dcd05a4860ff2bf015164b368cb83fcb756088fc6fbd6480');
+    await api.fetchBeaconDataInLoop(config, '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2');
 
     expect(api.fetchBeaconData).toHaveBeenCalledTimes(2);
   });
