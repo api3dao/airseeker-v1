@@ -1,26 +1,37 @@
-data "aws_iam_policy_document" "ecs_task_exec_role" {
+data "aws_iam_policy_document" "ecs_task_exec_role_policy" {
   statement {
     actions = ["sts:AssumeRole"]
 
     principals {
       type        = "Service"
-      identifiers = ["ecs-tasks.amazonaws.com", "ec2.amazonaws.com", "ecs.amazonaws.com"]
+      identifiers = ["ecs-tasks.amazonaws.com"]
     }
   }
 }
 
-resource "aws_iam_role" "ecs_task_exec_role" {
-  name               = "${local.app_name}-${var.app_environment}-ecs-taskrole"
-  assume_role_policy = data.aws_iam_policy_document.ecs_task_exec_role.json
-
-  tags = {
-    Name        = "${local.app_name}-ecs-taskrole"
-    Environment = var.app_environment
-    Terraform   = "true"
+data "aws_iam_policy_document" "cloudwatch_log_policy" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
+    ]
+    resources = ["${aws_cloudwatch_log_group.airseeker_aws_cloudwatch_log_group.arn}:*"]
   }
 }
 
-resource "aws_iam_role_policy_attachment" "ecs_task_exec_role" {
-  role       = aws_iam_role.ecs_task_exec_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+resource "aws_iam_role" "ecs_task_exec_role" {
+  name               = "${local.resource_prefix}-ecs-taskrole"
+  assume_role_policy = data.aws_iam_policy_document.ecs_task_exec_role_policy.json
+
+  tags = {
+    Name        = "${var.app_name}-ecs-taskrole"
+    Environment = var.app_environment
+  }
+}
+
+resource "aws_iam_role_policy" "ecs_task_exec_role_log_policy" {
+  name   = "${local.resource_prefix}-log-policy"
+  role   = aws_iam_role.ecs_task_exec_role.id
+  policy = data.aws_iam_policy_document.cloudwatch_log_policy.json
 }
