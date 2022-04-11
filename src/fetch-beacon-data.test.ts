@@ -99,7 +99,7 @@ const config: Config = {
             {
               beaconId: '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c',
               deviationThreshold: 0.1,
-              heartbeatInterval: 86400,
+              heartbeatInterval: 86_400,
             },
             {
               beaconId: '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2',
@@ -116,7 +116,7 @@ const config: Config = {
             {
               beaconId: '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c',
               deviationThreshold: 0.2,
-              heartbeatInterval: 86400,
+              heartbeatInterval: 86_400,
             },
           ],
           updateInterval: 30,
