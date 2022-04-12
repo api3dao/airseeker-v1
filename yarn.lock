@@ -9,6 +9,11 @@
   dependencies:
     "@jridgewell/trace-mapping" "^0.3.0"
 
+"@api3/promise-utils@^0.2.0":
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/@api3/promise-utils/-/promise-utils-0.2.0.tgz#3484aa945af5695da046b0aaf482af6aafeed327"
+  integrity sha512-pIkB9rh/rrOhwJtnWUoq/v6LNfNQygn9TE8DRL+FJOlcOUgocCR6hxjpiEnrP2noU+2KmNJxCvx+E/L7Nhs/uQ==
+
 "@babel/code-frame@^7.0.0", "@babel/code-frame@^7.12.13", "@babel/code-frame@^7.16.7":
   version "7.16.7"
   resolved "https://registry.yarnpkg.com/@babel/code-frame/-/code-frame-7.16.7.tgz#44416b6bd7624b998f5b1af5d470856c40138789"
