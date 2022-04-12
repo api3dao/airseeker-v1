@@ -4,7 +4,7 @@ module.exports = {
     {
       name: 'airseeker',
       script: './dist/src/main.js',
-      kill_timeout: 10000,
+      kill_timeout: 10_000,
       env: {
         NODE_ENV: 'development',
       },
