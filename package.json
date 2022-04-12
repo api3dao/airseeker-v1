@@ -36,7 +36,6 @@
     "axios": "^0.26.1",
     "lodash": "^4.17.21",
     "promise.any": "^2.0.4",
-    "url-join": "^4.0.1",
     "zod": "^3.14.4"
   },
   "devDependencies": {

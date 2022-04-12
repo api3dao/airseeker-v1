@@ -1,8 +1,15 @@
 import { go } from '@api3/promise-utils';
 import axios from 'axios';
-import urlJoin from 'url-join';
 import anyPromise from 'promise.any';
 import { Gateway, SignedData, signedDataSchema, Template } from './validation';
+
+export const urlJoin = (baseUrl: string, endpointId: string) => {
+  if (baseUrl.endsWith('/')) {
+    return `${baseUrl}${endpointId}`;
+  } else {
+    return `${baseUrl}/${endpointId}`;
+  }
+};
 
 export const makeSignedDataGatewayRequests = async (
   gateway: Gateway,

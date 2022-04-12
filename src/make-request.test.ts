@@ -1,6 +1,5 @@
-import urlJoin from 'url-join';
 import axios from 'axios';
-import { makeSignedDataGatewayRequests } from './make-request';
+import { makeSignedDataGatewayRequests, urlJoin } from './make-request';
 import { validSignedData } from '../test/fixtures';
 
 // Mock the axios library for the whole module
