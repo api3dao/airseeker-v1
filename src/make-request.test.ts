@@ -1,6 +1,6 @@
 import urlJoin from 'url-join';
 import axios from 'axios';
-import { makeSignedDataGatewayRequest } from './make-request';
+import { makeSignedDataGatewayRequests } from './make-request';
 import { validSignedData } from '../test/fixtures';
 
 // Mock the axios library for the whole module
@@ -26,7 +26,7 @@ it('urlJoin creates a valid gateway URL', () => {
   );
 });
 
-describe('makeSignedDataGatewayRequest', () => {
+describe('makeSignedDataGatewayRequests', () => {
   it('makes requests to all gateways and resolves with the first successful value', async () => {
     const mockedAxios = (axios as any as jest.Mock)
       .mockImplementationOnce(() => {
@@ -38,7 +38,7 @@ describe('makeSignedDataGatewayRequest', () => {
       });
     jest.spyOn(global.console, 'log');
 
-    const response = await makeSignedDataGatewayRequest(
+    const response = await makeSignedDataGatewayRequests(
       [
         { apiKey: 'api-key-1', url: 'https://gateway-1.com/' },
         { apiKey: 'api-key-2', url: 'https://gateway-2.com/' },
@@ -88,7 +88,7 @@ describe('makeSignedDataGatewayRequest', () => {
       .mockReturnValueOnce({ data: { data: 'invalid', signature: '0x123456789' } });
     jest.spyOn(global.console, 'log');
 
-    const response = await makeSignedDataGatewayRequest(
+    const response = await makeSignedDataGatewayRequests(
       [
         { apiKey: 'api-key-1', url: 'https://gateway-1.com/' },
         { apiKey: 'api-key-2', url: 'https://gateway-2.com/' },

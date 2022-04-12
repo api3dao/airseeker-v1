@@ -1,7 +1,7 @@
 import { uniq } from 'lodash';
 import { go } from '@api3/promise-utils';
 import { getState, updateState } from './state';
-import { makeSignedDataGatewayRequest } from './make-request';
+import { makeSignedDataGatewayRequests } from './make-request';
 import { Config } from './validation';
 import { sleep } from './utils';
 
@@ -53,7 +53,7 @@ export const fetchBeaconData = async (config: Config, beaconId: string) => {
 
   const infinityRetries = 100_000;
   const timeoutMs = 5_000;
-  const goRes = await go(() => makeSignedDataGatewayRequest(gateway, template, timeoutMs), {
+  const goRes = await go(() => makeSignedDataGatewayRequests(gateway, template, timeoutMs), {
     attemptTimeoutMs: timeoutMs,
     retries: infinityRetries,
     delay: { type: 'random', minDelayMs: 0, maxDelayMs: 2_500 },

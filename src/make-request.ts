@@ -4,7 +4,7 @@ import urlJoin from 'url-join';
 import anyPromise from 'promise.any';
 import { Gateway, SignedData, signedDataSchema, Template } from './validation';
 
-export const makeSignedDataGatewayRequest = async (
+export const makeSignedDataGatewayRequests = async (
   gateway: Gateway,
   template: Template,
   timeoutMs: number
