@@ -198,11 +198,13 @@ describe('fetchBeaconDataInLoop', () => {
         return {
           stopSignalReceived: true,
           beaconValues: {},
+          providers: {},
         };
       } else {
         return {
           stopSignalReceived: false,
           beaconValues: {},
+          providers: {},
         };
       }
     });
