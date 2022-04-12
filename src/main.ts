@@ -1,6 +1,7 @@
 import * as path from 'path';
 import { loadConfig } from './config';
 import { initiateFetchingBeaconData } from './fetch-beacon-data';
+import { initializeProviders } from './providers';
 import { getState, updateState } from './state';
 
 const BEACON_UPDATE_FREQUENCY_MS = 10_000;
@@ -22,6 +23,8 @@ const updateBeacons = async () => {
     }, BEACON_UPDATE_FREQUENCY_MS);
   }
 };
+
+initializeProviders(config);
 
 initiateFetchingBeaconData(config);
 updateBeacons();
