@@ -23,7 +23,7 @@ variable "app_environment" {
 variable "app_docker_image" {
   description = "The URL of the docker image to use"
   type        = string
-  default     = "docker.io/api3/airseeker-dev:latest"
+  default     = "docker.io/api3/airseeker-dev:0.1.0"
 }
 variable "ecs_application_count" {
   description = "The number of services to each for each application"
@@ -47,6 +47,12 @@ variable "log_retention_period" {
   description = "The number of days to retain logs"
   type        = string
   default     = "180"
+}
+
+variable "vpc_cidr_block" {
+  description = "The VPC's CIDR block"
+  type        = string
+  default     = "10.0.0.0/16"
 }
 
 variable "availability_zones" {

@@ -1,5 +1,5 @@
 resource "aws_vpc" "airseeker_aws_vpc" {
-  cidr_block           = "10.0.0.0/16"
+  cidr_block           = var.vpc_cidr_block
   enable_dns_hostnames = true
   enable_dns_support   = true
   tags = {
@@ -87,4 +87,23 @@ resource "aws_route_table_association" "public" {
   count          = length(var.public_subnets)
   subnet_id      = element(aws_subnet.public.*.id, count.index)
   route_table_id = aws_route_table.public.id
+}
+
+resource "aws_security_group" "airseeker_aws_security_group" {
+  name        = "${local.resource_prefix}-ecs-sg"
+  description = "Allow only outgoing traffic"
+  vpc_id      = aws_vpc.airseeker_aws_vpc.id
+
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+
+  tags = {
+    Name        = "${var.app_name}-ecs-sg"
+    Environment = var.app_environment
+  }
 }
