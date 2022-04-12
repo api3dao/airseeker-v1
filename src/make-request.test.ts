@@ -85,7 +85,12 @@ describe('makeSignedDataGatewayRequests', () => {
       .mockImplementationOnce(() => {
         throw new Error('timeout error');
       })
-      .mockReturnValueOnce({ data: { data: 'invalid', signature: '0x123456789' } });
+      .mockReturnValueOnce({
+        data: {
+          data: 'invalid',
+          signature: validSignedData.signature,
+        },
+      });
     jest.spyOn(global.console, 'log');
 
     const response = await makeSignedDataGatewayRequests(
