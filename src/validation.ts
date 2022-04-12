@@ -40,16 +40,16 @@ export const chainSchema = z
 
 export const chainsSchema = z.record(chainSchema);
 
-export const gatewaySchema = z.array(
-  z
-    .object({
-      apiKey: z.string(),
-      url: z.string().url(),
-    })
-    .strict()
-);
+export const gatewaySchema = z
+  .object({
+    apiKey: z.string(),
+    url: z.string().url(),
+  })
+  .strict();
 
-export const gatewaysSchema = z.record(evmAddressSchema, gatewaySchema);
+export const gatewayArraySchema = z.array(gatewaySchema);
+
+export const gatewaysSchema = z.record(gatewayArraySchema);
 
 export const templateSchema = z
   .object({

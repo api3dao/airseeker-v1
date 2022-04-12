@@ -12,13 +12,13 @@ export const urlJoin = (baseUrl: string, endpointId: string) => {
 };
 
 export const makeSignedDataGatewayRequests = async (
-  gateway: Gateway,
+  gateways: Gateway[],
   template: Template,
   timeoutMs: number
 ): Promise<SignedData | null> => {
   // Initiate HTTP request to each of the gateways and resolve with the data (or reject otherwise)
-  const requests = gateway.map(async (gate) => {
-    const { apiKey, url } = gate;
+  const requests = gateways.map(async (gateway) => {
+    const { apiKey, url } = gateway;
     const { endpointId, parameters } = template;
     const fullUrl = urlJoin(url, endpointId);
 
