@@ -43,8 +43,11 @@ jobs:
         run: yarn lint
       - name: Compile
         run: yarn build
+      - name: Run testing services
+        run: yarn dev:testing-services:start
       - name: Test
         run: yarn test
+
   docker-build:
     name: Build docker image and push to Docker Hub
     runs-on: ubuntu-latest

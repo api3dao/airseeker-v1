@@ -6,12 +6,15 @@
   "main": "./dist/src/main.js",
   "files": [
     "dist",
-    "ecosystem.config.js"
+    "airseeker-service.config.js"
   ],
   "scripts": {
     "build": "yarn clean && yarn compile",
     "clean": "rimraf -rf ./dist *.tgz",
     "compile": "tsc -p tsconfig.json",
+    "dev:api": "ts-node test/server.ts",
+    "dev:testing-services:start": "pm2 start testing-services.config.js",
+    "dev:testing-services:stop": "pm2 delete testing-services.config.js",
     "docker:build": "docker build -t api3/airseeker:latest -f docker/Dockerfile .",
     "format": "yarn prettier",
     "format:fix": "yarn prettier:fix",
@@ -21,9 +24,9 @@
     "eslint:fix": "eslint . --ext .js,.ts --fix",
     "postinstall": "husky install",
     "pm2:logs": "pm2 logs",
-    "pm2:start": "scripts/run-locally.sh pm2 start ecosystem.config.js",
+    "pm2:start": "scripts/run-locally.sh pm2 start airseeker-service.config.js",
     "pm2:status": "pm2 status",
-    "pm2:stop": "pm2 delete ecosystem.config.js",
+    "pm2:stop": "pm2 delete airseeker-service.config.js",
     "prettier": "prettier --check \"./**/*.{js,ts,md,yml,json}\"",
     "prettier:fix": "prettier --write \"./**/*.{js,ts,md,yml,json}\" --ignore-unknown",
     "start": "scripts/run-locally.sh ts-node src/main.ts",
@@ -31,19 +34,24 @@
   },
   "dependencies": {
     "@api3/promise-utils": "^0.2.0",
+    "axios": "^0.26.1",
     "lodash": "^4.17.21",
+    "promise.any": "^2.0.4",
     "zod": "^3.14.4"
   },
   "devDependencies": {
+    "@types/express": "^4.17.13",
     "@types/jest": "^27.4.1",
     "@types/lodash": "^4.14.181",
     "@types/node": "^17.0.23",
+    "@types/promise.any": "^2.0.0",
     "@typescript-eslint/eslint-plugin": "^5.19.0",
     "@typescript-eslint/parser": "^5.19.0",
     "eslint": "^8.13.0",
     "eslint-plugin-functional": "^4.2.1",
     "eslint-plugin-import": "^2.26.0",
     "eslint-plugin-jest": "^26.1.4",
+    "express": "^4.17.3",
     "husky": "^7.0.4",
     "jest": "^27.5.1",
     "pm2": "^5.2.0",

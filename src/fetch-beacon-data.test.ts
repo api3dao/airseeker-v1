@@ -1,8 +1,8 @@
-import { success } from '@api3/promise-utils';
 import * as api from './fetch-beacon-data';
 import { Config } from './validation';
 import * as makeRequestApi from './make-request';
 import * as state from './state';
+import { validSignedData } from '../test/fixtures';
 
 const config: Config = {
   beacons: {
@@ -145,7 +145,7 @@ describe('initiateFetchingBeaconData', () => {
 
 describe('fetchBeaconData', () => {
   it('does nothing if signed data call fails', async () => {
-    jest.spyOn(makeRequestApi, 'makeSignedDataGatewayRequest').mockImplementation(async () => {
+    jest.spyOn(makeRequestApi, 'makeSignedDataGatewayRequests').mockImplementation(async () => {
       throw new Error('API timeout');
     });
     jest.spyOn(console, 'log');
@@ -160,7 +160,7 @@ describe('fetchBeaconData', () => {
   });
 
   it('updates retries multiple times', async () => {
-    jest.spyOn(makeRequestApi, 'makeSignedDataGatewayRequest').mockImplementation(async () => {
+    jest.spyOn(makeRequestApi, 'makeSignedDataGatewayRequests').mockImplementation(async () => {
       throw new Error('some error');
     });
     // 0.08 * 2_500 (max wait time) = 200 (actual wait time)
@@ -169,18 +169,18 @@ describe('fetchBeaconData', () => {
 
     await api.fetchBeaconData(config, '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2');
 
-    expect(makeRequestApi.makeSignedDataGatewayRequest).toHaveBeenCalledTimes(3);
+    expect(makeRequestApi.makeSignedDataGatewayRequests).toHaveBeenCalledTimes(3);
   });
 
   it('updates state with the api response value', async () => {
-    jest.spyOn(makeRequestApi, 'makeSignedDataGatewayRequest').mockImplementation(async () => {
-      return success(123);
+    jest.spyOn(makeRequestApi, 'makeSignedDataGatewayRequests').mockImplementation(async () => {
+      return validSignedData;
     });
 
     await api.fetchBeaconData(config, '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2');
 
     expect(state.getState().beaconValues).toEqual({
-      '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2': success(123),
+      '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2': validSignedData,
     });
   });
 });
@@ -189,9 +189,9 @@ describe('fetchBeaconDataInLoop', () => {
   it('calls fetchBeaconData in a loop', async () => {
     let requestCount = 0;
     jest.spyOn(api, 'fetchBeaconData');
-    jest.spyOn(makeRequestApi, 'makeSignedDataGatewayRequest').mockImplementation(async () => {
+    jest.spyOn(makeRequestApi, 'makeSignedDataGatewayRequests').mockImplementation(async () => {
       requestCount++;
-      return success(requestCount * 123);
+      return validSignedData;
     });
     jest.spyOn(state, 'getState').mockImplementation(() => {
       if (requestCount === 2) {
