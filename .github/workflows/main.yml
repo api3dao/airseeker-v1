@@ -44,7 +44,7 @@ jobs:
       - name: Compile
         run: yarn build
       - name: Run testing services
-        run: yarn pm2:start:testing-services
+        run: yarn dev:testing-services:start
       - name: Test
         run: yarn test
 
