@@ -3,7 +3,7 @@ import path from 'path';
 import { ethers } from 'ethers';
 import { checkUpdateCondition } from '../src/check-condition';
 
-const dapiServerAbi = JSON.parse(fs.readFileSync(path.resolve('./src/test/artifacts/DapiServer.json')).toString());
+const dapiServerAbi = JSON.parse(fs.readFileSync(path.resolve('./test/artifacts/DapiServer.json')).toString());
 
 describe('checkUpdateCondition', () => {
   const providerUrl = 'http://127.0.0.1:8545/';
