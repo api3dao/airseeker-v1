@@ -30,8 +30,7 @@
     "prettier": "prettier --check \"./**/*.{js,ts,md,yml,json}\"",
     "prettier:fix": "prettier --write \"./**/*.{js,ts,md,yml,json}\" --ignore-unknown",
     "start": "scripts/run-locally.sh ts-node src/main.ts",
-    "test": "jest",
-    "test:debug": "jest \"fetch-beacon-data.test.ts\""
+    "test": "jest"
   },
   "dependencies": {
     "@api3/promise-utils": "^0.2.0",
