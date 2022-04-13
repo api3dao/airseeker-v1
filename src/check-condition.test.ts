@@ -7,7 +7,7 @@ describe('calculateUpdateInPercentage', () => {
     expect(updateInPercentage).toEqual(50);
   });
 
-  it('calculates negative change', () => {
+  it('calculates decrease', () => {
     const updateInPercentage = calculateUpdateInPercentage(ethers.BigNumber.from(10), ethers.BigNumber.from(5));
     expect(updateInPercentage).toEqual(50);
   });
@@ -62,19 +62,20 @@ describe('checkUpdateCondition', () => {
   const providerUrl = 'http://127.0.0.1:8545/';
   const beaconId = '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c';
 
-  let readWithDataPointIdSpy: any;
+  let readDataFeedValueWithIdSpy: any;
   let dapiServerMock: any;
 
   beforeEach(() => {
-    const readWithDataPointIdMock = (_beaconId: string) => Promise.resolve([ethers.BigNumber.from(500)]);
-    readWithDataPointIdSpy = jest.fn().mockImplementation(readWithDataPointIdMock);
+    const readDataFeedValueWithIdMock = (_beaconId: string) => Promise.resolve(ethers.BigNumber.from(500));
+    readDataFeedValueWithIdSpy = jest.fn().mockImplementation(readDataFeedValueWithIdMock);
     dapiServerMock = {
       connect(_signerOrProvider: ethers.Signer | ethers.providers.Provider | string) {
         return this;
       },
       functions: {
-        readWithDataPointId: readWithDataPointIdSpy,
+        readDataFeedValueWithId: readDataFeedValueWithIdSpy,
       },
+      readDataFeedValueWithId: readDataFeedValueWithIdSpy,
     };
   });
 
@@ -87,23 +88,27 @@ describe('checkUpdateCondition', () => {
       560
     );
 
-    expect(readWithDataPointIdSpy).toHaveBeenNthCalledWith(1, beaconId);
+    expect(readDataFeedValueWithIdSpy).toHaveBeenNthCalledWith(1, beaconId);
     expect(checkUpdateConditionResult).toEqual(true);
   });
 
   it('reads dapiserver value and checks the threshold condition to be true for decrease', async () => {
-    const readWithDataPointIdOnceSpy = jest
+    const readDataFeedValueWithIdOnceSpy = jest
       .fn()
-      .mockImplementationOnce(() => Promise.resolve([ethers.BigNumber.from(400)]));
+      .mockImplementationOnce(() => Promise.resolve(ethers.BigNumber.from(400)));
     const checkUpdateConditionResult = await checkUpdateCondition(
       providerUrl,
-      { ...dapiServerMock, functions: { readWithDataPointId: readWithDataPointIdOnceSpy } } as any,
+      {
+        ...dapiServerMock,
+        functions: { readDataFeedValueWithId: readDataFeedValueWithIdOnceSpy },
+        readDataFeedValueWithId: readDataFeedValueWithIdOnceSpy,
+      } as any,
       beaconId,
       10,
       450
     );
 
-    expect(readWithDataPointIdOnceSpy).toHaveBeenNthCalledWith(1, beaconId);
+    expect(readDataFeedValueWithIdOnceSpy).toHaveBeenNthCalledWith(1, beaconId);
     expect(checkUpdateConditionResult).toEqual(true);
   });
 
@@ -116,7 +121,7 @@ describe('checkUpdateCondition', () => {
       480
     );
 
-    expect(readWithDataPointIdSpy).toHaveBeenNthCalledWith(1, beaconId);
+    expect(readDataFeedValueWithIdSpy).toHaveBeenNthCalledWith(1, beaconId);
     expect(checkUpdateConditionResult).toEqual(false);
   });
 });

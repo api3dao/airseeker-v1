@@ -28,8 +28,10 @@ export const checkUpdateCondition = async (
   const provider = new ethers.providers.JsonRpcProvider(providerUrl);
   const voidSigner = new ethers.VoidSigner(ethers.constants.AddressZero, provider);
 
-  const dapiServerResponse = await dapiServer.connect(voidSigner).functions.readWithDataPointId(beaconId);
-  const updateInPercentage = calculateUpdateInPercentage(dapiServerResponse[0], ethers.BigNumber.from(updatedApiValue));
+  // TODO readDataFeedValueWithId can throw if the dataFeed is not registered yet
+  // what do we want to return in this case
+  const dapiServerResponse = await dapiServer.connect(voidSigner).readDataFeedValueWithId(beaconId);
+  const updateInPercentage = calculateUpdateInPercentage(dapiServerResponse, ethers.BigNumber.from(updatedApiValue));
 
   return updateInPercentage > deviationThreshold;
 };
