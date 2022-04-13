@@ -62,20 +62,20 @@ describe('checkUpdateCondition', () => {
   const providerUrl = 'http://127.0.0.1:8545/';
   const beaconId = '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c';
 
-  let readDataFeedValueWithIdSpy: any;
+  let readDataFeedWithIdSpy: any;
   let dapiServerMock: any;
 
   beforeEach(() => {
-    const readDataFeedValueWithIdMock = (_beaconId: string) => Promise.resolve(ethers.BigNumber.from(500));
-    readDataFeedValueWithIdSpy = jest.fn().mockImplementation(readDataFeedValueWithIdMock);
+    const readDataFeedWithIdMock = (_beaconId: string) => Promise.resolve([ethers.BigNumber.from(500)]);
+    readDataFeedWithIdSpy = jest.fn().mockImplementation(readDataFeedWithIdMock);
     dapiServerMock = {
       connect(_signerOrProvider: ethers.Signer | ethers.providers.Provider | string) {
         return this;
       },
       functions: {
-        readDataFeedValueWithId: readDataFeedValueWithIdSpy,
+        readDataFeedWithId: readDataFeedWithIdSpy,
       },
-      readDataFeedValueWithId: readDataFeedValueWithIdSpy,
+      readDataFeedWithId: readDataFeedWithIdSpy,
     };
   });
 
@@ -88,27 +88,27 @@ describe('checkUpdateCondition', () => {
       560
     );
 
-    expect(readDataFeedValueWithIdSpy).toHaveBeenNthCalledWith(1, beaconId);
+    expect(readDataFeedWithIdSpy).toHaveBeenNthCalledWith(1, beaconId);
     expect(checkUpdateConditionResult).toEqual(true);
   });
 
   it('reads dapiserver value and checks the threshold condition to be true for decrease', async () => {
-    const readDataFeedValueWithIdOnceSpy = jest
+    const readDataFeedWithIdOnceSpy = jest
       .fn()
-      .mockImplementationOnce(() => Promise.resolve(ethers.BigNumber.from(400)));
+      .mockImplementationOnce(() => Promise.resolve([ethers.BigNumber.from(400)]));
     const checkUpdateConditionResult = await checkUpdateCondition(
       providerUrl,
       {
         ...dapiServerMock,
-        functions: { readDataFeedValueWithId: readDataFeedValueWithIdOnceSpy },
-        readDataFeedValueWithId: readDataFeedValueWithIdOnceSpy,
+        functions: { readDataFeedWithId: readDataFeedWithIdOnceSpy },
+        readDataFeedWithId: readDataFeedWithIdOnceSpy,
       } as any,
       beaconId,
       10,
       450
     );
 
-    expect(readDataFeedValueWithIdOnceSpy).toHaveBeenNthCalledWith(1, beaconId);
+    expect(readDataFeedWithIdOnceSpy).toHaveBeenNthCalledWith(1, beaconId);
     expect(checkUpdateConditionResult).toEqual(true);
   });
 
@@ -121,7 +121,7 @@ describe('checkUpdateCondition', () => {
       480
     );
 
-    expect(readDataFeedValueWithIdSpy).toHaveBeenNthCalledWith(1, beaconId);
+    expect(readDataFeedWithIdSpy).toHaveBeenNthCalledWith(1, beaconId);
     expect(checkUpdateConditionResult).toEqual(false);
   });
 });
