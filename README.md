@@ -16,7 +16,7 @@ yarn build
 
 ## Configuration
 
-You need to create a configuration file `config/config.json`. Take a look at `config/config.example.json` for an example
+You need to create a configuration file `config/airseeker.json`. Take a look at `config/airseeker.example.json` for an example
 configuration file. You can use string interpolation (with `${VAR}` syntax) for providing secrets. Secrets are read from
 the environment variables. When running locally, either just with `yarn start` or via process manager, secrets are
 automatically loaded from `config/secrets.env` file. Take a look at `config/secrets.example.env` for an example secrets

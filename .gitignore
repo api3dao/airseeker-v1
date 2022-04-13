@@ -14,5 +14,5 @@
 # Log files
 *.log
 
-config.json
+airseeker.json
 secrets.env
