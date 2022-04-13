@@ -28,7 +28,7 @@ file.
 yarn start
 ```
 
-### Running with process mamnager
+### Running with process manager
 
 You can use [PM2](https://pm2.keymetrics.io/) process manager to run Airseeker. PM2 is also used in the
 [Dockerized](#docker) version.
