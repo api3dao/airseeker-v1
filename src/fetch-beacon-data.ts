@@ -1,8 +1,7 @@
-import { performance } from 'perf_hooks';
 import { uniq } from 'lodash';
 import { go } from '@api3/promise-utils';
 import { getState, updateState } from './state';
-import { makeSignedDataGatewayRequest } from './make-request';
+import { makeSignedDataGatewayRequests } from './make-request';
 import { Config } from './validation';
 import { sleep } from './utils';
 
@@ -22,14 +21,24 @@ export const initiateFetchingBeaconData = async (config: Config) => {
   });
 };
 
+/**
+ * Calling "fetchBeaconData" in a loop every "fetchInterval" seconds until the stop signal has been received.
+ *
+ * Opted in for while loop approach (instead of recursive scheduling of setTimeout) to make sure "fetchBeaconData" calls
+ * do not overlap. We measure the total running time of the "fetchBeaconData" and then wait the remaining time
+ * accordingly.
+ *
+ * It is possible that the gateway is down and the the data fetching will take the full "fetchInterval" duration. In
+ * that case we do not want to wait, but start calling the gateway immediately as part of the next fetch cycle.
+ */
 export const fetchBeaconDataInLoop = async (config: Config, beaconId: string) => {
   while (!getState().stopSignalReceived) {
-    const startTimestamp = performance.now();
+    const startTimestamp = Date.now();
     const { fetchInterval } = config.beacons[beaconId];
 
     await fetchBeaconData(config, beaconId);
 
-    const duration = performance.now() - startTimestamp;
+    const duration = Date.now() - startTimestamp;
     const waitTime = Math.max(0, fetchInterval * 1_000 - duration);
     await sleep(waitTime);
   }
@@ -43,15 +52,20 @@ export const fetchBeaconData = async (config: Config, beaconId: string) => {
   const template = config.templates[templateId];
 
   const infinityRetries = 100_000;
-  const goRes = await go(() => makeSignedDataGatewayRequest(gateway, template), {
-    timeoutMs: 5_000,
+  const timeoutMs = 5_000;
+  const goRes = await go(() => makeSignedDataGatewayRequests(gateway, template, timeoutMs), {
+    attemptTimeoutMs: timeoutMs,
     retries: infinityRetries,
     delay: { type: 'random', minDelayMs: 0, maxDelayMs: 2_500 },
-    fullTimeoutMs: fetchInterval * 1_000,
-  } as any); // TODO: Update once promise utils are released
+    totalTimeoutMs: fetchInterval * 1_000,
+  });
   if (!goRes.success) {
     console.log(`Unable to call signed data gateway. Reason: "${goRes.error}"`);
-  } else {
-    updateState((state) => ({ ...state, beaconValues: { ...state.beaconValues, [beaconId]: goRes.data } }));
+    return;
+  }
+
+  const { data } = goRes;
+  if (data) {
+    updateState((state) => ({ ...state, beaconValues: { ...state.beaconValues, [beaconId]: data } }));
   }
 };
