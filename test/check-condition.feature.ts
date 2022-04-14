@@ -5,6 +5,7 @@ import { checkUpdateCondition } from '../src/check-condition';
 describe('checkUpdateCondition', () => {
   const providerUrl = 'http://127.0.0.1:8545/';
   const provider = new ethers.providers.JsonRpcProvider(providerUrl);
+  const voidSigner = new ethers.VoidSigner(ethers.constants.AddressZero, provider);
   const dapiServer = new ethers.Contract('0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0', DapiServerFactory.abi, provider);
   const beaconId = ethers.utils.keccak256(
     ethers.utils.solidityPack(
@@ -22,7 +23,7 @@ describe('checkUpdateCondition', () => {
 
   it('returns true for increase above the deviationThreshold', async () => {
     const checkResult = await checkUpdateCondition(
-      providerUrl,
+      voidSigner,
       dapiServer,
       beaconId,
       deviationThreshold,
@@ -34,7 +35,7 @@ describe('checkUpdateCondition', () => {
 
   it('returns false for increase below the deviationThreshold', async () => {
     const checkResult = await checkUpdateCondition(
-      providerUrl,
+      voidSigner,
       dapiServer,
       beaconId,
       deviationThreshold,
@@ -46,7 +47,7 @@ describe('checkUpdateCondition', () => {
 
   it('returns true for decrease above the deviationThreshold', async () => {
     const checkResult = await checkUpdateCondition(
-      providerUrl,
+      voidSigner,
       dapiServer,
       beaconId,
       deviationThreshold,
@@ -58,7 +59,7 @@ describe('checkUpdateCondition', () => {
 
   it('returns false for decrease below the deviationThreshold', async () => {
     const checkResult = await checkUpdateCondition(
-      providerUrl,
+      voidSigner,
       dapiServer,
       beaconId,
       deviationThreshold,
@@ -70,7 +71,7 @@ describe('checkUpdateCondition', () => {
 
   it('returns false for no change', async () => {
     const checkResult = await checkUpdateCondition(
-      providerUrl,
+      voidSigner,
       dapiServer,
       beaconId,
       deviationThreshold,
