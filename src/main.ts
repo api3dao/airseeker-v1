@@ -5,7 +5,7 @@ import { getState, updateState } from './state';
 
 const BEACON_UPDATE_FREQUENCY_MS = 10_000;
 
-const config = loadConfig(path.join(__dirname, '..', 'config', 'config.json'), process.env);
+const config = loadConfig(path.join(__dirname, '..', 'config', 'airseeker.json'), process.env);
 
 const handleStopSignal = (signal: string) => {
   console.log(`Signal ${signal} received`);

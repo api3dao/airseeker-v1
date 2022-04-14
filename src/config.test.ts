@@ -19,7 +19,7 @@ const mockReadFileSync = (filePathSubstr: string, mockValue: string) => {
   });
 };
 
-const config = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config', 'config.example.json'), 'utf8'));
+const config = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config', 'airseeker.example.json'), 'utf8'));
 const envVariables = {
   CP_SELF_HOSTED_MAINNET_URL: 'https://some.self.hosted.mainnet.url',
   CP_INFURA_MAINNET_URL: 'https://some.infura.mainnet.url',
@@ -108,10 +108,10 @@ describe('loadConfig', () => {
   it('loads config without an error', () => {
     let loadedConfig;
     const interpolatedConfig = interpolateSecrets(config, envVariables);
-    mockReadFileSync('config.json', JSON.stringify(config));
+    mockReadFileSync('airseeker.json', JSON.stringify(config));
 
     expect(() => {
-      loadedConfig = loadConfig('/dummy/config/path/config.json', envVariables);
+      loadedConfig = loadConfig('/dummy/config/path/airseeker.json', envVariables);
     }).not.toThrow();
     expect(loadedConfig).toEqual(interpolatedConfig);
   });
@@ -119,10 +119,10 @@ describe('loadConfig', () => {
   it('fails with missing secrets', () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { CP_SELF_HOSTED_MAINNET_URL, ...envVariablesMissing } = envVariables;
-    mockReadFileSync('config.json', JSON.stringify(config));
+    mockReadFileSync('airseeker.json', JSON.stringify(config));
 
     expect(() =>
-      loadConfig('/dummy/config/path/config.json', envVariablesMissing as unknown as Record<string, string>)
+      loadConfig('/dummy/config/path/airseeker.json', envVariablesMissing as unknown as Record<string, string>)
     ).toThrow();
   });
 
