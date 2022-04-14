@@ -11,7 +11,7 @@ const envVariables = {
 };
 
 it('successfully parses example configuration', () => {
-  const config = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config', 'config.example.json'), 'utf8'));
+  const config = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config', 'airseeker.example.json'), 'utf8'));
   const interpolatedConfig = interpolateSecrets(config, envVariables);
 
   expect(() => configSchema.parse(interpolatedConfig)).not.toThrow();
