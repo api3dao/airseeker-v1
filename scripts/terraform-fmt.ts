@@ -1,7 +1,6 @@
 import * as path from 'path';
 import { exec, ExecException } from 'child_process';
 import { exit } from 'process';
-import { logger } from '@api3/airnode-utilities';
 
 const BINARY = 'terraform';
 const DIR = path.resolve('./terraform');
@@ -14,21 +13,21 @@ const EC_TERRAFORM = 23; // Terraform command failed
 const EC_FORMATTING = 24; // Formatting issue
 
 if (process.argv.length !== 3) {
-  logger.error('Wrong script usage!');
-  logger.error('terraform-fmt.ts check | write');
+  console.error('Wrong script usage!');
+  console.error('terraform-fmt.ts check | write');
   exit(EC_ARGUMENTS);
 }
 
 const command = process.argv[2];
 
 if (!['check', 'write'].includes(command)) {
-  logger.error(`Unknown command '${command}'`);
+  console.error(`Unknown command '${command}'`);
   exit(EC_ARGUMENTS);
 }
 
 exec(BINARY_TEST, (err, _stdout, _stderr) => {
   if (err) {
-    logger.log('Missing Terraform binary, skipping formatting.');
+    console.log('Missing Terraform binary, skipping formatting.');
     exit();
   }
 
@@ -37,13 +36,13 @@ exec(BINARY_TEST, (err, _stdout, _stderr) => {
       failOnError('Failed to list Terraform formatting issues', err, stderr);
 
       if (stdout) {
-        logger.log('Found unformatted TF files:');
-        logger.log(stdout);
+        console.log('Found unformatted TF files:');
+        console.log(stdout);
         // We have unformatted files, we have to fail
         exit(EC_FORMATTING);
       }
 
-      logger.log('All TF files formatted correctly!');
+      console.log('All TF files formatted correctly!');
       exit();
     });
   }
@@ -53,10 +52,10 @@ exec(BINARY_TEST, (err, _stdout, _stderr) => {
       failOnError('Failed to correct Terraform formatting issues', err, stderr);
 
       if (stdout) {
-        logger.log('Fixed formatting of the following TF files:');
-        logger.log(stdout);
+        console.log('Fixed formatting of the following TF files:');
+        console.log(stdout);
       } else {
-        logger.log('All TF files already formatted correctly, nothing to do');
+        console.log('All TF files already formatted correctly, nothing to do');
       }
       exit();
     });
@@ -65,9 +64,9 @@ exec(BINARY_TEST, (err, _stdout, _stderr) => {
 
 function failOnError(message: string, err: ExecException | null, stderr: string) {
   if (err) {
-    logger.error(message);
-    logger.error(err.message);
-    logger.error(stderr);
+    console.error(message);
+    console.error(err.message);
+    console.error(stderr);
     exit(EC_TERRAFORM);
   }
 }
