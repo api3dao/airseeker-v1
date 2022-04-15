@@ -43,8 +43,7 @@ describe('makeSignedDataGatewayRequests', () => {
         { apiKey: 'api-key-2', url: 'https://gateway-2.com/' },
         { apiKey: 'api-key-3', url: 'https://gateway-3.com/' },
       ],
-      { parameters: '0x123456789', endpointId: 'endpoint' },
-      100
+      { parameters: '0x123456789', endpointId: 'endpoint' }
     );
 
     expect(response).toEqual(validSignedData);
@@ -97,8 +96,7 @@ describe('makeSignedDataGatewayRequests', () => {
         { apiKey: 'api-key-1', url: 'https://gateway-1.com/' },
         { apiKey: 'api-key-2', url: 'https://gateway-2.com/' },
       ],
-      { parameters: '0x123456789', endpointId: 'endpoint' },
-      100
+      { parameters: '0x123456789', endpointId: 'endpoint' }
     );
 
     expect(response).toEqual(null);

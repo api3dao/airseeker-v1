@@ -4,6 +4,7 @@ import { getState, updateState } from './state';
 import { makeSignedDataGatewayRequests } from './make-request';
 import { Config } from './validation';
 import { sleep } from './utils';
+import { GATEWAY_TIMEOUT_MS, INFINITE_RETRIES, RANDOM_BACKOFF_MAX_MS, RANDOM_BACKOFF_MIN_MS } from './constants';
 
 export const initiateFetchingBeaconData = async (config: Config) => {
   console.log('Initiating fetching all beacon data');
@@ -51,12 +52,10 @@ export const fetchBeaconData = async (config: Config, beaconId: string) => {
   const gateway = config.gateways[airnode];
   const template = config.templates[templateId];
 
-  const infinityRetries = 100_000;
-  const timeoutMs = 5_000;
-  const goRes = await go(() => makeSignedDataGatewayRequests(gateway, template, timeoutMs), {
-    attemptTimeoutMs: timeoutMs,
-    retries: infinityRetries,
-    delay: { type: 'random', minDelayMs: 0, maxDelayMs: 2_500 },
+  const goRes = await go(() => makeSignedDataGatewayRequests(gateway, template), {
+    attemptTimeoutMs: GATEWAY_TIMEOUT_MS,
+    retries: INFINITE_RETRIES,
+    delay: { type: 'random', minDelayMs: RANDOM_BACKOFF_MIN_MS, maxDelayMs: RANDOM_BACKOFF_MAX_MS },
     totalTimeoutMs: fetchInterval * 1_000,
   });
   if (!goRes.success) {
