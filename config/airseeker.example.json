@@ -1,4 +1,5 @@
 {
+  "airseekerWalletMnemonic": "${AIRSEEKER_WALLET_MNEMONIC}",
   "beacons": {
     "0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c": {
       "airnode": "0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace",
