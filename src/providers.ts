@@ -1,7 +1,6 @@
 import * as node from '@api3/airnode-node';
-import {DapiServer__factory} from '@api3/airnode-protocol-v1';
-import { Config } from './validation';
-import { Providers, updateState } from './state';
+import { DapiServer__factory } from '@api3/airnode-protocol-v1';
+import { getState, updateState, Providers } from './state';
 
 const initializeProvider = (chainId: string, contractAddress: string, providerUrl: string) => {
   const rpcProvider = node.evm.buildEVMProvider(providerUrl, chainId);
@@ -10,7 +9,8 @@ const initializeProvider = (chainId: string, contractAddress: string, providerUr
   return { rpcProvider, contract, chainId };
 };
 
-export const initializeProviders = (config: Config) => {
+export const initializeProviders = () => {
+  const config = getState().config;
   const chains = Object.keys(config.triggers.beaconUpdates);
   const providers = chains.reduce((acc: Providers, chainId: string) => {
     const chain = config.chains[chainId];

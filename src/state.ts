@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import { DapiServer } from '@api3/airnode-protocol-v1';
-import { BeaconId, SignedData } from './validation';
+import { BeaconId, Config, SignedData } from './validation';
 
 export type BeaconValueStorage = Record<BeaconId, SignedData>;
 export type Provider = {
@@ -12,19 +12,23 @@ export type Provider = {
 export type Providers = Record<string, Provider[]>;
 
 export interface State {
+  config: Config;
   stopSignalReceived: boolean;
   beaconValues: BeaconValueStorage;
   providers: Providers;
 }
 
-export const createDefaultState: () => State = () => ({
-  stopSignalReceived: false,
-  beaconValues: {},
-  providers: {},
-});
-
 // TODO: Freeze the state in development mode
-let state = createDefaultState();
+let state: State;
+
+export const initializeState = (config: Config) => {
+  state = {
+    config,
+    stopSignalReceived: false,
+    beaconValues: {},
+    providers: {},
+  };
+};
 
 type StateUpdater = (state: State) => State;
 export const updateState = (updater: StateUpdater) => {

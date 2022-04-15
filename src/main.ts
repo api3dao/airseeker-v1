@@ -2,11 +2,12 @@ import * as path from 'path';
 import { loadConfig } from './config';
 import { initiateFetchingBeaconData } from './fetch-beacon-data';
 import { initializeProviders } from './providers';
-import { getState, updateState } from './state';
+import { initializeState, updateState } from './state';
 
 const BEACON_UPDATE_FREQUENCY_MS = 10_000;
 
 const config = loadConfig(path.join(__dirname, '..', 'config', 'airseeker.json'), process.env);
+initializeState(config);
 
 const handleStopSignal = (signal: string) => {
   console.log(`Signal ${signal} received`);
@@ -24,9 +25,9 @@ const updateBeacons = async () => {
   }
 };
 
-initializeProviders(config);
+initializeProviders();
 
-initiateFetchingBeaconData(config);
+initiateFetchingBeaconData();
 updateBeacons();
 
 process.on('SIGINT', handleStopSignal);
