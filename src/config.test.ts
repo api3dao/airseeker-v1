@@ -21,6 +21,7 @@ const mockReadFileSync = (filePathSubstr: string, mockValue: string) => {
 
 const config = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config', 'airseeker.example.json'), 'utf8'));
 const envVariables = {
+  AIRSEEKER_WALLET_MNEMONIC: 'achieve climb couple wait accident symbol spy blouse reduce foil echo label',
   CP_SELF_HOSTED_MAINNET_URL: 'https://some.self.hosted.mainnet.url',
   CP_INFURA_MAINNET_URL: 'https://some.infura.mainnet.url',
   CP_INFURA_ROPSTEN_URL: 'https://some.influra.ropsten.url',
