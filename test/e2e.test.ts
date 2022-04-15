@@ -11,7 +11,7 @@ const mockedSignedDataGateway = {
 
 it('makes a signed data gateway call', async () => {
   const { apiKey, url, endpointId, parameters } = mockedSignedDataGateway;
-  const response = await makeSignedDataGatewayRequests([{ apiKey, url }], { parameters, endpointId }, 1_000);
+  const response = await makeSignedDataGatewayRequests([{ apiKey, url }], { parameters, endpointId });
 
   expect(response).toEqual(validSignedData);
 });
