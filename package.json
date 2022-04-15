@@ -30,7 +30,8 @@
     "prettier": "prettier --check \"./**/*.{js,ts,md,yml,json}\"",
     "prettier:fix": "prettier --write \"./**/*.{js,ts,md,yml,json}\" --ignore-unknown",
     "start": "scripts/run-locally.sh ts-node src/main.ts",
-    "test": "jest"
+    "test": "jest --selectProjects unit",
+    "test:e2e": "jest --selectProjects e2e"
   },
   "dependencies": {
     "@api3/airnode-node": "^0.5.0",

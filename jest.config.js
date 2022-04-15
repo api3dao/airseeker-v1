@@ -192,4 +192,5 @@ module.exports = {
 
   // Whether to use watchman for file crawling
   // watchman: true,
+  projects: ['<rootDir>/jest-e2e.config.js', '<rootDir>/jest-unit.config.js'],
 };
