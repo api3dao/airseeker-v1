@@ -76,6 +76,7 @@ export const triggersSchema = z.object({
 
 export const configSchema = z
   .object({
+    airseekerWalletMnemonic: z.string(),
     beacons: beaconsSchema,
     beaconSets: beaconSetsSchema,
     chains: chainsSchema,
