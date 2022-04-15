@@ -2,6 +2,7 @@ import { go } from '@api3/promise-utils';
 import axios from 'axios';
 import anyPromise from 'promise.any';
 import { Gateway, SignedData, signedDataSchema, Template } from './validation';
+import { GATEWAY_TIMEOUT_MS } from './constants';
 
 export const urlJoin = (baseUrl: string, endpointId: string) => {
   if (baseUrl.endsWith('/')) {
@@ -13,8 +14,7 @@ export const urlJoin = (baseUrl: string, endpointId: string) => {
 
 export const makeSignedDataGatewayRequests = async (
   gateways: Gateway[],
-  template: Template,
-  timeoutMs: number
+  template: Template
 ): Promise<SignedData | null> => {
   // Initiate HTTP request to each of the gateways and resolve with the data (or reject otherwise)
   const requests = gateways.map(async (gateway) => {
@@ -32,7 +32,7 @@ export const makeSignedDataGatewayRequests = async (
           'x-api-key': apiKey,
         },
         data: { encodedParameters: parameters },
-        timeout: timeoutMs,
+        timeout: GATEWAY_TIMEOUT_MS,
       });
 
       return data;
