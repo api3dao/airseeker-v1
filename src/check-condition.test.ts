@@ -2,16 +2,6 @@ import { ethers } from 'ethers';
 import { calculateUpdateInPercentage, checkUpdateCondition, HUNDRED_PERCENT } from './check-condition';
 
 describe('calculateUpdateInPercentage', () => {
-  it('calculates increase', () => {
-    const updateInPercentage = calculateUpdateInPercentage(ethers.BigNumber.from(10), ethers.BigNumber.from(15));
-    expect(updateInPercentage).toEqual(ethers.BigNumber.from(0.5 * HUNDRED_PERCENT));
-  });
-
-  it('calculates decrease', () => {
-    const updateInPercentage = calculateUpdateInPercentage(ethers.BigNumber.from(10), ethers.BigNumber.from(5));
-    expect(updateInPercentage).toEqual(ethers.BigNumber.from(0.5 * HUNDRED_PERCENT));
-  });
-
   it('calculates zero change', () => {
     const updateInPercentage = calculateUpdateInPercentage(ethers.BigNumber.from(10), ethers.BigNumber.from(10));
     expect(updateInPercentage).toEqual(ethers.BigNumber.from(0 * HUNDRED_PERCENT));
@@ -71,7 +61,7 @@ describe('checkUpdateCondition', () => {
   };
 
   beforeEach(() => {
-    const readDataFeedWithIdMock = (_beaconId: string) => Promise.resolve([ethers.BigNumber.from(500)]);
+    const readDataFeedWithIdMock = () => Promise.resolve([ethers.BigNumber.from(500)]);
     readDataFeedWithIdSpy = jest.fn().mockImplementation(readDataFeedWithIdMock);
     dapiServerMock = {
       connect(_signerOrProvider: ethers.Signer | ethers.providers.Provider | string) {
@@ -89,22 +79,9 @@ describe('checkUpdateCondition', () => {
   });
 
   it('reads dapiserver value and checks the threshold condition to be true for decrease', async () => {
-    const readDataFeedWithIdOnceSpy = jest
-      .fn()
-      .mockImplementationOnce(() => Promise.resolve([ethers.BigNumber.from(400)]));
-    const checkUpdateConditionResult = await checkUpdateCondition(
-      voidSigner,
-      {
-        ...dapiServerMock,
-        functions: { readDataFeedWithId: readDataFeedWithIdOnceSpy },
-        readDataFeedWithId: readDataFeedWithIdOnceSpy,
-      } as any,
-      beaconId,
-      10,
-      450
-    );
+    const checkUpdateConditionResult = await checkUpdateCondition(voidSigner, dapiServerMock as any, beaconId, 10, 440);
 
-    expect(readDataFeedWithIdOnceSpy).toHaveBeenNthCalledWith(1, beaconId);
+    expect(readDataFeedWithIdSpy).toHaveBeenNthCalledWith(1, beaconId);
     expect(checkUpdateConditionResult).toEqual(true);
   });
 
