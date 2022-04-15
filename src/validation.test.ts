@@ -4,6 +4,7 @@ import { configSchema } from './validation';
 import { interpolateSecrets } from './config';
 
 const envVariables = {
+  AIRSEEKER_WALLET_MNEMONIC: 'achieve climb couple wait accident symbol spy blouse reduce foil echo label',
   CP_SELF_HOSTED_MAINNET_URL: 'https://some.self.hosted.mainnet.url',
   CP_INFURA_MAINNET_URL: 'https://some.infura.mainnet.url',
   CP_INFURA_ROPSTEN_URL: 'https://some.influra.ropsten.url',
