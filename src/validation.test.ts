@@ -8,6 +8,7 @@ const envVariables = {
   CP_INFURA_MAINNET_URL: 'https://some.infura.mainnet.url',
   CP_INFURA_ROPSTEN_URL: 'https://some.influra.ropsten.url',
   HTTP_GATEWAY_API_KEY: '18e06827-8544-4b0f-a639-33df3b5bc62f',
+  HTTP_GATEWAY_API_URL: 'https://some.http.signed.data.gateway.url/',
 };
 
 it('successfully parses example configuration', () => {
