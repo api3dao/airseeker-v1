@@ -52,7 +52,7 @@
     "0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace": [
       {
         "apiKey": "${HTTP_GATEWAY_API_KEY}",
-        "url": "https://some.http.signed.data.gateway.url/"
+        "url": "${HTTP_GATEWAY_API_URL}"
       }
     ]
   },
