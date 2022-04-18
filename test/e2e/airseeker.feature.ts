@@ -1,4 +1,4 @@
-// import { mockReadFileSync } from '../mock-utils';
+import { mockReadFileSync } from '../mock-utils';
 import path from 'path';
 import { ContractFactory, Contract, Wallet } from 'ethers';
 import * as hre from 'hardhat';
@@ -142,5 +142,46 @@ describe('PSP', () => {
 
     expect(beaconValueETHNew).toEqual(hre.ethers.BigNumber.from(800 * 1_000_000));
     expect(beaconValueBTCNew).toEqual(hre.ethers.BigNumber.from(43_000 * 1_000_000));
+  });
+
+  it('does not update if the condition check fails', async () => {
+    jest.spyOn(config, 'readConfig').mockImplementationOnce(() => airseekerConfig as any);
+
+    const beaconValueETH = await readBeaconValue(
+      '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
+      deployment.templateIdETH,
+      deployment.dapiServer
+    );
+    expect(beaconValueETH).toEqual(hre.ethers.BigNumber.from(723.39202 * 1_000_000));
+
+    const resETH = await runAirseeker(
+      724 * 1_000_000,
+      deployment.templateIdETH,
+      deployment.dapiServer,
+      deployment.airnodePspSponsorWallet,
+      deployment.airnodeWallet,
+      deployment.subscriptionIdETH
+    );
+
+    expect(resETH).toEqual({ status: 200 });
+
+    const beaconValueETHNew = await readBeaconValue(
+      '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
+      deployment.templateIdETH,
+      deployment.dapiServer
+    );
+
+    expect(beaconValueETHNew).toEqual(hre.ethers.BigNumber.from(723.39202 * 1_000_000));
+  });
+
+  it('throws on invalid airseeker config', async () => {
+    mockReadFileSync(
+      'airseeker.example.json',
+      JSON.stringify({
+        ...airseekerConfig,
+        chains: '',
+      })
+    );
+    await expect(runAirseeker).rejects.toThrow('Invalid Airseeker configuration file');
   });
 });
