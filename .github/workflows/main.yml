@@ -64,7 +64,7 @@ jobs:
       - name: Build
         run: yarn build
       - name: Start background services
-        run: yarn run dev:background
+        run: yarn dev:testing-services:start
       - name: Test
         run: yarn test:e2e
 
