@@ -1,4 +1,5 @@
 import { ethers } from 'ethers';
+import * as hre from 'hardhat';
 import { DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol-v1';
 import { checkUpdateCondition } from '../../src/check-condition';
 import { deployAndUpdateSubscriptions } from '../setup/deployment';
@@ -19,6 +20,8 @@ const deviationThreshold = 0.2;
 describe('checkUpdateCondition', () => {
   let beaconId: string;
   beforeAll(async () => {
+    // Reset the local hardhat network state for each test to prevent issues with other test contracts
+    await hre.network.provider.send('hardhat_reset');
     jest.restoreAllMocks();
 
     const { airnodeWallet, templateIdETH } = await deployAndUpdateSubscriptions();

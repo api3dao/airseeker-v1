@@ -16,7 +16,7 @@ export const loadConfig = (configPath: string, secrets: Record<string, string | 
   return config;
 };
 
-const readConfig = (configPath: string): unknown => {
+export const readConfig = (configPath: string): unknown => {
   try {
     return JSON.parse(fs.readFileSync(configPath, 'utf8'));
   } catch (err) {
