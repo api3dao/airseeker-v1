@@ -3,7 +3,7 @@ module.exports = {
   apps: [
     {
       name: 'mock-server',
-      script: 'ts-node ./test/server.ts',
+      script: 'ts-node ./test/server/server.ts',
       env: {
         NODE_ENV: 'development',
       },
@@ -12,6 +12,10 @@ module.exports = {
       error_file: 'logs/ethereum-node.log',
       out_file: 'logs/ethereum-node.log',
       merge_logs: true,
+    },
+    {
+      name: 'ethereum-node',
+      script: 'hardhat node',
     },
   ],
 };
