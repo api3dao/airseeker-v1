@@ -33,7 +33,7 @@
     "prettier:fix": "prettier --write \"./**/*.{js,ts,md,yml,json}\" --ignore-unknown",
     "start": "scripts/run-locally.sh ts-node src/main.ts",
     "test": "jest --selectProjects unit",
-    "test:e2e": "SILENCE_LOGGER=true jest --selectProjects e2e"
+    "test:e2e": "SILENCE_LOGGER=true jest --selectProjects e2e --runInBand"
   },
   "dependencies": {
     "@api3/airnode-abi": "^0.5.0",
