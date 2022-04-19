@@ -36,7 +36,7 @@ describe('checkUpdateCondition', () => {
       dapiServer,
       beaconId,
       deviationThreshold,
-      Math.floor(apiValue * (1 + 0.3 / 100) * _times)
+      ethers.BigNumber.from(Math.floor(apiValue * (1 + 0.3 / 100) * _times))
     );
 
     expect(checkResult).toEqual(true);
@@ -48,7 +48,7 @@ describe('checkUpdateCondition', () => {
       dapiServer,
       beaconId,
       deviationThreshold,
-      Math.floor(apiValue * (1 + 0.1 / 100) * _times)
+      ethers.BigNumber.from(Math.floor(apiValue * (1 + 0.1 / 100) * _times))
     );
 
     expect(checkResult).toEqual(false);
@@ -60,7 +60,7 @@ describe('checkUpdateCondition', () => {
       dapiServer,
       beaconId,
       deviationThreshold,
-      Math.floor(apiValue * (1 - 0.3 / 100) * _times)
+      ethers.BigNumber.from(Math.floor(apiValue * (1 - 0.3 / 100) * _times))
     );
 
     expect(checkResult).toEqual(true);
@@ -72,7 +72,7 @@ describe('checkUpdateCondition', () => {
       dapiServer,
       beaconId,
       deviationThreshold,
-      Math.floor(apiValue * (1 - 0.1 / 100) * _times)
+      ethers.BigNumber.from(Math.floor(apiValue * (1 - 0.1 / 100) * _times))
     );
 
     expect(checkResult).toEqual(false);
@@ -84,7 +84,7 @@ describe('checkUpdateCondition', () => {
       dapiServer,
       beaconId,
       deviationThreshold,
-      apiValue * _times
+      ethers.BigNumber.from(apiValue * _times)
     );
 
     expect(checkResult).toEqual(false);
