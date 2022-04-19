@@ -72,21 +72,39 @@ describe('checkUpdateCondition', () => {
   });
 
   it('reads dapiserver value and checks the threshold condition to be true for increase', async () => {
-    const checkUpdateConditionResult = await checkUpdateCondition(voidSigner, dapiServerMock as any, beaconId, 10, 560);
+    const checkUpdateConditionResult = await checkUpdateCondition(
+      voidSigner,
+      dapiServerMock as any,
+      beaconId,
+      10,
+      ethers.BigNumber.from(560)
+    );
 
     expect(readDataFeedWithIdSpy).toHaveBeenNthCalledWith(1, beaconId);
     expect(checkUpdateConditionResult).toEqual(true);
   });
 
   it('reads dapiserver value and checks the threshold condition to be true for decrease', async () => {
-    const checkUpdateConditionResult = await checkUpdateCondition(voidSigner, dapiServerMock as any, beaconId, 10, 440);
+    const checkUpdateConditionResult = await checkUpdateCondition(
+      voidSigner,
+      dapiServerMock as any,
+      beaconId,
+      10,
+      ethers.BigNumber.from(440)
+    );
 
     expect(readDataFeedWithIdSpy).toHaveBeenNthCalledWith(1, beaconId);
     expect(checkUpdateConditionResult).toEqual(true);
   });
 
   it('reads dapiserver value and checks the threshold condition to be false', async () => {
-    const checkUpdateConditionResult = await checkUpdateCondition(voidSigner, dapiServerMock as any, beaconId, 10, 480);
+    const checkUpdateConditionResult = await checkUpdateCondition(
+      voidSigner,
+      dapiServerMock as any,
+      beaconId,
+      10,
+      ethers.BigNumber.from(480)
+    );
 
     expect(readDataFeedWithIdSpy).toHaveBeenNthCalledWith(1, beaconId);
     expect(checkUpdateConditionResult).toEqual(false);
