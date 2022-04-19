@@ -1,4 +1,5 @@
 import { uniq } from 'lodash';
+import { ethers } from 'ethers';
 import { go } from '@api3/promise-utils';
 import { getState, updateState } from './state';
 import { makeSignedDataGatewayRequests } from './make-request';
@@ -52,6 +53,16 @@ export const fetchBeaconData = async (beaconId: string) => {
   const { fetchInterval, airnode, templateId } = config.beacons[beaconId];
   const gateway = config.gateways[airnode];
   const template = config.templates[templateId];
+
+  // TODO: Should be later part of the validation
+  const derivedTemplateId = ethers.utils.solidityKeccak256(
+    ['bytes32', 'bytes'],
+    [template.endpointId, template.parameters]
+  );
+  if (derivedTemplateId !== templateId) {
+    console.log(`Invalid template ID ${templateId}. Skipping.`);
+    return;
+  }
 
   const goRes = await go(() => makeSignedDataGatewayRequests(gateway, template), {
     attemptTimeoutMs: GATEWAY_TIMEOUT_MS,
