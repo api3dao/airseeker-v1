@@ -1,16 +1,16 @@
 import { Contract, Wallet } from 'ethers';
 import * as hre from 'hardhat';
 import * as abi from '@api3/airnode-abi';
-// TODO uncomment once airnode-node 0.6 is released
+// TODO: uncomment once airnode-node 0.6 is released
 // import * as node from '@api3/airnode-node';
 import {
   AccessControlRegistry__factory as AccessControlRegistryFactory,
   AirnodeProtocol__factory as AirnodeProtocolFactory,
   DapiServer__factory as DapiServerFactory,
 } from '@api3/airnode-protocol-v1';
-import { buildLocalConfigETH, buildLocalConfigBTC } from '../config/config';
+import { buildLocalConfigETH, buildLocalConfigBTC } from '../fixtures/config';
 
-//TODO remove once airnode-node 0.6 is released
+//TODO: remove once airnode-node 0.6 is released
 const deriveWalletPathFromSponsorAddress = (sponsorAddress: string, protocolId = '1') => {
   const sponsorAddressBN = hre.ethers.BigNumber.from(hre.ethers.utils.getAddress(sponsorAddress));
   const paths = [];
@@ -20,7 +20,7 @@ const deriveWalletPathFromSponsorAddress = (sponsorAddress: string, protocolId =
   }
   return `${protocolId}/${paths.join('/')}`;
 };
-//TODO remove once airnode-node 0.6 is released
+//TODO: remove once airnode-node 0.6 is released
 const deriveSponsorWalletFromMnemonic = (airnodeMnemonic: string, sponsorAddress: string, protocolId: string) =>
   hre.ethers.Wallet.fromMnemonic(
     airnodeMnemonic,
