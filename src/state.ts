@@ -1,10 +1,8 @@
 import { ethers } from 'ethers';
-import { DapiServer } from '@api3/airnode-protocol-v1';
 import { BeaconId, Config, SignedData } from './validation';
 
 export type BeaconValueStorage = Record<BeaconId, SignedData>;
 export type Provider = {
-  contract: DapiServer;
   rpcProvider: ethers.providers.StaticJsonRpcProvider;
   chainId: string;
 };
