@@ -5,6 +5,7 @@ import * as state from './state';
 import { validSignedData } from '../test/fixtures';
 
 const config: Config = {
+  airseekerWalletMnemonic: 'achieve climb couple wait accident symbol spy blouse reduce foil echo label',
   beacons: {
     '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c': {
       airnode: '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
@@ -126,15 +127,16 @@ const config: Config = {
     beaconSetUpdates: {},
   },
 };
+state.initializeState(config);
 
 describe('initiateFetchingBeaconData', () => {
   it('starts fetching data for all unique beacons', async () => {
     const fetchBeaconDataIds: string[] = [];
-    jest.spyOn(api, 'fetchBeaconDataInLoop').mockImplementation(async (_config, id) => {
+    jest.spyOn(api, 'fetchBeaconDataInLoop').mockImplementation(async (id) => {
       fetchBeaconDataIds.push(id);
     });
 
-    await api.initiateFetchingBeaconData(config);
+    await api.initiateFetchingBeaconData();
 
     expect(fetchBeaconDataIds).toEqual([
       '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c',
@@ -151,7 +153,7 @@ describe('fetchBeaconData', () => {
     jest.spyOn(console, 'log');
     jest.spyOn(state, 'updateState');
 
-    await api.fetchBeaconData(config, '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2');
+    await api.fetchBeaconData('0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2');
 
     expect(console.log).toHaveBeenCalledWith(
       `Unable to call signed data gateway. Reason: "Error: Full timeout exceeded"`
@@ -167,7 +169,7 @@ describe('fetchBeaconData', () => {
     // This means that 2 retries should definitely be done in 500ms
     jest.spyOn(global.Math, 'random').mockImplementation(() => 0.08);
 
-    await api.fetchBeaconData(config, '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2');
+    await api.fetchBeaconData('0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2');
 
     expect(makeRequestApi.makeSignedDataGatewayRequests).toHaveBeenCalledTimes(3);
   });
@@ -177,7 +179,7 @@ describe('fetchBeaconData', () => {
       return validSignedData;
     });
 
-    await api.fetchBeaconData(config, '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2');
+    await api.fetchBeaconData('0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2');
 
     expect(state.getState().beaconValues).toEqual({
       '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2': validSignedData,
@@ -196,18 +198,22 @@ describe('fetchBeaconDataInLoop', () => {
     jest.spyOn(state, 'getState').mockImplementation(() => {
       if (requestCount === 2) {
         return {
+          config,
           stopSignalReceived: true,
           beaconValues: {},
+          providers: {},
         };
       } else {
         return {
+          config,
           stopSignalReceived: false,
           beaconValues: {},
+          providers: {},
         };
       }
     });
 
-    await api.fetchBeaconDataInLoop(config, '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2');
+    await api.fetchBeaconDataInLoop('0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2');
 
     expect(api.fetchBeaconData).toHaveBeenCalledTimes(2);
   });

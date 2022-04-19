@@ -47,6 +47,8 @@ jobs:
         run: yarn dev:testing-services:start
       - name: Test
         run: yarn test
+      - name: Test E2E
+        run: yarn test:e2e
 
   e2e-tests:
     name: E2E tests

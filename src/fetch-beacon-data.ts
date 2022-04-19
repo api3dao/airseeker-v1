@@ -2,11 +2,12 @@ import { uniq } from 'lodash';
 import { go } from '@api3/promise-utils';
 import { getState, updateState } from './state';
 import { makeSignedDataGatewayRequests } from './make-request';
-import { Config } from './validation';
 import { sleep } from './utils';
+import { GATEWAY_TIMEOUT_MS, INFINITE_RETRIES, RANDOM_BACKOFF_MAX_MS, RANDOM_BACKOFF_MIN_MS } from './constants';
 
-export const initiateFetchingBeaconData = async (config: Config) => {
+export const initiateFetchingBeaconData = async () => {
   console.log('Initiating fetching all beacon data');
+  const config = getState().config;
 
   const beaconIdsToUpdate = uniq(
     Object.values(config.triggers.beaconUpdates).flatMap((beaconUpdatesPerSponsor) => {
@@ -16,9 +17,7 @@ export const initiateFetchingBeaconData = async (config: Config) => {
     })
   );
 
-  beaconIdsToUpdate.forEach((id) => {
-    fetchBeaconDataInLoop(config, id);
-  });
+  beaconIdsToUpdate.forEach(fetchBeaconDataInLoop);
 };
 
 /**
@@ -31,12 +30,14 @@ export const initiateFetchingBeaconData = async (config: Config) => {
  * It is possible that the gateway is down and the the data fetching will take the full "fetchInterval" duration. In
  * that case we do not want to wait, but start calling the gateway immediately as part of the next fetch cycle.
  */
-export const fetchBeaconDataInLoop = async (config: Config, beaconId: string) => {
+export const fetchBeaconDataInLoop = async (beaconId: string) => {
+  const config = getState().config;
+
   while (!getState().stopSignalReceived) {
     const startTimestamp = Date.now();
     const { fetchInterval } = config.beacons[beaconId];
 
-    await fetchBeaconData(config, beaconId);
+    await fetchBeaconData(beaconId);
 
     const duration = Date.now() - startTimestamp;
     const waitTime = Math.max(0, fetchInterval * 1_000 - duration);
@@ -44,19 +45,18 @@ export const fetchBeaconDataInLoop = async (config: Config, beaconId: string) =>
   }
 };
 
-export const fetchBeaconData = async (config: Config, beaconId: string) => {
+export const fetchBeaconData = async (beaconId: string) => {
   console.log(`Fetching beacon data for: ${beaconId}`);
+  const config = getState().config;
 
   const { fetchInterval, airnode, templateId } = config.beacons[beaconId];
   const gateway = config.gateways[airnode];
   const template = config.templates[templateId];
 
-  const infinityRetries = 100_000;
-  const timeoutMs = 5_000;
-  const goRes = await go(() => makeSignedDataGatewayRequests(gateway, template, timeoutMs), {
-    attemptTimeoutMs: timeoutMs,
-    retries: infinityRetries,
-    delay: { type: 'random', minDelayMs: 0, maxDelayMs: 2_500 },
+  const goRes = await go(() => makeSignedDataGatewayRequests(gateway, template), {
+    attemptTimeoutMs: GATEWAY_TIMEOUT_MS,
+    retries: INFINITE_RETRIES,
+    delay: { type: 'random', minDelayMs: RANDOM_BACKOFF_MIN_MS, maxDelayMs: RANDOM_BACKOFF_MAX_MS },
     totalTimeoutMs: fetchInterval * 1_000,
   });
   if (!goRes.success) {

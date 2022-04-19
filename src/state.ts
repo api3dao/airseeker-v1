@@ -1,19 +1,32 @@
-import { BeaconId, SignedData } from './validation';
+import { ethers } from 'ethers';
+import { BeaconId, Config, SignedData } from './validation';
 
 export type BeaconValueStorage = Record<BeaconId, SignedData>;
+export type Provider = {
+  rpcProvider: ethers.providers.StaticJsonRpcProvider;
+  chainId: string;
+};
+// chainId => Provider[]
+export type Providers = Record<string, Provider[]>;
 
 export interface State {
+  config: Config;
   stopSignalReceived: boolean;
   beaconValues: BeaconValueStorage;
+  providers: Providers;
 }
 
-export const createDefaultState: () => State = () => ({
-  stopSignalReceived: false,
-  beaconValues: {},
-});
-
 // TODO: Freeze the state in development mode
-let state = createDefaultState();
+let state: State;
+
+export const initializeState = (config: Config) => {
+  state = {
+    config,
+    stopSignalReceived: false,
+    beaconValues: {},
+    providers: {},
+  };
+};
 
 type StateUpdater = (state: State) => State;
 export const updateState = (updater: StateUpdater) => {
