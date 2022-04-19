@@ -6,3 +6,6 @@ export const RANDOM_BACKOFF_MAX_MS = 2_500;
 export const PRIORITY_FEE_IN_WEI = 3_120_000_000;
 // The Base Fee to Max Fee multiplier
 export const BASE_FEE_MULTIPLIER = 2;
+export const PROTOCOL_ID = '5';
+// The default gas limit for transactions
+export const GAS_LIMIT = 500_000;
