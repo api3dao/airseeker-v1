@@ -1,5 +1,5 @@
-import { DapiServer__factory } from '@api3/airnode-protocol-v1';
 import { ethers } from 'ethers';
+import { DapiServer__factory } from '@api3/airnode-protocol-v1';
 import { go, GoAsyncOptions } from '@api3/promise-utils';
 import { BeaconUpdate } from './validation';
 import { getState, Provider } from './state';
@@ -141,7 +141,17 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
 
   for (const beacon of beacons) {
     const beaconUpdateData = { ...beacon, ...config.beacons[beacon.beaconId] };
-    // TODO: Check that templateId and airnode make given beaconId? Do we need that?
+
+    // TODO: Should be later part of the validation
+    const derivedBeaconId = ethers.utils.solidityKeccak256(
+      ['address', 'bytes32'],
+      [beaconUpdateData.airnode, beaconUpdateData.templateId]
+    );
+    if (derivedBeaconId !== beaconUpdateData.beaconId) {
+      console.log(`Invalid beacon ID ${beaconUpdateData.beaconId}. Skipping.`);
+      continue;
+    }
+
     console.log(`Updating beacon with ID ${beaconUpdateData.beaconId}`);
     // Check whether we have a value for given beacon
     const newBeaconResponse = beaconValues[beaconUpdateData.beaconId];
