@@ -4,7 +4,7 @@ import { ContractFactory, Contract, Wallet } from 'ethers';
 import * as hre from 'hardhat';
 import { checkUpdateCondition } from '../../src/check-condition';
 import * as config from '../../src/config';
-import { buildAirseekerConfig, buildLocalSecrets } from '../config/config';
+import { buildAirseekerConfig, buildLocalSecrets } from '../fixtures/config';
 import { updateBeacon, deployAndUpdateSubscriptions } from '../setup/deployment';
 
 // Jest version 27 has a bug where jest.setTimeout does not work correctly inside describe or test blocks
