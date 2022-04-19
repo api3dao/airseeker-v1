@@ -40,9 +40,7 @@ RUN yarn install && \
     yarn build && \
     yarn pack && \
     mkdir -p ${packageDir} && \
-    tar -xf *.tgz -C ${packageDir} --strip-components 1 && \
-    cp -r ${packageDir}/dist/src ${packageDir} && \
-    rm -rf ${packageDir}/dist
+    tar -xf *.tgz -C ${packageDir} --strip-components 1
 
 # Result image
 FROM environment
