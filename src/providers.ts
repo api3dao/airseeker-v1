@@ -1,12 +1,10 @@
 import * as node from '@api3/airnode-node';
-import { DapiServer__factory } from '@api3/airnode-protocol-v1';
 import { getState, updateState, Providers } from './state';
 
-const initializeProvider = (chainId: string, contractAddress: string, providerUrl: string) => {
+const initializeProvider = (chainId: string, providerUrl: string) => {
   const rpcProvider = node.evm.buildEVMProvider(providerUrl, chainId);
-  const contract = DapiServer__factory.connect(contractAddress, rpcProvider);
 
-  return { rpcProvider, contract, chainId };
+  return { rpcProvider, chainId };
 };
 
 export const initializeProviders = () => {
@@ -21,17 +19,7 @@ export const initializeProviders = () => {
       return acc;
     }
 
-    const contractAddress = chain.contracts['DapiServer'];
-
-    // TODO: Should be later part of the validation
-    if (!contractAddress) {
-      console.log(`Missing contract address for DapiServer on chain with ID ${chainId}`);
-      return acc;
-    }
-
-    const chainProviders = Object.values(chain.providers).map((provider) =>
-      initializeProvider(chainId, contractAddress, provider.url)
-    );
+    const chainProviders = Object.values(chain.providers).map((provider) => initializeProvider(chainId, provider.url));
 
     return { ...acc, [chainId]: chainProviders };
   }, {});
