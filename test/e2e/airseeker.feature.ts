@@ -1,23 +1,21 @@
 import { mockReadFileSync } from '../mock-utils';
-import path from 'path';
 import { ContractFactory, Contract, Wallet } from 'ethers';
 import * as hre from 'hardhat';
-import { checkUpdateCondition } from '../../src/check-condition';
-import * as config from '../../src/config';
 import { buildAirseekerConfig, buildLocalSecrets } from '../fixtures/config';
-import { updateBeacon, deployAndUpdateSubscriptions } from '../setup/deployment';
+import { deployAndUpdateSubscriptions } from '../setup/deployment';
+import { main as airseeker } from '../../src/main';
+import { sleep } from '../../src/utils';
+import * as makeRequest from '../../src/make-request';
 
 // Jest version 27 has a bug where jest.setTimeout does not work correctly inside describe or test blocks
 // https://github.com/facebook/jest/issues/11607
 jest.setTimeout(60_000);
 
 const provider = new hre.ethers.providers.JsonRpcProvider('http://127.0.0.1:8545');
-process.env = Object.assign(process.env, {
-  CLOUD_PROVIDER: 'local',
-  STAGE: 'dev',
-});
+
 const airseekerConfig = buildAirseekerConfig();
 const secretsConfig = buildLocalSecrets();
+process.env = Object.assign(process.env, secretsConfig);
 
 const readBeaconValue = async (airnodeAddress: string, templateId: string, dapiServer: Contract) => {
   const voidSigner = new hre.ethers.VoidSigner(hre.ethers.constants.AddressZero, provider);
@@ -32,37 +30,7 @@ const readBeaconValue = async (airnodeAddress: string, templateId: string, dapiS
   }
 };
 
-const runAirseeker = async (
-  apiValue: number,
-  templateId: string,
-  dapiServer: Contract,
-  airnodePspSponsorWallet: Wallet,
-  airnodeWallet: Wallet,
-  subscriptionId: string
-) => {
-  const _airseekerConfig = config.loadConfig(
-    path.join(__dirname, '..', '..', 'config', 'airseeker.example.json'),
-    secretsConfig
-  );
-  try {
-    const voidSigner = new hre.ethers.VoidSigner(hre.ethers.constants.AddressZero, provider);
-    const beaconId = hre.ethers.utils.keccak256(
-      hre.ethers.utils.solidityPack(['address', 'bytes32'], [airnodeWallet.address, templateId])
-    );
-    const checkResult = await checkUpdateCondition(voidSigner, dapiServer, beaconId, 0.1, apiValue);
-
-    //Update beacon if check passes
-    if (checkResult) {
-      await updateBeacon(dapiServer, airnodePspSponsorWallet, airnodeWallet, subscriptionId, apiValue);
-    }
-
-    return { status: 200 };
-  } catch (error) {
-    return { error };
-  }
-};
-
-describe('PSP', () => {
+describe('Airseeker', () => {
   let deployment: {
     accessControlRegistryFactory: ContractFactory;
     accessControlRegistry: Contract;
@@ -82,13 +50,15 @@ describe('PSP', () => {
     // Reset the local hardhat network state for each test to prevent issues with other test contracts
     await hre.network.provider.send('hardhat_reset');
     jest.restoreAllMocks();
+    jest.clearAllTimers();
 
     deployment = await deployAndUpdateSubscriptions();
   });
 
   it('updates the beacons successfully', async () => {
-    jest.spyOn(config, 'readConfig').mockImplementationOnce(() => airseekerConfig as any);
+    mockReadFileSync('airseeker.json', JSON.stringify(airseekerConfig));
 
+    // Check that initial values are updated
     const beaconValueETH = await readBeaconValue(
       '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
       deployment.templateIdETH,
@@ -103,31 +73,14 @@ describe('PSP', () => {
     expect(beaconValueETH).toEqual(hre.ethers.BigNumber.from(723.39202 * 1_000_000));
     expect(beaconValueBTC).toEqual(hre.ethers.BigNumber.from(41_091.12345 * 1_000_000));
 
-    // const config = [
-    //   { templateId: templateIdETH, subscriptionId: subscriptionIdETH, apiValue: 800 * 1_000_000 },
-    //   { templateId: templateIdBTC, subscriptionId: subscriptionIdBTC, apiValue: 43_000 * 1_000_000 },
-    // ];
-
-    const resETH = await runAirseeker(
-      800 * 1_000_000,
-      deployment.templateIdETH,
-      deployment.dapiServer,
-      deployment.airnodePspSponsorWallet,
-      deployment.airnodeWallet,
-      deployment.subscriptionIdETH
-    );
-
-    const resBTC = await runAirseeker(
-      43_000 * 1_000_000,
-      deployment.templateIdBTC,
-      deployment.dapiServer,
-      deployment.airnodePspSponsorWallet,
-      deployment.airnodeWallet,
-      deployment.subscriptionIdBTC
-    );
-
-    expect(resETH).toEqual({ status: 200 });
-    expect(resBTC).toEqual({ status: 200 });
+    await airseeker().then(async () => {
+      // Wait for Airseeker cycles to finish
+      await sleep(5_000);
+      // Stop Airseeker
+      process.emit('SIGTERM');
+      // Wait for last cycle to finish
+      await sleep(5_000);
+    });
 
     const beaconValueETHNew = await readBeaconValue(
       '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
@@ -145,43 +98,221 @@ describe('PSP', () => {
   });
 
   it('does not update if the condition check fails', async () => {
-    jest.spyOn(config, 'readConfig').mockImplementationOnce(() => airseekerConfig as any);
-
-    const beaconValueETH = await readBeaconValue(
-      '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
-      deployment.templateIdETH,
-      deployment.dapiServer
+    mockReadFileSync(
+      'airseeker.json',
+      JSON.stringify({
+        ...airseekerConfig,
+        triggers: {
+          beaconUpdates: {
+            '31337': {
+              '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC': {
+                beacons: [
+                  {
+                    beaconId: '0x924b5d4cb3ec6366ae4302a1ca6aec035594ea3ea48a102d160b50b0c43ebfb5',
+                    deviationThreshold: 50,
+                    heartbeatInterval: 86400,
+                  },
+                  {
+                    beaconId: '0xbf7ce55d109fd196de2a8bf1515d166c56c9decbe9cb473656bbca30d5743990',
+                    deviationThreshold: 50,
+                    heartbeatInterval: 86400,
+                  },
+                ],
+                updateInterval: 3,
+              },
+            },
+          },
+          beaconSetUpdates: {},
+        },
+      })
     );
-    expect(beaconValueETH).toEqual(hre.ethers.BigNumber.from(723.39202 * 1_000_000));
 
-    const resETH = await runAirseeker(
-      724 * 1_000_000,
-      deployment.templateIdETH,
-      deployment.dapiServer,
-      deployment.airnodePspSponsorWallet,
-      deployment.airnodeWallet,
-      deployment.subscriptionIdETH
-    );
-
-    expect(resETH).toEqual({ status: 200 });
+    await airseeker().then(async () => {
+      // Wait for Airseeker cycles to finish
+      await sleep(5_000);
+      // Stop Airseeker
+      process.emit('SIGTERM');
+      // Wait for last cycle to finish
+      await sleep(5_000);
+    });
 
     const beaconValueETHNew = await readBeaconValue(
       '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
       deployment.templateIdETH,
       deployment.dapiServer
     );
+    const beaconValueBTCNew = await readBeaconValue(
+      '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
+      deployment.templateIdBTC,
+      deployment.dapiServer
+    );
 
     expect(beaconValueETHNew).toEqual(hre.ethers.BigNumber.from(723.39202 * 1_000_000));
+    expect(beaconValueBTCNew).toEqual(hre.ethers.BigNumber.from(41_091.12345 * 1_000_000));
+  });
+
+  it('updates the beacons successfully after retrying a failed api call', async () => {
+    mockReadFileSync('airseeker.json', JSON.stringify(airseekerConfig));
+
+    const makeRequestSpy = jest.spyOn(makeRequest, 'makeSignedDataGatewayRequests');
+    makeRequestSpy.mockRejectedValueOnce(new Error('Api call failed'));
+
+    await airseeker().then(async () => {
+      // Wait for Airseeker cycles to finish
+      await sleep(5_000);
+      // Stop Airseeker
+      process.emit('SIGTERM');
+      // Wait for last cycle to finish
+      await sleep(5_000);
+    });
+
+    const beaconValueETHNew = await readBeaconValue(
+      '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
+      deployment.templateIdETH,
+      deployment.dapiServer
+    );
+    const beaconValueBTCNew = await readBeaconValue(
+      '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
+      deployment.templateIdBTC,
+      deployment.dapiServer
+    );
+
+    expect(beaconValueETHNew).toEqual(hre.ethers.BigNumber.from(800 * 1_000_000));
+    expect(beaconValueBTCNew).toEqual(hre.ethers.BigNumber.from(43_000 * 1_000_000));
+  });
+
+  it('updates the beacons successfully with one invalid provider present', async () => {
+    mockReadFileSync(
+      'airseeker.json',
+      JSON.stringify({
+        ...airseekerConfig,
+        chains: {
+          '31337': {
+            contracts: {
+              DapiServer: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
+            },
+            providers: {
+              invalidProvider: {
+                url: 'http://invalid',
+              },
+              local: {
+                url: '${CP_LOCAL_URL}',
+              },
+            },
+            options: {
+              txType: 'eip1559',
+              priorityFee: {
+                value: 3.12,
+                unit: 'gwei',
+              },
+              baseFeeMultiplier: 2,
+            },
+          },
+        },
+      })
+    );
+
+    await airseeker().then(async () => {
+      // Wait for Airseeker cycles to finish
+      await sleep(5_000);
+      // Stop Airseeker
+      process.emit('SIGTERM');
+      // Wait for last cycle to finish
+      await sleep(5_000);
+    });
+
+    const beaconValueETHNew = await readBeaconValue(
+      '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
+      deployment.templateIdETH,
+      deployment.dapiServer
+    );
+    const beaconValueBTCNew = await readBeaconValue(
+      '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
+      deployment.templateIdBTC,
+      deployment.dapiServer
+    );
+
+    expect(beaconValueETHNew).toEqual(hre.ethers.BigNumber.from(800 * 1_000_000));
+    expect(beaconValueBTCNew).toEqual(hre.ethers.BigNumber.from(43_000 * 1_000_000));
+  });
+
+  it('updates the beacon successfully with one invalid beacon present', async () => {
+    mockReadFileSync(
+      'airseeker.json',
+      JSON.stringify({
+        ...airseekerConfig,
+        beacons: {
+          ...airseekerConfig.beacons,
+          // invalid beaconId
+          '0xbf7ce55d109fd196de2a8bf1515d166c56c9decbe9cb473656bbca30d1111111': {
+            airnode: '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
+            templateId: '0x0bbf5f2ec4b0e9faf5b89b4ddbed9bdad7a542cc258ffd7b106b523aeae039a6',
+            fetchInterval: 1,
+          },
+        },
+        triggers: {
+          beaconUpdates: {
+            '31337': {
+              '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC': {
+                beacons: [
+                  {
+                    beaconId: '0x924b5d4cb3ec6366ae4302a1ca6aec035594ea3ea48a102d160b50b0c43ebfb5',
+                    deviationThreshold: 0.2,
+                    heartbeatInterval: 86400,
+                  },
+                  // invalid beaconId
+                  {
+                    beaconId: '0xbf7ce55d109fd196de2a8bf1515d166c56c9decbe9cb473656bbca30d1111111',
+                    deviationThreshold: 0.2,
+                    heartbeatInterval: 86400,
+                  },
+                  {
+                    beaconId: '0xbf7ce55d109fd196de2a8bf1515d166c56c9decbe9cb473656bbca30d5743990',
+                    deviationThreshold: 0.2,
+                    heartbeatInterval: 86400,
+                  },
+                ],
+                updateInterval: 3,
+              },
+            },
+          },
+          beaconSetUpdates: {},
+        },
+      })
+    );
+
+    await airseeker().then(async () => {
+      // Wait for Airseeker cycles to finish
+      await sleep(5_000);
+      // Stop Airseeker
+      process.emit('SIGTERM');
+      // Wait for last cycle to finish
+      await sleep(5_000);
+    });
+
+    const beaconValueETHNew = await readBeaconValue(
+      '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
+      deployment.templateIdETH,
+      deployment.dapiServer
+    );
+    const beaconValueBTCNew = await readBeaconValue(
+      '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
+      deployment.templateIdBTC,
+      deployment.dapiServer
+    );
+
+    expect(beaconValueETHNew).toEqual(hre.ethers.BigNumber.from(800 * 1_000_000));
+    expect(beaconValueBTCNew).toEqual(hre.ethers.BigNumber.from(43_000 * 1_000_000));
   });
 
   it('throws on invalid airseeker config', async () => {
     mockReadFileSync(
-      'airseeker.example.json',
+      'airseeker.json',
       JSON.stringify({
         ...airseekerConfig,
         chains: '',
       })
     );
-    await expect(runAirseeker).rejects.toThrow('Invalid Airseeker configuration file');
+    await expect(airseeker()).rejects.toThrow('Invalid Airseeker configuration file');
   });
 });

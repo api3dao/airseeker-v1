@@ -1,14 +1,15 @@
 export const buildAirseekerConfig = () => ({
+  airseekerWalletMnemonic: '${AIRSEEKER_WALLET_MNEMONIC}',
   beacons: {
     '0x924b5d4cb3ec6366ae4302a1ca6aec035594ea3ea48a102d160b50b0c43ebfb5': {
       airnode: '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
       templateId: '0xea30f92923ece1a97af69d450a8418db31be5a26a886540a13c09c739ba8eaaa',
-      fetchInterval: 20,
+      fetchInterval: 1,
     },
     '0xbf7ce55d109fd196de2a8bf1515d166c56c9decbe9cb473656bbca30d5743990': {
       airnode: '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
       templateId: '0x0bbf5f2ec4b0e9faf5b89b4ddbed9bdad7a542cc258ffd7b106b523aeae039a6',
-      fetchInterval: 20,
+      fetchInterval: 1,
     },
   },
   beaconSets: {},
@@ -68,7 +69,7 @@ export const buildAirseekerConfig = () => ({
               heartbeatInterval: 86400,
             },
           ],
-          updateInterval: 30,
+          updateInterval: 3,
         },
       },
     },
@@ -77,11 +78,9 @@ export const buildAirseekerConfig = () => ({
 });
 
 export const buildLocalSecrets = () => ({
+  AIRSEEKER_WALLET_MNEMONIC: 'achieve climb couple wait accident symbol spy blouse reduce foil echo label',
   CP_LOCAL_URL: 'http://127.0.0.1:8545/',
   HTTP_GATEWAY_API_KEY: 'some-api-key',
-  CP_SELF_HOSTED_MAINNET_URL: 'https://some.url/',
-  CP_INFURA_MAINNET_URL: 'https://some.url/',
-  CP_INFURA_ROPSTEN_URL: 'https://some.url/',
 });
 
 // Config for ETH subscription

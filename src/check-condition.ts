@@ -20,10 +20,10 @@ export const checkUpdateCondition = async (
   dapiServer: ethers.Contract,
   beaconId: string,
   deviationThreshold: number,
-  apiValue: number
+  apiValue: ethers.BigNumber
 ) => {
   const [dapiServerValue, _timestamp] = await dapiServer.connect(voidSigner).readDataFeedWithId(beaconId);
-  const updateInPercentage = calculateUpdateInPercentage(dapiServerValue, ethers.BigNumber.from(apiValue));
+  const updateInPercentage = calculateUpdateInPercentage(dapiServerValue, apiValue);
   const threshold = ethers.BigNumber.from(deviationThreshold * HUNDRED_PERCENT).div(ethers.BigNumber.from(100));
 
   return updateInPercentage.gt(threshold);

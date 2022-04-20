@@ -5,20 +5,22 @@ import { initiateBeaconUpdates } from './update-beacons';
 import { initializeProviders } from './providers';
 import { initializeState, updateState } from './state';
 
-const config = loadConfig(path.join(__dirname, '..', 'config', 'airseeker.json'), process.env);
-initializeState(config);
+export async function main() {
+  const config = loadConfig(path.join(__dirname, '..', 'config', 'airseeker.json'), process.env);
+  initializeState(config);
 
-const handleStopSignal = (signal: string) => {
-  console.log(`Signal ${signal} received`);
-  console.log('Stopping Airseeeker...');
-  // Let the process wait for the last cycles instead of killing it immediately
-  updateState((state) => ({ ...state, stopSignalReceived: true }));
-};
+  const handleStopSignal = (signal: string) => {
+    console.log(`Signal ${signal} received`);
+    console.log('Stopping Airseeeker...');
+    // Let the process wait for the last cycles instead of killing it immediately
+    updateState((state) => ({ ...state, stopSignalReceived: true }));
+  };
 
-initializeProviders();
+  initializeProviders();
 
-initiateFetchingBeaconData();
-initiateBeaconUpdates();
+  initiateFetchingBeaconData();
+  initiateBeaconUpdates();
 
-process.on('SIGINT', handleStopSignal);
-process.on('SIGTERM', handleStopSignal);
+  process.on('SIGINT', handleStopSignal);
+  process.on('SIGTERM', handleStopSignal);
+}

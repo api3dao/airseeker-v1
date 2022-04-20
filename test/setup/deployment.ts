@@ -9,6 +9,7 @@ import {
   DapiServer__factory as DapiServerFactory,
 } from '@api3/airnode-protocol-v1';
 import { buildLocalConfigETH, buildLocalConfigBTC } from '../fixtures/config';
+import { PROTOCOL_ID } from '../../src/constants';
 
 //TODO: remove once airnode-node 0.6 is released
 const deriveWalletPathFromSponsorAddress = (sponsorAddress: string, protocolId = '1') => {
@@ -41,7 +42,7 @@ const roles = {
 };
 
 const getTimestampAndSignature = async (airnodeWallet: Wallet, subscriptionId: string, sponsorWallet: Wallet) => {
-  const timestamp = (await provider.getBlock('latest')).timestamp + 1;
+  const timestamp = Math.floor(Date.now() / 1000);
 
   const signature = await airnodeWallet.signMessage(
     hre.ethers.utils.arrayify(
@@ -127,6 +128,17 @@ export const deployAndUpdateSubscriptions = async () => {
     value: hre.ethers.utils.parseEther('1'),
   });
 
+  const airseekerSponsorWallet =
+    // node.evm.
+    deriveSponsorWalletFromMnemonic(localConfigETH.airnodeMnemonic, roles.sponsor.address, PROTOCOL_ID).connect(
+      provider
+    );
+
+  await roles.deployer.sendTransaction({
+    to: airseekerSponsorWallet.address,
+    value: hre.ethers.utils.parseEther('1'),
+  });
+
   // Setup ETH Subscription
   // Templates
   const endpointIdETH = hre.ethers.utils.keccak256(
@@ -208,7 +220,7 @@ export const deployAndUpdateSubscriptions = async () => {
 
   // Update beacons with starting values
   const apiValueETH = Math.floor(723.39202 * 1_000_000);
-  const apiValueBTC = Math.floor(41091.12345 * 1_000_000);
+  const apiValueBTC = Math.floor(41_091.12345 * 1_000_000);
   // ETH subscription
   await updateBeacon(dapiServer, airnodePspSponsorWallet, airnodeWallet, subscriptionIdETH, apiValueETH);
   // BTC subscription

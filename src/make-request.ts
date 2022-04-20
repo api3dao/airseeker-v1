@@ -27,7 +27,7 @@ export const makeSignedDataGatewayRequests = async (
         url: fullUrl,
         method: 'POST',
         headers: { 'x-api-key': apiKey },
-        data: JSON.stringify({ encodedParameters: parameters }),
+        data: { encodedParameters: parameters },
         timeout: GATEWAY_TIMEOUT_MS,
       });
 
