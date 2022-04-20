@@ -20,6 +20,9 @@ jobs:
       - name: Clone Airseeker
         uses: actions/checkout@v2
       - name: Check hyperlinks
+        # TODO: change back to v1 link checker once the bug is fixed
+        # https://github.com/gaurav-nelson/github-action-markdown-link-check/pull/129
+        # uses: gaurav-nelson/github-action-markdown-link-check@v1
         uses: gaurav-nelson/github-action-markdown-link-check@1.0.13
         with:
           config-file: .github/workflows/mlc_config.json
