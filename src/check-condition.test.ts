@@ -53,6 +53,7 @@ describe('checkUpdateCondition', () => {
   const beaconId = '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c';
   const provider = new ethers.providers.JsonRpcProvider(providerUrl);
   const voidSigner = new ethers.VoidSigner(ethers.constants.AddressZero, provider);
+  const goOptions = {};
 
   let readDataFeedWithIdSpy: jest.Mock;
   let dapiServerMock: {
@@ -77,7 +78,8 @@ describe('checkUpdateCondition', () => {
       dapiServerMock as any,
       beaconId,
       10,
-      ethers.BigNumber.from(560)
+      ethers.BigNumber.from(560),
+      goOptions
     );
 
     expect(readDataFeedWithIdSpy).toHaveBeenNthCalledWith(1, beaconId);
@@ -90,7 +92,8 @@ describe('checkUpdateCondition', () => {
       dapiServerMock as any,
       beaconId,
       10,
-      ethers.BigNumber.from(440)
+      ethers.BigNumber.from(440),
+      goOptions
     );
 
     expect(readDataFeedWithIdSpy).toHaveBeenNthCalledWith(1, beaconId);
@@ -103,10 +106,30 @@ describe('checkUpdateCondition', () => {
       dapiServerMock as any,
       beaconId,
       10,
-      ethers.BigNumber.from(480)
+      ethers.BigNumber.from(480),
+      goOptions
     );
 
     expect(readDataFeedWithIdSpy).toHaveBeenNthCalledWith(1, beaconId);
     expect(checkUpdateConditionResult).toEqual(false);
+  });
+
+  it('returns null if it is not able to fetch the data feed', async () => {
+    readDataFeedWithIdSpy = jest.fn().mockImplementation(() => {
+      throw new Error('Mock error');
+    });
+    dapiServerMock = { ...dapiServerMock, readDataFeedWithId: readDataFeedWithIdSpy };
+
+    const checkUpdateConditionResult = await checkUpdateCondition(
+      voidSigner,
+      dapiServerMock as any,
+      beaconId,
+      10,
+      ethers.BigNumber.from(560),
+      goOptions
+    );
+
+    expect(readDataFeedWithIdSpy).toHaveBeenNthCalledWith(1, beaconId);
+    expect(checkUpdateConditionResult).toBeNull();
   });
 });

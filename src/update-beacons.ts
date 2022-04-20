@@ -96,12 +96,12 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
 
   // Prepare contract for beacon updates
   const contractAddress = config.chains[chainId].contracts['DapiServer'];
-  const contract = DapiServerFactory.connect(contractAddress, rpcProvider);
   // TODO: Should be later part of the validation
   if (!contractAddress) {
     console.log(`Missing contract address for DapiServer on chain with ID ${chainId}.`);
     return;
   }
+  const contract = DapiServerFactory.connect(contractAddress, rpcProvider);
 
   // Get current block number
   const blockNumber = await getCurrentBlockNumber(provider, getGoOptions(startTime, totalTimeout));
@@ -174,15 +174,19 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
     }
 
     // Check beacon condition
-    // TODO: Add retry and rest of the go options
-    //       Will finish once https://github.com/api3dao/airseeker/pull/26 is merged
     const shouldUpdate = await checkUpdateCondition(
       voidSigner,
       contract,
       beaconUpdateData.beaconId,
       beaconUpdateData.deviationThreshold,
-      newBeaconValue
+      newBeaconValue,
+      getGoOptions(startTime, totalTimeout)
     );
+    if (shouldUpdate === null) {
+      console.log(`Unable to fetch current beacon value for beacon with ID ${beaconUpdateData.beaconId}.`);
+      // This can happen only if we reach the total timeout so it makes no sense to continue with the rest of the beacons
+      return;
+    }
     if (!shouldUpdate) {
       console.log(`Deviation threshold not reached for beacon with ID ${beaconUpdateData.beaconId}. Skipping.`);
       continue;
