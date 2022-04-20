@@ -11,16 +11,13 @@ import { deriveSponsorWalletFromMnemonic, shortenAddress, sleep } from './utils'
 import {
   GAS_LIMIT,
   INFINITE_RETRIES,
+  INT224_MAX,
+  INT224_MIN,
   PROTOCOL_ID,
   PROVIDER_TIMEOUT_MS,
   RANDOM_BACKOFF_MAX_MS,
   RANDOM_BACKOFF_MIN_MS,
 } from './constants';
-
-// Solidity type(int224).min
-const INT224_MIN = ethers.BigNumber.from(2).pow(ethers.BigNumber.from(223)).mul(ethers.BigNumber.from(-1));
-// Solidity type(int224).max
-const INT224_MAX = ethers.BigNumber.from(2).pow(ethers.BigNumber.from(223)).sub(ethers.BigNumber.from(1));
 
 type ProviderSponsorBeacons = {
   provider: Provider;
