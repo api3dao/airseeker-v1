@@ -1,7 +1,7 @@
 {
   "airseekerWalletMnemonic": "${AIRSEEKER_WALLET_MNEMONIC}",
   "beacons": {
-    "0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c": {
+    "0x924b5d4cb3ec6366ae4302a1ca6aec035594ea3ea48a102d160b50b0c43ebfb5": {
       "airnode": "0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace",
       "templateId": "0xea30f92923ece1a97af69d450a8418db31be5a26a886540a13c09c739ba8eaaa",
       "fetchInterval": 20
@@ -69,7 +69,7 @@
         "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": {
           "beacons": [
             {
-              "beaconId": "0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c",
+              "beaconId": "0x924b5d4cb3ec6366ae4302a1ca6aec035594ea3ea48a102d160b50b0c43ebfb5",
               "deviationThreshold": 0.1,
               "heartbeatInterval": 86400
             }
@@ -81,7 +81,7 @@
         "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": {
           "beacons": [
             {
-              "beaconId": "0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c",
+              "beaconId": "0x924b5d4cb3ec6366ae4302a1ca6aec035594ea3ea48a102d160b50b0c43ebfb5",
               "deviationThreshold": 0.2,
               "heartbeatInterval": 86400
             }
