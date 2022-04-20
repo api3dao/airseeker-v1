@@ -20,7 +20,7 @@ jobs:
       - name: Clone Airseeker
         uses: actions/checkout@v2
       - name: Check hyperlinks
-        uses: gaurav-nelson/github-action-markdown-link-check@v1
+        uses: gaurav-nelson/github-action-markdown-link-check@1.0.13
         with:
           config-file: .github/workflows/mlc_config.json
 
