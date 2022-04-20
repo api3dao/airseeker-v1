@@ -3,7 +3,7 @@ module.exports = {
   apps: [
     {
       name: 'airseeker',
-      script: './dist/src/main.js',
+      script: './dist/main.js',
       kill_timeout: 10_000,
       env: {
         NODE_ENV: 'development',
