@@ -1,5 +1,5 @@
-import { DapiServer__factory } from '@api3/airnode-protocol-v1';
 import { ethers } from 'ethers';
+import { DapiServer__factory } from '@api3/airnode-protocol-v1';
 import { go, GoAsyncOptions } from '@api3/promise-utils';
 import { BeaconUpdate } from './validation';
 import { getState, Provider } from './state';
@@ -16,6 +16,11 @@ import {
   RANDOM_BACKOFF_MAX_MS,
   RANDOM_BACKOFF_MIN_MS,
 } from './constants';
+
+// Solidity type(int224).min
+const INT224_MIN = ethers.BigNumber.from(2).pow(ethers.BigNumber.from(223)).mul(ethers.BigNumber.from(-1));
+// Solidity type(int224).max
+const INT224_MAX = ethers.BigNumber.from(2).pow(ethers.BigNumber.from(223)).sub(ethers.BigNumber.from(1));
 
 type ProviderSponsorBeacons = {
   provider: Provider;
@@ -141,7 +146,17 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
 
   for (const beacon of beacons) {
     const beaconUpdateData = { ...beacon, ...config.beacons[beacon.beaconId] };
-    // TODO: Check that templateId and airnode make given beaconId? Do we need that?
+
+    // TODO: Should be later part of the validation
+    const derivedBeaconId = ethers.utils.solidityKeccak256(
+      ['address', 'bytes32'],
+      [beaconUpdateData.airnode, beaconUpdateData.templateId]
+    );
+    if (derivedBeaconId !== beaconUpdateData.beaconId) {
+      console.log(`Invalid beacon ID ${beaconUpdateData.beaconId}. Skipping.`);
+      continue;
+    }
+
     console.log(`Updating beacon with ID ${beaconUpdateData.beaconId}`);
     // Check whether we have a value for given beacon
     const newBeaconResponse = beaconValues[beaconUpdateData.beaconId];
@@ -149,10 +164,15 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
       console.log(`No data available for beacon with ID ${beaconUpdateData.beaconId}. Skipping.`);
       continue;
     }
-    // TODO: Do we even need decoding here? It would be better to send the value from gateway.
+
+    // Based on https://github.com/api3dao/airnode-protocol-v1/blob/main/contracts/dapis/DapiServer.sol#L878
     const newBeaconValue = ethers.BigNumber.from(
-      ethers.utils.defaultAbiCoder.decode(['uint256'], newBeaconResponse.data.value)[0]
+      ethers.utils.defaultAbiCoder.decode(['int256'], newBeaconResponse.data.value)[0]
     );
+    if (newBeaconValue.gt(INT224_MAX) || newBeaconValue.lt(INT224_MIN)) {
+      console.log(`New beacon value for beacon with ID ${beaconUpdateData.beaconId} is out of type range. Skipping.`);
+      continue;
+    }
 
     // Check beacon condition
     // TODO: Add retry and rest of the go options
