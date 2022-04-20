@@ -16,3 +16,10 @@
 
 airseeker.json
 secrets.env
+
+# Hardhat files
+cache
+
+# Ignore log files
+logs
+*.log

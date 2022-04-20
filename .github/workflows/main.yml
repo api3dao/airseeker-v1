@@ -20,7 +20,10 @@ jobs:
       - name: Clone Airseeker
         uses: actions/checkout@v2
       - name: Check hyperlinks
-        uses: gaurav-nelson/github-action-markdown-link-check@v1
+        # TODO: change back to v1 link checker once the bug is fixed
+        # https://github.com/gaurav-nelson/github-action-markdown-link-check/pull/129
+        # uses: gaurav-nelson/github-action-markdown-link-check@v1
+        uses: gaurav-nelson/github-action-markdown-link-check@1.0.13
         with:
           config-file: .github/workflows/mlc_config.json
 
@@ -47,6 +50,8 @@ jobs:
         run: yarn dev:testing-services:start
       - name: Test
         run: yarn test
+      - name: Test E2E
+        run: yarn test:e2e
 
   docker-build:
     name: Build docker image and push to Docker Hub

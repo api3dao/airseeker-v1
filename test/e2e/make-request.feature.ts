@@ -1,5 +1,5 @@
-import { validSignedData } from './fixtures';
-import { makeSignedDataGatewayRequests } from '../src/make-request';
+import { validSignedData } from '../fixtures';
+import { makeSignedDataGatewayRequests } from '../../src/make-request';
 
 const mockedSignedDataGateway = {
   apiKey: 'some-api-key',

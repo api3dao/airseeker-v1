@@ -1,4 +1,4 @@
-import { SignedData } from '../src/validation';
+import { SignedData } from '../../src/validation';
 
 export const validSignedData: SignedData = {
   data: {

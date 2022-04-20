@@ -1,5 +1,5 @@
 import express from 'express';
-import { validSignedData } from './fixtures';
+import { validSignedData } from '../fixtures';
 
 const PORT = 5432;
 
