@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { DapiServer__factory } from '@api3/airnode-protocol-v1';
+import { DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol-v1';
 import { go, GoAsyncOptions } from '@api3/promise-utils';
 import { BeaconUpdate } from './validation';
 import { getState, Provider } from './state';
@@ -99,7 +99,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
 
   // Prepare contract for beacon updates
   const contractAddress = config.chains[chainId].contracts['DapiServer'];
-  const contract = DapiServer__factory.connect(contractAddress, rpcProvider);
+  const contract = DapiServerFactory.connect(contractAddress, rpcProvider);
   // TODO: Should be later part of the validation
   if (!contractAddress) {
     console.log(`Missing contract address for DapiServer on chain with ID ${chainId}.`);
