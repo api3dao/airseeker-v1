@@ -1,4 +1,6 @@
 import { ethers } from 'ethers';
+import { DapiServer } from '@api3/airnode-protocol-v1';
+import { go, GoAsyncOptions } from '@api3/promise-utils';
 
 // Number that represents 100% is chosen to avoid overflows in DapiServer's
 // `calculateUpdateInPercentage()`. Since the reported data needs to fit
@@ -17,12 +19,19 @@ export const calculateUpdateInPercentage = (initialValue: ethers.BigNumber, upda
 
 export const checkUpdateCondition = async (
   voidSigner: ethers.VoidSigner,
-  dapiServer: ethers.Contract,
+  dapiServer: DapiServer,
   beaconId: string,
   deviationThreshold: number,
-  apiValue: ethers.BigNumber
-) => {
-  const [dapiServerValue, _timestamp] = await dapiServer.connect(voidSigner).readDataFeedWithId(beaconId);
+  apiValue: ethers.BigNumber,
+  goOptions: GoAsyncOptions
+): Promise<boolean | null> => {
+  const goDataFeed = await go(() => dapiServer.connect(voidSigner).readDataFeedWithId(beaconId), goOptions);
+  if (!goDataFeed.success) {
+    console.log(`Unable to read data feed. Error: ${goDataFeed.error}`);
+    return null;
+  }
+
+  const [dapiServerValue, _timestamp] = goDataFeed.data;
   const updateInPercentage = calculateUpdateInPercentage(dapiServerValue, apiValue);
   const threshold = ethers.BigNumber.from(deviationThreshold * HUNDRED_PERCENT).div(ethers.BigNumber.from(100));
 
