@@ -7,12 +7,12 @@ import { getState, Provider } from './state';
 import { PRIORITY_FEE_IN_WEI, BASE_FEE_MULTIPLIER } from './constants';
 import { logger } from './logging';
 
-type LegacyGasTarget = {
+export type LegacyGasTarget = {
   txType: 'legacy';
   gasPrice: BigNumber;
 };
 
-type EIP1559GasTarget = {
+export type EIP1559GasTarget = {
   txType: 'eip1559';
   maxPriorityFeePerGas: BigNumber;
   maxFeePerGas: BigNumber;
