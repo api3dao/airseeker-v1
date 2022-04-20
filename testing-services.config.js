@@ -7,11 +7,6 @@ module.exports = {
       env: {
         NODE_ENV: 'development',
       },
-      // Logs
-      log_date_format: 'YYYY-MM-DD HH:mm:ss',
-      error_file: 'logs/ethereum-node.log',
-      out_file: 'logs/ethereum-node.log',
-      merge_logs: true,
     },
     {
       name: 'ethereum-node',

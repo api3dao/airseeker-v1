@@ -12,6 +12,6 @@
     "baseUrl": "./",
     "outDir": "./dist"
   },
-  "include": ["./src/**/*.ts", "./test/**/*", "./hardhat.config.ts"],
+  "include": ["./src/**/*.ts", "./hardhat.config.ts"],
   "exclude": ["node_modules"]
 }
