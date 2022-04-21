@@ -37,7 +37,7 @@ export const buildAirseekerConfig = () => ({
     '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace': [
       {
         apiKey: '${HTTP_GATEWAY_API_KEY}',
-        url: 'http://localhost:5432/signed-data-gateway/',
+        url: '${HTTP_SIGNED_DATA_GATEWAY_URL}',
       },
     ],
   },
@@ -81,6 +81,7 @@ export const buildLocalSecrets = () => ({
   AIRSEEKER_WALLET_MNEMONIC: 'achieve climb couple wait accident symbol spy blouse reduce foil echo label',
   CP_LOCAL_URL: 'http://127.0.0.1:8545/',
   HTTP_GATEWAY_API_KEY: 'some-api-key',
+  HTTP_SIGNED_DATA_GATEWAY_URL: 'http://localhost:5432/signed-data-gateway/',
 });
 
 // Config for ETH subscription
