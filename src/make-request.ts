@@ -26,8 +26,8 @@ export const makeSignedDataGatewayRequests = async (
       const { data } = await axios({
         url: fullUrl,
         method: 'POST',
-        headers: { 'x-api-key': apiKey },
-        data: { encodedParameters: parameters },
+        headers: { 'x-api-key': apiKey, 'Content-Type': 'application/json' },
+        data: JSON.stringify({ encodedParameters: parameters }),
         timeout: GATEWAY_TIMEOUT_MS,
       });
 

@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { DapiServer__factory } from '@api3/airnode-protocol-v1';
+import { DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol-v1';
 import { go, GoAsyncOptions } from '@api3/promise-utils';
 import { BeaconUpdate } from './validation';
 import { getState, Provider } from './state';
@@ -11,16 +11,13 @@ import { deriveSponsorWalletFromMnemonic, shortenAddress, sleep } from './utils'
 import {
   GAS_LIMIT,
   INFINITE_RETRIES,
+  INT224_MAX,
+  INT224_MIN,
   PROTOCOL_ID,
   PROVIDER_TIMEOUT_MS,
   RANDOM_BACKOFF_MAX_MS,
   RANDOM_BACKOFF_MIN_MS,
 } from './constants';
-
-// Solidity type(int224).min
-const INT224_MIN = ethers.BigNumber.from(2).pow(ethers.BigNumber.from(223)).mul(ethers.BigNumber.from(-1));
-// Solidity type(int224).max
-const INT224_MAX = ethers.BigNumber.from(2).pow(ethers.BigNumber.from(223)).sub(ethers.BigNumber.from(1));
 
 type ProviderSponsorBeacons = {
   provider: Provider;
@@ -72,17 +69,19 @@ export const updateBeaconsInLoop = async (providerSponsorBeacons: ProviderSponso
   }
 };
 
-const calculateCurrentTimeout = (startTime: number, totalTimeout: number) => totalTimeout - (Date.now() - startTime);
+const calculateTimeout = (startTime: number, totalTimeout: number) => totalTimeout - (Date.now() - startTime);
 
 // We retry all chain operations with a random back-off infinitely until the next updates cycle
 // TODO: Errors are not displayed with this approach. Problem?
-const getCurrentProviderGoOptions = (startTime: number, totalTimeout: number): GoAsyncOptions => ({
+const getGoOptions = (startTime: number, totalTimeout: number): GoAsyncOptions => ({
   attemptTimeoutMs: PROVIDER_TIMEOUT_MS,
-  totalTimeoutMs: calculateCurrentTimeout(startTime, totalTimeout),
+  totalTimeoutMs: calculateTimeout(startTime, totalTimeout),
   retries: INFINITE_RETRIES,
   delay: { type: 'random' as const, minDelayMs: RANDOM_BACKOFF_MIN_MS, maxDelayMs: RANDOM_BACKOFF_MAX_MS },
 });
 
+// We pass return value from `getGoOptions` (with calculated timeout) to every `go` call in the function to enforce the update cycle.
+// This solution is not precise but since chain operations are the only ones that actually take some time this should be a good enough solution.
 export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeacons) => {
   const { config, beaconValues } = getState();
   const { provider, sponsorAddress, beacons } = providerSponsorBeacons;
@@ -97,7 +96,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
 
   // Prepare contract for beacon updates
   const contractAddress = config.chains[chainId].contracts['DapiServer'];
-  const contract = DapiServer__factory.connect(contractAddress, rpcProvider);
+  const contract = DapiServerFactory.connect(contractAddress, rpcProvider);
   // TODO: Should be later part of the validation
   if (!contractAddress) {
     console.log(`Missing contract address for DapiServer on chain with ID ${chainId}.`);
@@ -105,14 +104,14 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
   }
 
   // Get current block number
-  const blockNumber = await getCurrentBlockNumber(provider, getCurrentProviderGoOptions(startTime, totalTimeout));
+  const blockNumber = await getCurrentBlockNumber(provider, getGoOptions(startTime, totalTimeout));
   if (blockNumber === null) {
     console.log(`Unable to obtain block number for chain with ID ${chainId}.`);
     return;
   }
 
   // Get gas price
-  const gasTarget = await getGasPrice(provider, getCurrentProviderGoOptions(startTime, totalTimeout));
+  const gasTarget = await getGasPrice(provider, getGoOptions(startTime, totalTimeout));
   if (gasTarget === null) {
     console.log(`Unable to fetch gas price for chain with ID ${chainId}.`);
     return;
@@ -131,7 +130,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
     rpcProvider,
     sponsorWallet.address,
     blockNumber,
-    getCurrentProviderGoOptions(startTime, totalTimeout)
+    getGoOptions(startTime, totalTimeout)
   );
   if (transactionCount === null) {
     console.log(
@@ -206,7 +205,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
               nonce,
             }
           ),
-      getCurrentProviderGoOptions(startTime, totalTimeout)
+      getGoOptions(startTime, totalTimeout)
     );
 
     if (!tx.success) {
