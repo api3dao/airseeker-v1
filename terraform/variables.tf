@@ -1,6 +1,7 @@
 locals {
   resource_prefix = "${var.app_name}-${var.app_environment}"
   launch_type     = "FARGATE"
+  aws_ecr_url     = "https://${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.aws_region}.amazonaws.com"
 }
 
 variable "aws_region" {
@@ -20,11 +21,24 @@ variable "app_environment" {
   type        = string
 }
 
-variable "app_docker_image" {
-  description = "The URL of the docker image to use"
+variable "app_docker_image_version" {
+  description = "The version of the docker image to use"
   type        = string
-  default     = "docker.io/api3/airseeker-dev:0.1.0"
+  default     = "latest"
 }
+
+variable "app_config_file_path" {
+  description = "The path to the configuration file"
+  type        = string
+  default     = "config/airseeker.json"
+}
+
+variable "app_secrets_file_path" {
+  description = "The path to the secrets file"
+  type        = string
+  default     = "../config/secrets.env"
+}
+
 variable "ecs_application_count" {
   description = "The number of services to each for each application"
   type        = string

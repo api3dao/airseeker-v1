@@ -7,4 +7,16 @@ terraform {
     role_arn = ""
     encrypt  = "true"
   }
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 3.71"
+    }
+
+    docker = {
+      source  = "kreuzwerker/docker"
+      version = "2.16.0"
+    }
+  }
 }

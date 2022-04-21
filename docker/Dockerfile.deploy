@@ -1,0 +1,11 @@
+ARG version=latest
+
+FROM api3/airseeker-dev:${version}
+
+ARG configFile=./config/airseeker.json
+
+COPY ${configFile} /app/config/airseeker.json
+
+RUN chown -R airseeker /app/config
+
+RUN chmod +r /app/config/airseeker.json

@@ -1,3 +1,20 @@
+resource "aws_ecr_repository" "airseeker_aws_ecr_repository" {
+  name = "${local.resource_prefix}-ecr-repository"
+}
+
+resource "docker_registry_image" "airseeker_with_config" {
+  name = "${aws_ecr_repository.airseeker_aws_ecr_repository.repository_url}:${var.app_docker_image_version}"
+
+  build {
+    context    = ".."
+    dockerfile = "docker/Dockerfile.deploy"
+    build_args = {
+      version    = "${var.app_docker_image_version}"
+      configFile = "${var.app_config_file_path}"
+    }
+  }
+}
+
 resource "aws_ecs_cluster" "airseeker_ecs_cluster" {
   name = "${local.resource_prefix}-ecs-cluster"
   tags = {
@@ -7,6 +24,11 @@ resource "aws_ecs_cluster" "airseeker_ecs_cluster" {
 
   depends_on = [aws_cloudwatch_log_group.airseeker_aws_cloudwatch_log_group]
 }
+
+locals {
+  env_vars = jsonencode([for tuple in regexall("(.*)=(.*)", file(var.app_secrets_file_path)) : { name = tuple[0], value = tuple[1] }])
+}
+
 resource "aws_ecs_task_definition" "airseeker_ecs_task" {
   family = "${var.app_name}-ecs-task"
 
@@ -14,7 +36,7 @@ resource "aws_ecs_task_definition" "airseeker_ecs_task" {
   [
     {
       "name": "${local.resource_prefix}-container",
-      "image": "${var.app_docker_image}",
+      "image": "${docker_registry_image.airseeker_with_config.name}",
       "essential": true,
       "cpu": ${var.ecs_cpu_allocation},
       "memory": ${var.ecs_memory_allocation},
@@ -26,7 +48,8 @@ resource "aws_ecs_task_definition" "airseeker_ecs_task" {
           "awslogs-region": "${var.aws_region}",
           "awslogs-stream-prefix": "${local.resource_prefix}"
         }
-      }
+      },
+      "environment": ${local.env_vars}
     }
   ]
   DEFINITION
@@ -56,6 +79,4 @@ resource "aws_ecs_service" "airkeeper_ecs_service" {
     security_groups  = [aws_security_group.airseeker_aws_security_group.id]
     assign_public_ip = false
   }
-
-  depends_on = [aws_iam_role_policy.ecs_task_exec_role_log_policy]
 }

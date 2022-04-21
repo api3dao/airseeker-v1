@@ -9,16 +9,6 @@ data "aws_iam_policy_document" "ecs_task_exec_role_policy" {
   }
 }
 
-data "aws_iam_policy_document" "cloudwatch_log_policy" {
-  statement {
-    effect = "Allow"
-    actions = [
-      "logs:CreateLogStream",
-      "logs:PutLogEvents",
-    ]
-    resources = ["${aws_cloudwatch_log_group.airseeker_aws_cloudwatch_log_group.arn}:*"]
-  }
-}
 
 resource "aws_iam_role" "ecs_task_exec_role" {
   name               = "${local.resource_prefix}-ecs-taskrole"
@@ -30,8 +20,7 @@ resource "aws_iam_role" "ecs_task_exec_role" {
   }
 }
 
-resource "aws_iam_role_policy" "ecs_task_exec_role_log_policy" {
-  name   = "${local.resource_prefix}-log-policy"
-  role   = aws_iam_role.ecs_task_exec_role.id
-  policy = data.aws_iam_policy_document.cloudwatch_log_policy.json
+resource "aws_iam_role_policy_attachment" "ecs_task_exec_role_attachment" {
+  role       = aws_iam_role.ecs_task_exec_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
