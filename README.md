@@ -57,3 +57,24 @@ yarn docker:build
 ```
 
 Resulting image is named `api3/airseeker`.
+
+## Deploy
+
+Airseeker can be deployed to an ECS AWS cluster using the terraform recipes located in the `terraform` directory.
+
+Terraform will build an intermediate docker image based on another image previously built using the `docker/Dockerfile`
+file. This intermediate image will have the config file baked into it and it will then be pushed to an ECR repository.
+
+To run deploy Airseeker then you will need to cd into the `terraform` directory and run the following commands:
+
+```sh
+terraform init
+terraform apply -var 'app_environment=dev'
+Alternatively you can provide the `aws_region`, `app_environment`, `app_docker_image_version`, etc as arguments to the `terraform apply` command.
+```
+
+Then to destroy the deployment you can run the following command:
+
+```sh
+terraform destroy -var 'app_environment=dev' -auto-approve
+```
