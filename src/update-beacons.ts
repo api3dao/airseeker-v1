@@ -29,7 +29,7 @@ type ProviderSponsorBeacons = {
   beacons: BeaconUpdate[];
 };
 
-const groupBeaconsByProviderSponsor = () => {
+export const groupBeaconsByProviderSponsor = () => {
   const { config, providers: stateProviders } = getState();
   return Object.entries(config.triggers.beaconUpdates).reduce((acc: ProviderSponsorBeacons[], [chainId, sponsors]) => {
     const providers = stateProviders[chainId];
@@ -89,11 +89,11 @@ export const updateBeaconsInLoop = async (providerSponsorBeacons: ProviderSponso
   }
 };
 
-const calculateTimeout = (startTime: number, totalTimeout: number) => totalTimeout - (Date.now() - startTime);
+export const calculateTimeout = (startTime: number, totalTimeout: number) => totalTimeout - (Date.now() - startTime);
 
 // We retry all chain operations with a random back-off infinitely until the next updates cycle
 // TODO: Errors are not displayed with this approach. Problem?
-const prepareGoOptions = (startTime: number, totalTimeout: number): GoAsyncOptions => ({
+export const prepareGoOptions = (startTime: number, totalTimeout: number): GoAsyncOptions => ({
   attemptTimeoutMs: PROVIDER_TIMEOUT_MS,
   totalTimeoutMs: calculateTimeout(startTime, totalTimeout),
   retries: INFINITE_RETRIES,
