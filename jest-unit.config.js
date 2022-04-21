@@ -1,10 +1,9 @@
-/* eslint-disable functional/immutable-data */
 const config = require('./jest.config');
 
+// eslint-disable-next-line functional/immutable-data
 module.exports = {
   ...config,
-  // Add custom settings below
   displayName: 'unit',
   name: 'unit',
-  testMatch: ['**/__tests__/**/*.[jt]s?(x)', '**/?(*.)+(spec|test).[tj]s?(x)'],
+  testMatch: ['**/?(*.)+(spec|test).[tj]s?(x)'],
 };
