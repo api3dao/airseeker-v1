@@ -3,7 +3,7 @@ import { ContractFactory, Contract, Wallet } from 'ethers';
 import * as hre from 'hardhat';
 import { buildAirseekerConfig, buildLocalSecrets } from '../fixtures/config';
 import { deployAndUpdateSubscriptions } from '../setup/deployment';
-import { main as airseeker } from '../../src/main';
+import { main, handleStopSignal } from '../../src/main';
 import { sleep } from '../../src/utils';
 import * as makeRequest from '../../src/make-request';
 
@@ -53,6 +53,9 @@ describe('Airseeker', () => {
     jest.clearAllTimers();
 
     deployment = await deployAndUpdateSubscriptions();
+    // Wait a few seconds before starting the tests so that signed data timestamps
+    // will be valid once fetched from the mocked signed gateway server
+    await sleep(3_000);
   });
 
   it('updates the beacons successfully', async () => {
@@ -73,13 +76,13 @@ describe('Airseeker', () => {
     expect(beaconValueETH).toEqual(hre.ethers.BigNumber.from(723.39202 * 1_000_000));
     expect(beaconValueBTC).toEqual(hre.ethers.BigNumber.from(41_091.12345 * 1_000_000));
 
-    await airseeker().then(async () => {
+    await main().then(async () => {
       // Wait for Airseeker cycles to finish
-      await sleep(5_000);
+      await sleep(25_000);
       // Stop Airseeker
-      process.emit('SIGTERM');
+      handleStopSignal('stop');
       // Wait for last cycle to finish
-      await sleep(5_000);
+      await sleep(25_000);
     });
 
     const beaconValueETHNew = await readBeaconValue(
@@ -118,7 +121,7 @@ describe('Airseeker', () => {
                     heartbeatInterval: 86400,
                   },
                 ],
-                updateInterval: 3,
+                updateInterval: 17,
               },
             },
           },
@@ -127,13 +130,13 @@ describe('Airseeker', () => {
       })
     );
 
-    await airseeker().then(async () => {
+    await main().then(async () => {
       // Wait for Airseeker cycles to finish
-      await sleep(5_000);
+      await sleep(25_000);
       // Stop Airseeker
-      process.emit('SIGTERM');
+      handleStopSignal('stop');
       // Wait for last cycle to finish
-      await sleep(5_000);
+      await sleep(25_000);
     });
 
     const beaconValueETHNew = await readBeaconValue(
@@ -157,13 +160,13 @@ describe('Airseeker', () => {
     const makeRequestSpy = jest.spyOn(makeRequest, 'makeSignedDataGatewayRequests');
     makeRequestSpy.mockRejectedValueOnce(new Error('Api call failed'));
 
-    await airseeker().then(async () => {
+    await main().then(async () => {
       // Wait for Airseeker cycles to finish
-      await sleep(5_000);
+      await sleep(25_000);
       // Stop Airseeker
-      process.emit('SIGTERM');
+      handleStopSignal('stop');
       // Wait for last cycle to finish
-      await sleep(5_000);
+      await sleep(25_000);
     });
 
     const beaconValueETHNew = await readBeaconValue(
@@ -212,13 +215,13 @@ describe('Airseeker', () => {
       })
     );
 
-    await airseeker().then(async () => {
+    await main().then(async () => {
       // Wait for Airseeker cycles to finish
-      await sleep(5_000);
+      await sleep(25_000);
       // Stop Airseeker
-      process.emit('SIGTERM');
+      handleStopSignal('stop');
       // Wait for last cycle to finish
-      await sleep(5_000);
+      await sleep(25_000);
     });
 
     const beaconValueETHNew = await readBeaconValue(
@@ -247,7 +250,7 @@ describe('Airseeker', () => {
           '0xbf7ce55d109fd196de2a8bf1515d166c56c9decbe9cb473656bbca30d1111111': {
             airnode: '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
             templateId: '0x0bbf5f2ec4b0e9faf5b89b4ddbed9bdad7a542cc258ffd7b106b523aeae039a6',
-            fetchInterval: 1,
+            fetchInterval: 20,
           },
         },
         triggers: {
@@ -272,7 +275,7 @@ describe('Airseeker', () => {
                     heartbeatInterval: 86400,
                   },
                 ],
-                updateInterval: 3,
+                updateInterval: 17,
               },
             },
           },
@@ -281,13 +284,13 @@ describe('Airseeker', () => {
       })
     );
 
-    await airseeker().then(async () => {
+    await main().then(async () => {
       // Wait for Airseeker cycles to finish
-      await sleep(5_000);
+      await sleep(25_000);
       // Stop Airseeker
-      process.emit('SIGTERM');
+      handleStopSignal('stop');
       // Wait for last cycle to finish
-      await sleep(5_000);
+      await sleep(25_000);
     });
 
     const beaconValueETHNew = await readBeaconValue(
@@ -313,6 +316,6 @@ describe('Airseeker', () => {
         chains: '',
       })
     );
-    await expect(airseeker()).rejects.toThrow('Invalid Airseeker configuration file');
+    await expect(main()).rejects.toThrow('Invalid Airseeker configuration file');
   });
 });
