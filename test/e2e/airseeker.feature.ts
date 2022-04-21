@@ -78,11 +78,11 @@ describe('Airseeker', () => {
 
     await main().then(async () => {
       // Wait for Airseeker cycles to finish
-      await sleep(25_000);
+      await sleep(10_000);
       // Stop Airseeker
       handleStopSignal('stop');
       // Wait for last cycle to finish
-      await sleep(25_000);
+      await sleep(10_000);
     });
 
     const beaconValueETHNew = await readBeaconValue(
@@ -121,7 +121,7 @@ describe('Airseeker', () => {
                     heartbeatInterval: 86400,
                   },
                 ],
-                updateInterval: 17,
+                updateInterval: 6,
               },
             },
           },
@@ -132,11 +132,11 @@ describe('Airseeker', () => {
 
     await main().then(async () => {
       // Wait for Airseeker cycles to finish
-      await sleep(25_000);
+      await sleep(10_000);
       // Stop Airseeker
       handleStopSignal('stop');
       // Wait for last cycle to finish
-      await sleep(25_000);
+      await sleep(10_000);
     });
 
     const beaconValueETHNew = await readBeaconValue(
@@ -162,11 +162,11 @@ describe('Airseeker', () => {
 
     await main().then(async () => {
       // Wait for Airseeker cycles to finish
-      await sleep(25_000);
+      await sleep(10_000);
       // Stop Airseeker
       handleStopSignal('stop');
       // Wait for last cycle to finish
-      await sleep(25_000);
+      await sleep(10_000);
     });
 
     const beaconValueETHNew = await readBeaconValue(
@@ -217,11 +217,11 @@ describe('Airseeker', () => {
 
     await main().then(async () => {
       // Wait for Airseeker cycles to finish
-      await sleep(25_000);
+      await sleep(10_000);
       // Stop Airseeker
       handleStopSignal('stop');
       // Wait for last cycle to finish
-      await sleep(25_000);
+      await sleep(10_000);
     });
 
     const beaconValueETHNew = await readBeaconValue(
@@ -250,7 +250,7 @@ describe('Airseeker', () => {
           '0xbf7ce55d109fd196de2a8bf1515d166c56c9decbe9cb473656bbca30d1111111': {
             airnode: '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
             templateId: '0x0bbf5f2ec4b0e9faf5b89b4ddbed9bdad7a542cc258ffd7b106b523aeae039a6',
-            fetchInterval: 20,
+            fetchInterval: 8,
           },
         },
         triggers: {
@@ -275,7 +275,7 @@ describe('Airseeker', () => {
                     heartbeatInterval: 86400,
                   },
                 ],
-                updateInterval: 17,
+                updateInterval: 6,
               },
             },
           },
@@ -286,11 +286,11 @@ describe('Airseeker', () => {
 
     await main().then(async () => {
       // Wait for Airseeker cycles to finish
-      await sleep(25_000);
+      await sleep(10_000);
       // Stop Airseeker
       handleStopSignal('stop');
       // Wait for last cycle to finish
-      await sleep(25_000);
+      await sleep(10_000);
     });
 
     const beaconValueETHNew = await readBeaconValue(
