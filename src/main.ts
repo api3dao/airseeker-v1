@@ -7,7 +7,7 @@ import { initializeState, updateState } from './state';
 
 export const handleStopSignal = (signal: string) => {
   console.log(`Signal ${signal} received`);
-  console.log('Stopping Airseeeker...');
+  console.log('Stopping Airseeker...');
   // Let the process wait for the last cycles instead of killing it immediately
   updateState((state) => ({ ...state, stopSignalReceived: true }));
 };
