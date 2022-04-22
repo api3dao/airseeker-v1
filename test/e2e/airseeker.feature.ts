@@ -9,7 +9,7 @@ import * as makeRequest from '../../src/make-request';
 
 // Jest version 27 has a bug where jest.setTimeout does not work correctly inside describe or test blocks
 // https://github.com/facebook/jest/issues/11607
-jest.setTimeout(60_000);
+jest.setTimeout(10_000);
 
 const provider = new hre.ethers.providers.JsonRpcProvider('http://127.0.0.1:8545');
 
@@ -55,7 +55,7 @@ describe('Airseeker', () => {
     deployment = await deployAndUpdateSubscriptions();
     // Wait a few seconds before starting the tests so that signed data timestamps
     // will be valid once fetched from the mocked signed gateway server
-    await sleep(3_000);
+    // await sleep(3_000);
   });
 
   it('updates the beacons successfully', async () => {
@@ -78,11 +78,11 @@ describe('Airseeker', () => {
 
     await main().then(async () => {
       // Wait for Airseeker cycles to finish
-      await sleep(10_000);
+      await sleep(1_000);
       // Stop Airseeker
       handleStopSignal('stop');
       // Wait for last cycle to finish
-      await sleep(10_000);
+      await sleep(1_000);
     });
 
     const beaconValueETHNew = await readBeaconValue(
@@ -132,11 +132,11 @@ describe('Airseeker', () => {
 
     await main().then(async () => {
       // Wait for Airseeker cycles to finish
-      await sleep(10_000);
+      await sleep(1_000);
       // Stop Airseeker
       handleStopSignal('stop');
       // Wait for last cycle to finish
-      await sleep(10_000);
+      await sleep(1_000);
     });
 
     const beaconValueETHNew = await readBeaconValue(
@@ -162,11 +162,11 @@ describe('Airseeker', () => {
 
     await main().then(async () => {
       // Wait for Airseeker cycles to finish
-      await sleep(10_000);
+      await sleep(1_000);
       // Stop Airseeker
       handleStopSignal('stop');
       // Wait for last cycle to finish
-      await sleep(10_000);
+      await sleep(1_000);
     });
 
     const beaconValueETHNew = await readBeaconValue(
@@ -217,11 +217,11 @@ describe('Airseeker', () => {
 
     await main().then(async () => {
       // Wait for Airseeker cycles to finish
-      await sleep(10_000);
+      await sleep(1_000);
       // Stop Airseeker
       handleStopSignal('stop');
       // Wait for last cycle to finish
-      await sleep(10_000);
+      await sleep(1_000);
     });
 
     const beaconValueETHNew = await readBeaconValue(
@@ -286,11 +286,11 @@ describe('Airseeker', () => {
 
     await main().then(async () => {
       // Wait for Airseeker cycles to finish
-      await sleep(10_000);
+      await sleep(1_000);
       // Stop Airseeker
       handleStopSignal('stop');
       // Wait for last cycle to finish
-      await sleep(10_000);
+      await sleep(1_000);
     });
 
     const beaconValueETHNew = await readBeaconValue(
