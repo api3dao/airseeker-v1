@@ -1,6 +1,7 @@
 import { isEmpty, uniq } from 'lodash';
 import { ethers } from 'ethers';
 import { go } from '@api3/promise-utils';
+import { logger } from './logging';
 import { getState, updateState } from './state';
 import { makeSignedDataGatewayRequests } from './make-request';
 import { sleep } from './utils';
@@ -13,7 +14,7 @@ import {
 } from './constants';
 
 export const initiateFetchingBeaconData = async () => {
-  console.log('Initiating fetching all beacon data');
+  logger.log('Initiating fetching all beacon data');
   const { config } = getState();
 
   const beaconIdsToUpdate = uniq(
@@ -24,7 +25,7 @@ export const initiateFetchingBeaconData = async () => {
         const foundBeacons = beacons.filter((beacon) => {
           if (config.beacons[beacon.beaconId]) return true;
 
-          console.log(`Missing beacon with ID ${beacon.beaconId}. Skipping.`);
+          logger.log(`Missing beacon with ID ${beacon.beaconId}. Skipping.`);
           return false;
         });
         return foundBeacons.flatMap((b) => b.beaconId);
@@ -33,7 +34,7 @@ export const initiateFetchingBeaconData = async () => {
   );
 
   if (isEmpty(beaconIdsToUpdate)) {
-    console.log('No beacons to fetch data for found. Stopping.');
+    logger.log('No beacons to fetch data for found. Stopping.');
     process.exit(NO_FETCH_EXIT_CODE);
   }
 
@@ -66,7 +67,7 @@ export const fetchBeaconDataInLoop = async (beaconId: string) => {
 };
 
 export const fetchBeaconData = async (beaconId: string) => {
-  console.log(`Fetching beacon data for: ${beaconId}`);
+  logger.log(`Fetching beacon data for: ${beaconId}`);
   const { config } = getState();
 
   const { fetchInterval, airnode, templateId } = config.beacons[beaconId];
@@ -79,7 +80,7 @@ export const fetchBeaconData = async (beaconId: string) => {
     [template.endpointId, template.parameters]
   );
   if (derivedTemplateId !== templateId) {
-    console.log(`Invalid template ID ${templateId}. Skipping.`);
+    logger.log(`Invalid template ID ${templateId}. Skipping.`);
     return;
   }
 
@@ -90,7 +91,7 @@ export const fetchBeaconData = async (beaconId: string) => {
     totalTimeoutMs: fetchInterval * 1_000,
   });
   if (!goRes.success) {
-    console.log(`Unable to call signed data gateway. Reason: "${goRes.error}"`);
+    logger.log(`Unable to call signed data gateway. Reason: "${goRes.error}"`);
     return;
   }
 

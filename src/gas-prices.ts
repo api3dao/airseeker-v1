@@ -5,6 +5,7 @@ import { go, GoAsyncOptions } from '@api3/promise-utils';
 import { BigNumber, ethers } from 'ethers';
 import { getState, Provider } from './state';
 import { PRIORITY_FEE_IN_WEI, BASE_FEE_MULTIPLIER } from './constants';
+import { logger } from './logging';
 
 type LegacyGasTarget = {
   txType: 'legacy';
@@ -28,7 +29,7 @@ export const getLegacyGasPrice = async (
 ): Promise<LegacyGasTarget | null> => {
   const goGasPrice = await go(() => provider.rpcProvider.getGasPrice(), goOptions);
   if (!goGasPrice.success) {
-    console.log(`Unable to get legacy gas price for chain with ID ${provider.chainId}. Error: ${goGasPrice.error}`);
+    logger.log(`Unable to get legacy gas price for chain with ID ${provider.chainId}. Error: ${goGasPrice.error}`);
     return null;
   }
 
@@ -42,11 +43,11 @@ export const getEip1559GasPricing = async (
 ): Promise<EIP1559GasTarget | null> => {
   const goBlock = await go(() => provider.rpcProvider.getBlock('latest'), goOptions);
   if (!goBlock.success) {
-    console.log(`Unable to get EIP-1559 gas pricing from chain with ID ${provider.chainId}. Error: ${goBlock.error}`);
+    logger.log(`Unable to get EIP-1559 gas pricing from chain with ID ${provider.chainId}. Error: ${goBlock.error}`);
     return null;
   }
   if (!goBlock.data.baseFeePerGas) {
-    console.log(`Unable to get base fee per gas from chain with ID ${provider.chainId}.`);
+    logger.log(`Unable to get base fee per gas from chain with ID ${provider.chainId}.`);
     return null;
   }
 
@@ -83,7 +84,7 @@ export const getGasPrice = async (provider: Provider, goOptions: GoAsyncOptions)
     const gweiPrice = node.evm.weiToGwei(gasTarget.gasPrice!);
     gasTargetMessage = `Gas price (legacy) set to ${gweiPrice} Gwei`;
   }
-  console.log(gasTargetMessage);
+  logger.log(gasTargetMessage);
 
   return gasTarget;
 };

@@ -1,4 +1,5 @@
 import * as path from 'path';
+import { logger } from './logging';
 import { loadConfig } from './config';
 import { initiateFetchingBeaconData } from './fetch-beacon-data';
 import { initiateBeaconUpdates } from './update-beacons';
@@ -9,8 +10,8 @@ const config = loadConfig(path.join(__dirname, '..', 'config', 'airseeker.json')
 initializeState(config);
 
 const handleStopSignal = (signal: string) => {
-  console.log(`Signal ${signal} received`);
-  console.log('Stopping Airseeeker...');
+  logger.log(`Signal ${signal} received`);
+  logger.log('Stopping Airseeeker...');
   // Let the process wait for the last cycles instead of killing it immediately
   updateState((state) => ({ ...state, stopSignalReceived: true }));
 };

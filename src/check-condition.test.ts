@@ -1,5 +1,9 @@
 import { ethers } from 'ethers';
 import { calculateUpdateInPercentage, checkUpdateCondition, HUNDRED_PERCENT } from './check-condition';
+import { DEFAULT_LOG_OPTIONS } from './constants';
+import { State, updateState } from './state';
+
+updateState((_state) => ({ logOptions: DEFAULT_LOG_OPTIONS } as unknown as State));
 
 describe('calculateUpdateInPercentage', () => {
   it('calculates zero change', () => {

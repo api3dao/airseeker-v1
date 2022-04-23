@@ -1,7 +1,9 @@
+import { logger } from './logging';
 import * as api from './fetch-beacon-data';
 import { Config } from './validation';
 import * as makeRequestApi from './make-request';
 import * as state from './state';
+import { DEFAULT_LOG_OPTIONS } from './constants';
 import { validSignedData } from '../test/fixtures';
 
 const config: Config = {
@@ -155,7 +157,7 @@ describe('initiateFetchingBeaconData', () => {
   });
 
   it('exits if there are no beacons to be fetched data for', async () => {
-    jest.spyOn(state, 'getState').mockReturnValueOnce({ ...state.getState(), config: { ...config, beacons: {} } });
+    jest.spyOn(state, 'getState').mockReturnValue({ ...state.getState(), config: { ...config, beacons: {} } });
     jest.spyOn(process, 'exit').mockImplementationOnce(() => undefined as never);
     const fetchBeaconDataIds: string[] = [];
     jest.spyOn(api, 'fetchBeaconDataInLoop').mockImplementation(async (id) => {
@@ -174,24 +176,24 @@ describe('fetchBeaconData', () => {
     jest.spyOn(makeRequestApi, 'makeSignedDataGatewayRequests').mockImplementation(async () => {
       throw new Error('API timeout');
     });
-    jest.spyOn(console, 'log');
+    jest.spyOn(logger, 'log');
     jest.spyOn(state, 'updateState');
 
     await api.fetchBeaconData('0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2');
 
-    expect(console.log).toHaveBeenCalledWith(
+    expect(logger.log).toHaveBeenCalledWith(
       `Unable to call signed data gateway. Reason: "Error: Full timeout exceeded"`
     );
     expect(state.updateState).not.toHaveBeenCalled();
   });
 
   it('does nothing for invalid template ID', async () => {
-    jest.spyOn(console, 'log');
+    jest.spyOn(logger, 'log');
     jest.spyOn(state, 'updateState');
 
     await api.fetchBeaconData('0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469beabcdabcd');
 
-    expect(console.log).toHaveBeenCalledWith(
+    expect(logger.log).toHaveBeenCalledWith(
       `Invalid template ID 0x9ec34b00a5019442dcd05a4860ff2bf015164b368cb83fcb756088fcabcdabcd. Skipping.`
     );
     expect(state.updateState).not.toHaveBeenCalled();
@@ -238,6 +240,7 @@ describe('fetchBeaconDataInLoop', () => {
           stopSignalReceived: true,
           beaconValues: {},
           providers: {},
+          logOptions: DEFAULT_LOG_OPTIONS,
         };
       } else {
         return {
@@ -245,6 +248,7 @@ describe('fetchBeaconDataInLoop', () => {
           stopSignalReceived: false,
           beaconValues: {},
           providers: {},
+          logOptions: DEFAULT_LOG_OPTIONS,
         };
       }
     });

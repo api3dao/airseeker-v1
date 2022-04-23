@@ -1,5 +1,6 @@
 import { go, GoAsyncOptions } from '@api3/promise-utils';
 import { ethers } from 'ethers';
+import { logger } from './logging';
 import { shortenAddress } from './utils';
 
 export const getTransactionCount = async (
@@ -14,12 +15,12 @@ export const getTransactionCount = async (
   );
 
   if (!goTransactionCount.success) {
-    console.log(`Unable to fetch transaction count. Error: ${goTransactionCount.error}`);
+    logger.log(`Unable to fetch transaction count. Error: ${goTransactionCount.error}`);
     return null;
   }
 
   const transactionCount = goTransactionCount.data;
-  console.log(`Transaction count for sponsor wallet ${shortenAddress(sponsorWalletAddress)} is ${transactionCount}`);
+  logger.log(`Transaction count for sponsor wallet ${shortenAddress(sponsorWalletAddress)} is ${transactionCount}`);
 
   return transactionCount;
 };
