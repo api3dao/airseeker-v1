@@ -9,13 +9,13 @@ export const getTransactionCount = async (
   currentBlockNumber: number,
   goOptions: GoAsyncOptions
 ): Promise<number | null> => {
-  const goTransactionCount = await go(
-    () => rpcProvider.getTransactionCount(sponsorWalletAddress, currentBlockNumber),
-    goOptions
-  );
+  const goTransactionCount = await go(() => rpcProvider.getTransactionCount(sponsorWalletAddress, currentBlockNumber), {
+    ...goOptions,
+    onAttemptError: (goError) => logger.log(`Failed attempt to get transaction count. Error ${goError.error}`),
+  });
 
   if (!goTransactionCount.success) {
-    logger.log(`Unable to fetch transaction count. Error: ${goTransactionCount.error}`);
+    logger.log(`Unable to get transaction count. Error: ${goTransactionCount.error}`);
     return null;
   }
 

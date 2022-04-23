@@ -181,9 +181,6 @@ describe('fetchBeaconData', () => {
 
     await api.fetchBeaconData('0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2');
 
-    expect(logger.log).toHaveBeenCalledWith(
-      `Unable to call signed data gateway. Reason: "Error: Full timeout exceeded"`
-    );
     expect(state.updateState).not.toHaveBeenCalled();
   });
 

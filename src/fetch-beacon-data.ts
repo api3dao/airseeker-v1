@@ -89,9 +89,10 @@ export const fetchBeaconData = async (beaconId: string) => {
     retries: INFINITE_RETRIES,
     delay: { type: 'random', minDelayMs: RANDOM_BACKOFF_MIN_MS, maxDelayMs: RANDOM_BACKOFF_MAX_MS },
     totalTimeoutMs: fetchInterval * 1_000,
+    onAttemptError: (goError) => logger.log(`Failed attempt to call signed data gateway. Error: ${goError.error}`),
   });
   if (!goRes.success) {
-    logger.log(`Unable to call signed data gateway. Reason: "${goRes.error}"`);
+    logger.log(`Unable to call signed data gateway. Error: "${goRes.error}"`);
     return;
   }
 
