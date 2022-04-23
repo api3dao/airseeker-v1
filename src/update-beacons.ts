@@ -92,14 +92,14 @@ const calculateTimeout = (startTime: number, totalTimeout: number) => totalTimeo
 
 // We retry all chain operations with a random back-off infinitely until the next updates cycle
 // TODO: Errors are not displayed with this approach. Problem?
-const getGoOptions = (startTime: number, totalTimeout: number): GoAsyncOptions => ({
+const prepareGoOptions = (startTime: number, totalTimeout: number): GoAsyncOptions => ({
   attemptTimeoutMs: PROVIDER_TIMEOUT_MS,
   totalTimeoutMs: calculateTimeout(startTime, totalTimeout),
   retries: INFINITE_RETRIES,
   delay: { type: 'random' as const, minDelayMs: RANDOM_BACKOFF_MIN_MS, maxDelayMs: RANDOM_BACKOFF_MAX_MS },
 });
 
-// We pass return value from `getGoOptions` (with calculated timeout) to every `go` call in the function to enforce the update cycle.
+// We pass return value from `prepareGoOptions` (with calculated timeout) to every `go` call in the function to enforce the update cycle.
 // This solution is not precise but since chain operations are the only ones that actually take some time this should be a good enough solution.
 export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeacons) => {
   const { config, beaconValues } = getState();
@@ -123,14 +123,14 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
   const contract = DapiServerFactory.connect(contractAddress, rpcProvider);
 
   // Get current block number
-  const blockNumber = await getCurrentBlockNumber(provider, getGoOptions(startTime, totalTimeout));
+  const blockNumber = await getCurrentBlockNumber(provider, prepareGoOptions(startTime, totalTimeout));
   if (blockNumber === null) {
     console.log(`Unable to obtain block number for chain with ID ${chainId}.`);
     return;
   }
 
   // Get gas price
-  const gasTarget = await getGasPrice(provider, getGoOptions(startTime, totalTimeout));
+  const gasTarget = await getGasPrice(provider, prepareGoOptions(startTime, totalTimeout));
   if (gasTarget === null) {
     console.log(`Unable to fetch gas price for chain with ID ${chainId}.`);
     return;
@@ -149,7 +149,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
     rpcProvider,
     sponsorWallet.address,
     blockNumber,
-    getGoOptions(startTime, totalTimeout)
+    prepareGoOptions(startTime, totalTimeout)
   );
   if (transactionCount === null) {
     console.log(
@@ -199,7 +199,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
       beaconUpdateData.beaconId,
       beaconUpdateData.deviationThreshold,
       newBeaconValue,
-      getGoOptions(startTime, totalTimeout)
+      prepareGoOptions(startTime, totalTimeout)
     );
     if (shouldUpdate === null) {
       console.log(`Unable to fetch current beacon value for beacon with ID ${beaconUpdateData.beaconId}.`);
@@ -228,7 +228,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
               nonce,
             }
           ),
-      getGoOptions(startTime, totalTimeout)
+      prepareGoOptions(startTime, totalTimeout)
     );
 
     if (!tx.success) {
