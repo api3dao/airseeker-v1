@@ -1,4 +1,5 @@
 import { ethers } from 'ethers';
+import { isEmpty } from 'lodash';
 import { DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol-v1';
 import { go, GoAsyncOptions } from '@api3/promise-utils';
 import { BeaconUpdate } from './validation';
@@ -13,6 +14,7 @@ import {
   INFINITE_RETRIES,
   INT224_MAX,
   INT224_MIN,
+  NO_BEACONS_EXIT_CODE,
   PROTOCOL_ID,
   PROVIDER_TIMEOUT_MS,
   RANDOM_BACKOFF_MAX_MS,
@@ -39,8 +41,21 @@ const groupBeaconsByProviderSponsor = () => {
 
     const providerSponsorGroups = Object.entries(sponsors).reduce(
       (acc: ProviderSponsorBeacons[], [sponsorAddress, beaconUpdate]) => {
-        const { beacons, updateInterval } = beaconUpdate;
-        return [...acc, ...providers.map((provider) => ({ provider, sponsorAddress, updateInterval, beacons }))];
+        const { beacons } = beaconUpdate;
+        // TODO: Should be later part of the validation
+        const foundBeacons = beacons.filter((beacon) => {
+          if (config.beacons[beacon.beaconId]) return true;
+
+          console.log(`Missing beacon with ID ${beacon.beaconId}. Skipping.`);
+          return false;
+        });
+
+        if (isEmpty(foundBeacons)) return acc;
+
+        return [
+          ...acc,
+          ...providers.map((provider) => ({ provider, sponsorAddress, ...beaconUpdate, beacons: foundBeacons })),
+        ];
       },
       []
     );
@@ -53,6 +68,10 @@ export const initiateBeaconUpdates = () => {
   console.log('Initiating beacon updates');
 
   const providerSponsorBeaconsGroups = groupBeaconsByProviderSponsor();
+  if (isEmpty(providerSponsorBeaconsGroups)) {
+    console.log('No beacons for processing found. Stopping.');
+    process.exit(NO_BEACONS_EXIT_CODE);
+  }
   providerSponsorBeaconsGroups.forEach(updateBeaconsInLoop);
 };
 
