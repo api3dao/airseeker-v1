@@ -95,15 +95,16 @@ describe('makeSignedDataGatewayRequests', () => {
       });
     jest.spyOn(logger, 'log');
 
-    const response = await makeSignedDataGatewayRequests(
-      [
-        { apiKey: 'api-key-1', url: 'https://gateway-1.com/' },
-        { apiKey: 'api-key-2', url: 'https://gateway-2.com/' },
-      ],
-      { parameters: '0x123456789', endpointId: 'endpoint' }
-    );
+    await expect(
+      makeSignedDataGatewayRequests(
+        [
+          { apiKey: 'api-key-1', url: 'https://gateway-1.com/' },
+          { apiKey: 'api-key-2', url: 'https://gateway-2.com/' },
+        ],
+        { parameters: '0x123456789', endpointId: 'endpoint' }
+      )
+    ).rejects.toThrow();
 
-    expect(response).toEqual(null);
     expect(mockedAxios).toHaveBeenCalledTimes(2);
     expect(logger.log).toHaveBeenCalledWith(
       'Failed to make signed data gateway request for gateway: "https://gateway-1.com/endpoint". Error: "Error: timeout error"'

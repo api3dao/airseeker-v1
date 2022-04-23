@@ -13,10 +13,7 @@ export const urlJoin = (baseUrl: string, endpointId: string) => {
   }
 };
 
-export const makeSignedDataGatewayRequests = async (
-  gateways: Gateway[],
-  template: Template
-): Promise<SignedData | null> => {
+export const makeSignedDataGatewayRequests = async (gateways: Gateway[], template: Template): Promise<SignedData> => {
   // Initiate HTTP request to each of the gateways and resolve with the data (or reject otherwise)
   const requests = gateways.map(async (gateway) => {
     const { apiKey, url } = gateway;
@@ -58,8 +55,9 @@ export const makeSignedDataGatewayRequests = async (
   // Resolve with the first resolved gateway requests
   const goResult = await go(() => anyPromise(requests));
   if (!goResult.success) {
-    logger.log('All gateway requests have failed with an error. No response to be used');
-    return null;
+    const message = 'All gateway requests have failed with an error. No response to be used';
+    logger.log(message);
+    throw new Error(message);
   }
 
   // TODO: It might be nice to gather statistics about what gateway is the data coming from (for statistics)
