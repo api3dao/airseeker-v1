@@ -153,6 +153,20 @@ describe('initiateFetchingBeaconData', () => {
       '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2',
     ]);
   });
+
+  it('exits if there are no beacons to be fetched data for', async () => {
+    jest.spyOn(state, 'getState').mockReturnValueOnce({ ...state.getState(), config: { ...config, beacons: {} } });
+    jest.spyOn(process, 'exit').mockImplementationOnce(() => undefined as never);
+    const fetchBeaconDataIds: string[] = [];
+    jest.spyOn(api, 'fetchBeaconDataInLoop').mockImplementation(async (id) => {
+      fetchBeaconDataIds.push(id);
+    });
+
+    await api.initiateFetchingBeaconData();
+
+    expect(fetchBeaconDataIds).toHaveLength(0);
+    expect(process.exit).toBeCalledWith(2);
+  });
 });
 
 describe('fetchBeaconData', () => {

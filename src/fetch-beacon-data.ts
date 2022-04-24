@@ -1,10 +1,16 @@
-import { uniq } from 'lodash';
+import { isEmpty, uniq } from 'lodash';
 import { ethers } from 'ethers';
 import { go } from '@api3/promise-utils';
 import { getState, updateState } from './state';
 import { makeSignedDataGatewayRequests } from './make-request';
 import { sleep } from './utils';
-import { GATEWAY_TIMEOUT_MS, INFINITE_RETRIES, RANDOM_BACKOFF_MAX_MS, RANDOM_BACKOFF_MIN_MS } from './constants';
+import {
+  GATEWAY_TIMEOUT_MS,
+  INFINITE_RETRIES,
+  NO_FETCH_EXIT_CODE,
+  RANDOM_BACKOFF_MAX_MS,
+  RANDOM_BACKOFF_MIN_MS,
+} from './constants';
 
 export const initiateFetchingBeaconData = async () => {
   console.log('Initiating fetching all beacon data');
@@ -12,11 +18,24 @@ export const initiateFetchingBeaconData = async () => {
 
   const beaconIdsToUpdate = uniq(
     Object.values(config.triggers.beaconUpdates).flatMap((beaconUpdatesPerSponsor) => {
-      return Object.values(beaconUpdatesPerSponsor).flatMap((beaconUpdate) =>
-        beaconUpdate.beacons.flatMap((b) => b.beaconId)
-      );
+      return Object.values(beaconUpdatesPerSponsor).flatMap((beaconUpdate) => {
+        const { beacons } = beaconUpdate;
+        // TODO: Should be later part of the validation
+        const foundBeacons = beacons.filter((beacon) => {
+          if (config.beacons[beacon.beaconId]) return true;
+
+          console.log(`Missing beacon with ID ${beacon.beaconId}. Skipping.`);
+          return false;
+        });
+        return foundBeacons.flatMap((b) => b.beaconId);
+      });
     })
   );
+
+  if (isEmpty(beaconIdsToUpdate)) {
+    console.log('No beacons to fetch data for found. Stopping.');
+    process.exit(NO_FETCH_EXIT_CODE);
+  }
 
   beaconIdsToUpdate.forEach(fetchBeaconDataInLoop);
 };
