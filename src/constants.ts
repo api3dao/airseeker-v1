@@ -16,3 +16,4 @@ export const INT224_MIN = ethers.BigNumber.from(2).pow(ethers.BigNumber.from(223
 // Solidity type(int224).max
 export const INT224_MAX = ethers.BigNumber.from(2).pow(ethers.BigNumber.from(223)).sub(ethers.BigNumber.from(1));
 export const NO_BEACONS_EXIT_CODE = 1;
+export const NO_FETCH_EXIT_CODE = 2;
