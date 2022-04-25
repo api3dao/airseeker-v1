@@ -26,7 +26,7 @@ resource "aws_ecs_cluster" "airseeker_ecs_cluster" {
 }
 
 locals {
-  env_vars = jsonencode([for tuple in regexall("(.*)=(.*)", file(var.app_secrets_file_path)) : { name = tuple[0], value = tuple[1] }])
+  env_vars = jsonencode([for tuple in regexall("(.*?)=(.*)", file(var.app_secrets_file_path)) : { name = tuple[0], value = tuple[1] }])
 }
 
 resource "aws_ecs_task_definition" "airseeker_ecs_task" {
