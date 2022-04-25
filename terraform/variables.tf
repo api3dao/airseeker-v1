@@ -19,12 +19,13 @@ variable "app_name" {
 variable "app_environment" {
   description = "The environment of the application"
   type        = string
+  default     = "dev"
 }
 
-variable "app_docker_image_version" {
-  description = "The version of the docker image to use"
+variable "app_docker_image" {
+  description = "The docker image to use"
   type        = string
-  default     = "latest"
+  default     = "api3/airseeker:latest"
 }
 
 variable "app_config_file_path" {

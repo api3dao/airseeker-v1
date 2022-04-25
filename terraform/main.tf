@@ -3,13 +3,13 @@ resource "aws_ecr_repository" "airseeker_aws_ecr_repository" {
 }
 
 resource "docker_registry_image" "airseeker_with_config" {
-  name = "${aws_ecr_repository.airseeker_aws_ecr_repository.repository_url}:${var.app_docker_image_version}"
+  name = "${aws_ecr_repository.airseeker_aws_ecr_repository.repository_url}:latest"
 
   build {
     context    = ".."
     dockerfile = "docker/Dockerfile.deploy"
     build_args = {
-      version    = "${var.app_docker_image_version}"
+      baseImage  = "${var.app_docker_image}"
       configFile = "${var.app_config_file_path}"
     }
   }

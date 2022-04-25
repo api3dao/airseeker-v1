@@ -1,6 +1,6 @@
-ARG version=latest
+ARG baseImage=airseeker:latest
 
-FROM api3/airseeker-dev:${version}
+FROM ${baseImage}
 
 ARG configFile=./config/airseeker.json
 

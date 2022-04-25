@@ -77,7 +77,7 @@ To run deploy Airseeker then you will need to cd into the `terraform` directory 
 ```sh
 terraform init
 terraform apply -var 'app_environment=dev'
-Alternatively you can provide the `aws_region`, `app_environment`, `app_docker_image_version`, etc as arguments to the `terraform apply` command.
+Alternatively you can provide the `aws_region`, `app_environment`, `app_docker_image`, etc as arguments to the `terraform apply` command.
 ```
 
 ### Steps to remove from AWS
