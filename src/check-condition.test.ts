@@ -136,4 +136,10 @@ describe('checkUpdateCondition', () => {
     expect(readDataFeedWithIdSpy).toHaveBeenNthCalledWith(1, beaconId);
     expect(checkUpdateConditionResult).toBeNull();
   });
+
+  it('handles correctly bad JS math', async () => {
+    await expect(
+      checkUpdateCondition(voidSigner, dapiServerMock as any, beaconId, 0.14, ethers.BigNumber.from(560), goOptions)
+    ).resolves.not.toThrow();
+  });
 });
