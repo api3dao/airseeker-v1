@@ -85,10 +85,10 @@
     yargs "^17.0.1"
     zod "^3.11.6"
 
-"@api3/promise-utils@^0.2.0":
-  version "0.2.0"
-  resolved "https://registry.yarnpkg.com/@api3/promise-utils/-/promise-utils-0.2.0.tgz#3484aa945af5695da046b0aaf482af6aafeed327"
-  integrity sha512-pIkB9rh/rrOhwJtnWUoq/v6LNfNQygn9TE8DRL+FJOlcOUgocCR6hxjpiEnrP2noU+2KmNJxCvx+E/L7Nhs/uQ==
+"@api3/promise-utils@^0.3.0":
+  version "0.3.0"
+  resolved "https://registry.yarnpkg.com/@api3/promise-utils/-/promise-utils-0.3.0.tgz#e7ebf92bfd8c1d39983321fc5445070c51fce176"
+  integrity sha512-fH3CzEcsCQjoX6BZ5M+3yRIXZ2zz4/nFdzKUB4wvn3KjvvzvroHFZrzhbKa4mB9E4AS0xnou1AXhlrnN5Fcy+A==
 
 "@babel/code-frame@^7.0.0", "@babel/code-frame@^7.12.13", "@babel/code-frame@^7.16.7":
   version "7.16.7"
