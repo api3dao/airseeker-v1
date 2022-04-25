@@ -8,7 +8,7 @@ const initializeProvider = (chainId: string, providerUrl: string) => {
 };
 
 export const initializeProviders = () => {
-  const config = getState().config;
+  const { config } = getState();
   const chains = Object.keys(config.triggers.beaconUpdates);
   const providers = chains.reduce((acc: Providers, chainId: string) => {
     const chain = config.chains[chainId];
