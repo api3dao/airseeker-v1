@@ -14,7 +14,7 @@ import {
 
 export const initiateFetchingBeaconData = async () => {
   console.log('Initiating fetching all beacon data');
-  const config = getState().config;
+  const { config } = getState();
 
   const beaconIdsToUpdate = uniq(
     Object.values(config.triggers.beaconUpdates).flatMap((beaconUpdatesPerSponsor) => {
@@ -51,7 +51,7 @@ export const initiateFetchingBeaconData = async () => {
  * that case we do not want to wait, but start calling the gateway immediately as part of the next fetch cycle.
  */
 export const fetchBeaconDataInLoop = async (beaconId: string) => {
-  const config = getState().config;
+  const { config } = getState();
 
   while (!getState().stopSignalReceived) {
     const startTimestamp = Date.now();
@@ -67,7 +67,7 @@ export const fetchBeaconDataInLoop = async (beaconId: string) => {
 
 export const fetchBeaconData = async (beaconId: string) => {
   console.log(`Fetching beacon data for: ${beaconId}`);
-  const config = getState().config;
+  const { config } = getState();
 
   const { fetchInterval, airnode, templateId } = config.beacons[beaconId];
   const gateway = config.gateways[airnode];
