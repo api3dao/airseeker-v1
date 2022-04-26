@@ -3,7 +3,10 @@ import { logger } from './logging';
 import { Provider } from './state';
 
 export const getCurrentBlockNumber = async (provider: Provider, goOptions: GoAsyncOptions): Promise<number | null> => {
-  const goBlockNumber = await go(() => provider.rpcProvider.getBlockNumber(), goOptions);
+  const goBlockNumber = await go(() => provider.rpcProvider.getBlockNumber(), {
+    ...goOptions,
+    onAttemptError: (goError) => logger.log(`Failed attempt to get a block number. Error: ${goError.error}`),
+  });
 
   if (!goBlockNumber.success) {
     logger.log(`Unable to get block number. Error: ${goBlockNumber.error}`);

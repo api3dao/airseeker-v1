@@ -26,7 +26,10 @@ export const checkUpdateCondition = async (
   apiValue: ethers.BigNumber,
   goOptions: GoAsyncOptions
 ): Promise<boolean | null> => {
-  const goDataFeed = await go(() => dapiServer.connect(voidSigner).readDataFeedWithId(beaconId), goOptions);
+  const goDataFeed = await go(() => dapiServer.connect(voidSigner).readDataFeedWithId(beaconId), {
+    ...goOptions,
+    onAttemptError: (goError) => logger.log(`Failed attempt to read data feed. Error: ${goError.error}`),
+  });
   if (!goDataFeed.success) {
     logger.log(`Unable to read data feed. Error: ${goDataFeed.error}`);
     return null;

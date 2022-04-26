@@ -27,7 +27,10 @@ export const getLegacyGasPrice = async (
   provider: Provider,
   goOptions: GoAsyncOptions
 ): Promise<LegacyGasTarget | null> => {
-  const goGasPrice = await go(() => provider.rpcProvider.getGasPrice(), goOptions);
+  const goGasPrice = await go(() => provider.rpcProvider.getGasPrice(), {
+    ...goOptions,
+    onAttemptError: (goError) => logger.log(`Failed attempt to get legacy gas price. Error ${goError.error}`),
+  });
   if (!goGasPrice.success) {
     logger.log(`Unable to get legacy gas price for chain with ID ${provider.chainId}. Error: ${goGasPrice.error}`);
     return null;
@@ -41,7 +44,10 @@ export const getEip1559GasPricing = async (
   chainOptions: node.ChainOptions,
   goOptions: GoAsyncOptions
 ): Promise<EIP1559GasTarget | null> => {
-  const goBlock = await go(() => provider.rpcProvider.getBlock('latest'), goOptions);
+  const goBlock = await go(() => provider.rpcProvider.getBlock('latest'), {
+    ...goOptions,
+    onAttemptError: (goError) => logger.log(`Failed attempt to get EIP-1559 gas pricing. Error ${goError.error}`),
+  });
   if (!goBlock.success) {
     logger.log(`Unable to get EIP-1559 gas pricing from chain with ID ${provider.chainId}. Error: ${goBlock.error}`);
     return null;

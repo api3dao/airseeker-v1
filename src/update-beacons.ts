@@ -229,7 +229,10 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
               nonce,
             }
           ),
-      prepareGoOptions(startTime, totalTimeout)
+      {
+        ...prepareGoOptions(startTime, totalTimeout),
+        onAttemptError: (goError) => logger.log(`Failed attempt to update beacon. Error ${goError.error}`),
+      }
     );
 
     if (!tx.success) {
