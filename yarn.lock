@@ -61,10 +61,10 @@
   dependencies:
     "@api3/airnode-validator" "^0.5.0"
 
-"@api3/airnode-protocol-v1@^0.1.0":
-  version "0.1.0"
-  resolved "https://registry.yarnpkg.com/@api3/airnode-protocol-v1/-/airnode-protocol-v1-0.1.0.tgz#3c9c69f029d4beee041549ca2f7f5f55466f2e70"
-  integrity sha512-5fbU0odiaCBJYGkMRGwFXy6yE+lczpO10ydMsMXksPXx4SJfS69PfyJTWwiFo++LiGCQSrGCp9SOFGG7ECDVMw==
+"@api3/airnode-protocol-v1@^0.2.0":
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-protocol-v1/-/airnode-protocol-v1-0.2.0.tgz#bd877c138ee99a6555a44d5c081706f0d8499a8b"
+  integrity sha512-L1OtE82NJVj84UD7lN9gnTF2qnII5FDr5X4dnWibMxptUPLeTq+OW57yXU/yqPbeTQ7VT1MTVMe9sLdMfPAplg==
 
 "@api3/airnode-protocol@^0.5.0":
   version "0.5.0"
