@@ -3,7 +3,7 @@
   "license": "MIT",
   "version": "1.0.0",
   "description": "A tool to update a beacons with signed responses from Airnode's gateway",
-  "main": "./dist/src/main.js",
+  "main": "./dist/src/index.js",
   "files": [
     "dist",
     "airseeker-service.config.js"
@@ -30,9 +30,9 @@
     "pm2:stop": "pm2 delete airseeker-service.config.js",
     "prettier": "prettier --check \"./**/*.{js,ts,md,yml,json}\"",
     "prettier:fix": "prettier --write \"./**/*.{js,ts,md,yml,json}\" --ignore-unknown",
-    "start": "scripts/run-locally.sh ts-node src/main.ts",
+    "start": "scripts/run-locally.sh ts-node src/index.ts",
     "test": "jest --selectProjects unit",
-    "test:e2e": "SILENCE_LOGGER=true jest --selectProjects e2e"
+    "test:e2e": "SILENCE_LOGGER=true jest --selectProjects e2e --runInBand"
   },
   "dependencies": {
     "@api3/airnode-abi": "^0.6.0",

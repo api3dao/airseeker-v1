@@ -61,7 +61,7 @@ module.exports = {
     // ESLint
     'comma-dangle': ['error', 'only-multiline'],
     indent: 'off',
-    'no-console': 'error',
+    'no-console': 'off',
     'no-useless-escape': 'off',
     semi: 'error',
     eqeqeq: ['error', 'smart'],
