@@ -37,7 +37,9 @@ export const checkUpdateCondition = async (
 
   const [dapiServerValue, _timestamp] = goDataFeed.data;
   const updateInPercentage = calculateUpdateInPercentage(dapiServerValue, apiValue);
-  const threshold = ethers.BigNumber.from(deviationThreshold * HUNDRED_PERCENT).div(ethers.BigNumber.from(100));
+  const threshold = ethers.BigNumber.from(Math.trunc(deviationThreshold * HUNDRED_PERCENT)).div(
+    ethers.BigNumber.from(100)
+  );
 
   return updateInPercentage.gt(threshold);
 };
