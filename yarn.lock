@@ -82,6 +82,15 @@
     date-fns "^2.16.1"
     ethers "^5.4.5"
 
+"@api3/airnode-utilities@^0.6.0":
+  version "0.6.0"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-utilities/-/airnode-utilities-0.6.0.tgz#0e91e61cf266f66c176d2291f8e3ffb2f04ea5b5"
+  integrity sha512-jp0yyN6WcZeMCwW13yfYzrEaW8YZs+y7xswFF8H4WHZTCJrK1TbdacG2G11SsmEfgcBbZIlWiDEL8i0LR1YxYQ==
+  dependencies:
+    "@lifeomic/attempt" "^3.0.0"
+    date-fns "^2.16.1"
+    ethers "^5.4.5"
+
 "@api3/airnode-validator@^0.5.0":
   version "0.5.0"
   resolved "https://registry.yarnpkg.com/@api3/airnode-validator/-/airnode-validator-0.5.0.tgz#1439d1ae1cd4775fa463618c41423d52bb38fdfe"
