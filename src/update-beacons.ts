@@ -4,6 +4,7 @@ import { DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol
 import { go, GoAsyncOptions } from '@api3/promise-utils';
 import { BeaconUpdate } from './validation';
 import { getState, Provider } from './state';
+import { logger } from './logging';
 import { getGasPrice } from './gas-prices';
 import { getCurrentBlockNumber } from './block-number';
 import { getTransactionCount } from './transaction-count';
@@ -35,7 +36,7 @@ const groupBeaconsByProviderSponsor = () => {
 
     // TODO: Should be later part of the validation
     if (!providers) {
-      console.log(`Missing providers for chain with ID ${chainId}`);
+      logger.log(`Missing providers for chain with ID ${chainId}`);
       return acc;
     }
 
@@ -46,7 +47,7 @@ const groupBeaconsByProviderSponsor = () => {
         const foundBeacons = beacons.filter((beacon) => {
           if (config.beacons[beacon.beaconId]) return true;
 
-          console.log(`Missing beacon with ID ${beacon.beaconId}. Skipping.`);
+          logger.log(`Missing beacon with ID ${beacon.beaconId}. Skipping.`);
           return false;
         });
 
@@ -65,11 +66,11 @@ const groupBeaconsByProviderSponsor = () => {
 };
 
 export const initiateBeaconUpdates = () => {
-  console.log('Initiating beacon updates');
+  logger.log('Initiating beacon updates');
 
   const providerSponsorBeaconsGroups = groupBeaconsByProviderSponsor();
   if (isEmpty(providerSponsorBeaconsGroups)) {
-    console.log('No beacons for processing found. Stopping.');
+    logger.log('No beacons for processing found. Stopping.');
     process.exit(NO_BEACONS_EXIT_CODE);
   }
   providerSponsorBeaconsGroups.forEach(updateBeaconsInLoop);
@@ -105,7 +106,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
   const { config, beaconValues } = getState();
   const { provider, sponsorAddress, beacons } = providerSponsorBeacons;
   const { rpcProvider, chainId } = provider;
-  console.log(
+  logger.log(
     `Processing beacon updates for chain with ID ${chainId} and sponsor with address ${providerSponsorBeacons.sponsorAddress}.`
   );
 
@@ -117,7 +118,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
   const contractAddress = config.chains[chainId].contracts['DapiServer'];
   // TODO: Should be later part of the validation
   if (!contractAddress) {
-    console.log(`Missing contract address for DapiServer on chain with ID ${chainId}.`);
+    logger.log(`Missing contract address for DapiServer on chain with ID ${chainId}.`);
     return;
   }
   const contract = DapiServerFactory.connect(contractAddress, rpcProvider);
@@ -125,14 +126,14 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
   // Get current block number
   const blockNumber = await getCurrentBlockNumber(provider, prepareGoOptions(startTime, totalTimeout));
   if (blockNumber === null) {
-    console.log(`Unable to obtain block number for chain with ID ${chainId}.`);
+    logger.log(`Unable to obtain block number for chain with ID ${chainId}.`);
     return;
   }
 
   // Get gas price
   const gasTarget = await getGasPrice(provider, prepareGoOptions(startTime, totalTimeout));
   if (gasTarget === null) {
-    console.log(`Unable to fetch gas price for chain with ID ${chainId}.`);
+    logger.log(`Unable to fetch gas price for chain with ID ${chainId}.`);
     return;
   }
   const { txType: _txType, ...gatTargetOverride } = gasTarget;
@@ -152,7 +153,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
     prepareGoOptions(startTime, totalTimeout)
   );
   if (transactionCount === null) {
-    console.log(
+    logger.log(
       `Unable to fetch transaction count for sponsor ${shortenAddress(sponsorAddress)} on chain with ID ${chainId}.`
     );
     return;
@@ -171,15 +172,15 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
       [beaconUpdateData.airnode, beaconUpdateData.templateId]
     );
     if (derivedBeaconId !== beaconUpdateData.beaconId) {
-      console.log(`Invalid beacon ID ${beaconUpdateData.beaconId}. Skipping.`);
+      logger.log(`Invalid beacon ID ${beaconUpdateData.beaconId}. Skipping.`);
       continue;
     }
 
-    console.log(`Updating beacon with ID ${beaconUpdateData.beaconId}`);
+    logger.log(`Updating beacon with ID ${beaconUpdateData.beaconId}`);
     // Check whether we have a value for given beacon
     const newBeaconResponse = beaconValues[beaconUpdateData.beaconId];
     if (!newBeaconResponse) {
-      console.log(`No data available for beacon with ID ${beaconUpdateData.beaconId}. Skipping.`);
+      logger.log(`No data available for beacon with ID ${beaconUpdateData.beaconId}. Skipping.`);
       continue;
     }
 
@@ -188,7 +189,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
       ethers.utils.defaultAbiCoder.decode(['int256'], newBeaconResponse.data.value)[0]
     );
     if (newBeaconValue.gt(INT224_MAX) || newBeaconValue.lt(INT224_MIN)) {
-      console.log(`New beacon value for beacon with ID ${beaconUpdateData.beaconId} is out of type range. Skipping.`);
+      logger.log(`New beacon value for beacon with ID ${beaconUpdateData.beaconId} is out of type range. Skipping.`);
       continue;
     }
 
@@ -202,12 +203,12 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
       prepareGoOptions(startTime, totalTimeout)
     );
     if (shouldUpdate === null) {
-      console.log(`Unable to fetch current beacon value for beacon with ID ${beaconUpdateData.beaconId}.`);
+      logger.log(`Unable to fetch current beacon value for beacon with ID ${beaconUpdateData.beaconId}.`);
       // This can happen only if we reach the total timeout so it makes no sense to continue with the rest of the beacons
       return;
     }
     if (!shouldUpdate) {
-      console.log(`Deviation threshold not reached for beacon with ID ${beaconUpdateData.beaconId}. Skipping.`);
+      logger.log(`Deviation threshold not reached for beacon with ID ${beaconUpdateData.beaconId}. Skipping.`);
       continue;
     }
 
@@ -232,13 +233,13 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
     );
 
     if (!tx.success) {
-      console.log(
+      logger.log(
         `Unable to update beacon with ID ${beaconUpdateData.beaconId} using wallet ${sponsorWallet.address} and nonce ${nonce}. Error: ${tx.error}`
       );
       return;
     }
 
-    console.log(
+    logger.log(
       `Beacon with ID ${beaconUpdateData.beaconId} sucessfully updated with value ${newBeaconValue}. Tx hash ${tx.data.hash}.`
     );
     nonce++;

@@ -1,4 +1,5 @@
 import * as node from '@api3/airnode-node';
+import { logger } from './logging';
 import { getState, updateState, Providers } from './state';
 
 const initializeProvider = (chainId: string, providerUrl: string) => {
@@ -15,7 +16,7 @@ export const initializeProviders = () => {
 
     // TODO: Should be later part of the validation
     if (!chain) {
-      console.log(`Missing chain definition for chain with ID ${chainId} `);
+      logger.log(`Missing chain definition for chain with ID ${chainId} `);
       return acc;
     }
 

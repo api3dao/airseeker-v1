@@ -1,5 +1,7 @@
 import { ethers } from 'ethers';
+import { LogOptions } from '@api3/airnode-utilities';
 import { BeaconId, Config, SignedData } from './validation';
+import { DEFAULT_LOG_OPTIONS } from './constants';
 
 export type BeaconValueStorage = Record<BeaconId, SignedData>;
 export type Provider = {
@@ -14,6 +16,7 @@ export interface State {
   stopSignalReceived: boolean;
   beaconValues: BeaconValueStorage;
   providers: Providers;
+  logOptions: LogOptions;
 }
 
 // TODO: Freeze the state in development mode
@@ -25,6 +28,7 @@ export const initializeState = (config: Config) => {
     stopSignalReceived: false,
     beaconValues: {},
     providers: {},
+    logOptions: DEFAULT_LOG_OPTIONS,
   };
 };
 

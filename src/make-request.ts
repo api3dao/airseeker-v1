@@ -1,6 +1,7 @@
 import { go } from '@api3/promise-utils';
 import axios from 'axios';
 import anyPromise from 'promise.any';
+import { logger } from './logging';
 import { Gateway, SignedData, signedDataSchema, Template } from './validation';
 import { GATEWAY_TIMEOUT_MS } from './constants';
 
@@ -40,14 +41,14 @@ export const makeSignedDataGatewayRequests = async (
 
     if (!goRes.success) {
       const message = `Failed to make signed data gateway request for gateway: "${fullUrl}". Error: "${goRes.error}"`;
-      console.log(message);
+      logger.log(message);
       throw new Error(message);
     }
 
     const parsed = signedDataSchema.safeParse(goRes.data);
     if (!parsed.success) {
       const message = `Failed to parse signed data response for gateway: "${fullUrl}". Error: "${parsed.error}"`;
-      console.log(message);
+      logger.log(message);
       throw new Error(message);
     }
 
@@ -57,11 +58,11 @@ export const makeSignedDataGatewayRequests = async (
   // Resolve with the first resolved gateway requests
   const goResult = await go(() => anyPromise(requests));
   if (!goResult.success) {
-    console.log('All gateway requests have failed with an error. No response to be used');
+    logger.log('All gateway requests have failed with an error. No response to be used');
     return null;
   }
 
   // TODO: It might be nice to gather statistics about what gateway is the data coming from (for statistics)
-  console.log(`Using the following signed data response: "${JSON.stringify(goResult.data)}"`);
+  logger.log(`Using the following signed data response: "${JSON.stringify(goResult.data)}"`);
   return goResult.data;
 };

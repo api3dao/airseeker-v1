@@ -1,5 +1,6 @@
 import { validSignedData } from '../fixtures';
 import { makeSignedDataGatewayRequests } from '../../src/make-request';
+import { initializeState } from '../../src/state';
 
 const mockedSignedDataGateway = {
   apiKey: 'some-api-key',
@@ -10,6 +11,8 @@ const mockedSignedDataGateway = {
 };
 
 it('makes a signed data gateway call', async () => {
+  initializeState(null as any); // We don't care about airseeker.json file
+
   const { apiKey, url, endpointId, parameters } = mockedSignedDataGateway;
   const response = await makeSignedDataGatewayRequests([{ apiKey, url }], { parameters, endpointId });
 

@@ -1,5 +1,7 @@
 import axios from 'axios';
+import { logger } from './logging';
 import { makeSignedDataGatewayRequests, urlJoin } from './make-request';
+import { initializeState } from './state';
 import { validSignedData } from '../test/fixtures';
 
 // Mock the axios library for the whole module
@@ -26,6 +28,10 @@ it('urlJoin creates a valid gateway URL', () => {
 });
 
 describe('makeSignedDataGatewayRequests', () => {
+  beforeEach(() => {
+    initializeState(null as any); // We don't need airseeker.json file
+  });
+
   it('makes requests to all gateways and resolves with the first successful value', async () => {
     const mockedAxios = (axios as any as jest.Mock)
       .mockImplementationOnce(() => {
@@ -35,7 +41,7 @@ describe('makeSignedDataGatewayRequests', () => {
       .mockReturnValueOnce({
         data: validSignedData,
       });
-    jest.spyOn(global.console, 'log');
+    jest.spyOn(logger, 'log');
 
     const response = await makeSignedDataGatewayRequests(
       [
@@ -48,7 +54,7 @@ describe('makeSignedDataGatewayRequests', () => {
 
     expect(response).toEqual(validSignedData);
     expect(mockedAxios).toHaveBeenCalledTimes(3);
-    expect(console.log).toHaveBeenCalledWith(
+    expect(logger.log).toHaveBeenCalledWith(
       'Failed to make signed data gateway request for gateway: "https://gateway-1.com/endpoint". Error: "Error: timeout error"'
     );
     const zodErrors = [
@@ -66,16 +72,14 @@ describe('makeSignedDataGatewayRequests', () => {
         path: ['signature'],
       },
     ];
-    expect(console.log).toHaveBeenCalledWith(
+    expect(logger.log).toHaveBeenCalledWith(
       `Failed to parse signed data response for gateway: "https://gateway-2.com/endpoint". Error: "${JSON.stringify(
         zodErrors,
         null,
         2
       )}"`
     );
-    expect(console.log).toBeCalledWith(
-      `Using the following signed data response: "${JSON.stringify(validSignedData)}"`
-    );
+    expect(logger.log).toBeCalledWith(`Using the following signed data response: "${JSON.stringify(validSignedData)}"`);
   });
 
   it('handles a case when all gateways error out', async () => {
@@ -89,7 +93,7 @@ describe('makeSignedDataGatewayRequests', () => {
           signature: validSignedData.signature,
         },
       });
-    jest.spyOn(global.console, 'log');
+    jest.spyOn(logger, 'log');
 
     const response = await makeSignedDataGatewayRequests(
       [
@@ -101,7 +105,7 @@ describe('makeSignedDataGatewayRequests', () => {
 
     expect(response).toEqual(null);
     expect(mockedAxios).toHaveBeenCalledTimes(2);
-    expect(console.log).toHaveBeenCalledWith(
+    expect(logger.log).toHaveBeenCalledWith(
       'Failed to make signed data gateway request for gateway: "https://gateway-1.com/endpoint". Error: "Error: timeout error"'
     );
     const zodErrors = [
@@ -113,13 +117,13 @@ describe('makeSignedDataGatewayRequests', () => {
         message: 'Expected object, received string',
       },
     ];
-    expect(console.log).toHaveBeenCalledWith(
+    expect(logger.log).toHaveBeenCalledWith(
       `Failed to parse signed data response for gateway: "https://gateway-2.com/endpoint". Error: "${JSON.stringify(
         zodErrors,
         null,
         2
       )}"`
     );
-    expect(console.log).toBeCalledWith(`All gateway requests have failed with an error. No response to be used`);
+    expect(logger.log).toBeCalledWith(`All gateway requests have failed with an error. No response to be used`);
   });
 });

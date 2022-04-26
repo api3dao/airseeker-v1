@@ -1,6 +1,7 @@
 import { ethers } from 'ethers';
 import { DapiServer } from '@api3/airnode-protocol-v1';
 import { go, GoAsyncOptions } from '@api3/promise-utils';
+import { logger } from './logging';
 
 // Number that represents 100% is chosen to avoid overflows in DapiServer's
 // `calculateUpdateInPercentage()`. Since the reported data needs to fit
@@ -27,7 +28,7 @@ export const checkUpdateCondition = async (
 ): Promise<boolean | null> => {
   const goDataFeed = await go(() => dapiServer.connect(voidSigner).readDataFeedWithId(beaconId), goOptions);
   if (!goDataFeed.success) {
-    console.log(`Unable to read data feed. Error: ${goDataFeed.error}`);
+    logger.log(`Unable to read data feed. Error: ${goDataFeed.error}`);
     return null;
   }
 
