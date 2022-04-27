@@ -43,10 +43,10 @@ jobs:
         run: yarn lint
       - name: Compile
         run: yarn build
-      - name: Run testing services
-        run: yarn dev:testing-services:start
       - name: Test
         run: yarn test
+      - name: Run testing services
+        run: yarn dev:testing-services:start
       - name: Test E2E
         run: yarn test:e2e
 

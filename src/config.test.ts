@@ -1,23 +1,7 @@
 import fs from 'fs';
 import path from 'path';
+import { mockReadFileSync } from '../test/mock-utils';
 import { interpolateSecrets, parseSecrets, parseConfig, parseConfigWithSecrets, loadConfig } from './config';
-
-// Declare originalFs outside of mockReadFileSync to prevent infinite recursion errors in mockReadFileSync.
-const originalFs = fs.readFileSync;
-
-/**
- * Mocks the fs library if the file path includes the specified file path substring
- * and otherwise returns the original content.
- */
-const mockReadFileSync = (filePathSubstr: string, mockValue: string) => {
-  return jest.spyOn(fs, 'readFileSync').mockImplementationOnce((...args) => {
-    const path = args[0].toString();
-    if (path.includes(filePathSubstr)) {
-      return mockValue;
-    }
-    return originalFs(...args);
-  });
-};
 
 const config = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config', 'airseeker.example.json'), 'utf8'));
 const envVariables = {
