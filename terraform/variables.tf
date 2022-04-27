@@ -37,7 +37,7 @@ variable "app_config_file_path" {
 variable "app_secrets_file_path" {
   description = "The path to the secrets file"
   type        = string
-  default     = "../config/secrets.env"
+  default     = "config/secrets.env"
 }
 
 variable "ecs_application_count" {

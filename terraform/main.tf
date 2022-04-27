@@ -1,16 +1,24 @@
+locals {
+  env_vars             = jsonencode([for tuple in regexall("(.*?)=(.*)", file(join("/", [local.root_dir, var.app_secrets_file_path]))) : { name = tuple[0], value = tuple[1] }])
+  root_dir             = abspath("${path.cwd}/..")
+  app_config_file_hash = filesha256("${local.root_dir}/${var.app_config_file_path}")
+  image_tag            = "${replace(replace(var.app_docker_image, "/", "-"), ":", "-")}-${substr(local.app_config_file_hash, 0, 7)}"
+}
+
 resource "aws_ecr_repository" "airseeker_aws_ecr_repository" {
   name = "${local.resource_prefix}-ecr-repository"
 }
 
 resource "docker_registry_image" "airseeker_with_config" {
-  name = "${aws_ecr_repository.airseeker_aws_ecr_repository.repository_url}:latest"
+  name = "${aws_ecr_repository.airseeker_aws_ecr_repository.repository_url}:${local.image_tag}"
 
   build {
-    context    = ".."
+    context    = local.root_dir
     dockerfile = "docker/Dockerfile.deploy"
     build_args = {
       baseImage  = "${var.app_docker_image}"
       configFile = "${var.app_config_file_path}"
+      configHash = "${local.app_config_file_hash}"
     }
   }
 }
@@ -25,9 +33,6 @@ resource "aws_ecs_cluster" "airseeker_ecs_cluster" {
   depends_on = [aws_cloudwatch_log_group.airseeker_aws_cloudwatch_log_group]
 }
 
-locals {
-  env_vars = jsonencode([for tuple in regexall("(.*?)=(.*)", file(var.app_secrets_file_path)) : { name = tuple[0], value = tuple[1] }])
-}
 
 resource "aws_ecs_task_definition" "airseeker_ecs_task" {
   family = "${var.app_name}-ecs-task"

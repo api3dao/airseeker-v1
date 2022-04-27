@@ -2,6 +2,9 @@ ARG baseImage=airseeker:latest
 
 FROM ${baseImage}
 
+LABEL airseeker_image=${baseImage} \
+      config_sha256=${configHash}
+
 ARG configFile=./config/airseeker.json
 
 COPY ${configFile} /app/config/airseeker.json
