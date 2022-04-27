@@ -15,7 +15,8 @@
 *.log
 
 airseeker.json
-secrets.env
+*.env
+!*.example.env
 
 # Hardhat files
 cache
