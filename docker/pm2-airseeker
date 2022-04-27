@@ -1,5 +1,14 @@
+# TODO:
+#
+# Since currently our logging is not really configurable and we log a lot of stuff
+# I was wondering if our current log rotation configuration will be enough and I don't think so.
+#
+# Fargate ECS container is given a minimum of 20 GiB of ephemeral storage. My testing instance with 50 beacons produced around 500MB of raw logs for 2 days.
+# Rounding up that's about 2GB a week. Setting logrotate to rotate 3 means that we will have up to 8GB of logs which is well within the limit (to be safe)
+# and I don't think it actually makes sense to store older logs.
+
 /app/.pm2/pm2.log /app/.pm2/logs/*.log {
-        rotate 12
+        rotate 3
         weekly
         missingok
         notifempty
