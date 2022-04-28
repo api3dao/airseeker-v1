@@ -5,11 +5,12 @@ import { getUnixTimestamp } from '../test/fixtures';
 
 it('readOnChainBeaconData', async () => {
   jest.spyOn(logger, 'log');
+  const feedValue = { value: ethers.BigNumber.from('123'), timestamp: getUnixTimestamp('2019-3-21') };
   const readDataFeedWithIdMock = jest
     .fn()
     .mockRejectedValueOnce(new Error('cannot read chain'))
     .mockRejectedValueOnce(new Error('some other error'))
-    .mockResolvedValue({ value: ethers.BigNumber.from('123'), timestamp: getUnixTimestamp('2019-3-21') });
+    .mockResolvedValue(feedValue);
 
   const dapiServer: any = {
     connect() {
@@ -27,7 +28,7 @@ it('readOnChainBeaconData', async () => {
   const onChainBeacon = await readOnChainBeaconData(voidSigner, dapiServer, 'some-id', { retries: 100_000 });
 
   expect(onChainBeacon).toEqual({
-    data: { timestamp: 1553122800, value: ethers.BigNumber.from('123') },
+    data: feedValue,
     success: true,
   });
   expect(logger.log).toHaveBeenCalledTimes(2);
