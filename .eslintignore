@@ -16,3 +16,6 @@
 
 airseeker.json
 secrets.env
+
+# Scripts
+/scripts

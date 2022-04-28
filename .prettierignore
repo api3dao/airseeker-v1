@@ -16,3 +16,8 @@
 
 airseeker.json
 secrets.env
+
+# Terraform
+.terraform*
+terraform.tfstate*
+*.tfvars
