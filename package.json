@@ -44,7 +44,7 @@
     "@api3/airnode-utilities": "^0.6.0",
     "@api3/airnode-validator": "^0.5.0",
     "@api3/promise-utils": "^0.3.0",
-    "axios": "^0.27.1",
+    "axios": "^0.27.2",
     "ethers": "^5.6.3",
     "lodash": "^4.17.21",
     "promise.any": "^2.0.4",
@@ -72,6 +72,6 @@
     "rimraf": "^3.0.2",
     "ts-jest": "^27.1.4",
     "ts-node": "^10.7.0",
-    "typescript": "^4.6.3"
+    "typescript": "^4.6.4"
   }
 }
