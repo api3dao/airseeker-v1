@@ -16,11 +16,14 @@ export const initializeProviders = () => {
 
     // TODO: Should be later part of the validation
     if (!chain) {
-      logger.log(`Missing chain definition for chain with ID ${chainId} `);
+      logger.warn(`Missing chain definition for chain with ID ${chainId}`);
       return acc;
     }
 
-    const chainProviders = Object.values(chain.providers).map((provider) => initializeProvider(chainId, provider.url));
+    const chainProviders = Object.entries(chain.providers).map(([providerName, provider]) => ({
+      ...initializeProvider(chainId, provider.url),
+      providerName,
+    }));
 
     return { ...acc, [chainId]: chainProviders };
   }, {});
