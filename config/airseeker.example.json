@@ -31,7 +31,8 @@
           "value": 3.12,
           "unit": "gwei"
         },
-        "baseFeeMultiplier": 2
+        "baseFeeMultiplier": 2,
+        "fulfillmentGasLimit": 500000
       }
     },
     "3": {
@@ -49,7 +50,8 @@
           "value": 3.12,
           "unit": "gwei"
         },
-        "baseFeeMultiplier": 2
+        "baseFeeMultiplier": 2,
+        "fulfillmentGasLimit": 500000
       }
     }
   },
