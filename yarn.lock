@@ -91,10 +91,10 @@
     date-fns "^2.16.1"
     ethers "^5.4.5"
 
-"@api3/airnode-validator@^0.5.0":
-  version "0.5.0"
-  resolved "https://registry.yarnpkg.com/@api3/airnode-validator/-/airnode-validator-0.5.0.tgz#1439d1ae1cd4775fa463618c41423d52bb38fdfe"
-  integrity sha512-3Bhx9c2sAZNB0oTipx5NqOIT6e3SLER1y3ZZzstq9a69D+6PaLwR/Pm5VeRZPJfIcYM+D4LFdABkylpWNU8KJg==
+"@api3/airnode-validator@^0.5.0", "@api3/airnode-validator@^0.5.1":
+  version "0.5.1"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-validator/-/airnode-validator-0.5.1.tgz#82e2b3dcebdfb6a6b3e82f772c5a8809e9e6b3c8"
+  integrity sha512-J7l4f4Jsk2FLbMN+runOWGDdgi1TCmEJt4JpINfZ7medgiE8/nsOCKVD+dUcHKOJD13o0q0XHDOx/1SWGrTtLg==
   dependencies:
     "@api3/airnode-utilities" "^0.5.0"
     dotenv "^16.0.0"
@@ -1991,10 +1991,10 @@ axios@^0.26.0:
   dependencies:
     follow-redirects "^1.14.8"
 
-axios@^0.27.1:
-  version "0.27.1"
-  resolved "https://registry.yarnpkg.com/axios/-/axios-0.27.1.tgz#badcc8cc38cfa812320221b600776452141ea5d4"
-  integrity sha512-ePNMai55xo5GsXajb/k756AqZqpqeDaGwGcdvbZLSSELbbYwsIn2jNmGfUPEwd8j/yu4OoMstLLIVa4t0MneEA==
+axios@^0.27.2:
+  version "0.27.2"
+  resolved "https://registry.yarnpkg.com/axios/-/axios-0.27.2.tgz#207658cc8621606e586c85db4b41a750e756d972"
+  integrity sha512-t+yRIyySRTp/wua5xEr+z1q60QmLq8ABsS5O9Me1AsE5dfKqgnCFzwiCZZ/cGNd1lq4/7akDWMxdhVlucjmnOQ==
   dependencies:
     follow-redirects "^1.14.9"
     form-data "^4.0.0"
