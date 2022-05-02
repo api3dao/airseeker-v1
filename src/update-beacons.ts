@@ -2,6 +2,7 @@ import { ethers } from 'ethers';
 import { isEmpty } from 'lodash';
 import { DapiServer__factory as DapiServerFactory, DapiServer } from '@api3/airnode-protocol-v1';
 import { go, GoAsyncOptions } from '@api3/promise-utils';
+import * as node from '@api3/airnode-node';
 import { BeaconUpdate } from './validation';
 import { getState, Provider } from './state';
 import { logger, LogOptionsOverride } from './logging';
@@ -9,7 +10,7 @@ import { getGasPrice } from './gas-prices';
 import { getCurrentBlockNumber } from './block-number';
 import { getTransactionCount } from './transaction-count';
 import { checkSignedDataFreshness, checkOnchainDataFreshness, checkUpdateCondition } from './check-condition';
-import { deriveSponsorWalletFromMnemonic, shortenAddress, sleep } from './utils';
+import { shortenAddress, sleep } from './utils';
 import {
   GAS_LIMIT,
   INFINITE_RETRIES,
@@ -141,11 +142,9 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
   const { txType: _txType, ...gatTargetOverride } = gasTarget;
 
   // Derive sponsor wallet address
-  const sponsorWallet = deriveSponsorWalletFromMnemonic(
-    config.airseekerWalletMnemonic,
-    sponsorAddress,
-    PROTOCOL_ID
-  ).connect(rpcProvider);
+  const sponsorWallet = node.evm
+    .deriveSponsorWalletFromMnemonic(config.airseekerWalletMnemonic, sponsorAddress, PROTOCOL_ID)
+    .connect(rpcProvider);
 
   // Get transaction count
   const transactionCount = await getTransactionCount(

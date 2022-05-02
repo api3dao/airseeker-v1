@@ -2,8 +2,7 @@ import { Contract, Wallet } from 'ethers';
 import * as hre from 'hardhat';
 import '@nomiclabs/hardhat-ethers';
 import * as abi from '@api3/airnode-abi';
-// TODO: uncomment once airnode-node 0.6 is released
-// import * as node from '@api3/airnode-node';
+import * as node from '@api3/airnode-node';
 import {
   AccessControlRegistry__factory as AccessControlRegistryFactory,
   AirnodeProtocol__factory as AirnodeProtocolFactory,
@@ -11,23 +10,6 @@ import {
 } from '@api3/airnode-protocol-v1';
 import { buildLocalConfigETH, buildLocalConfigBTC } from '../fixtures/config';
 import { PROTOCOL_ID } from '../../src/constants';
-
-//TODO: remove once airnode-node 0.6 is released
-const deriveWalletPathFromSponsorAddress = (sponsorAddress: string, protocolId = '1') => {
-  const sponsorAddressBN = hre.ethers.BigNumber.from(hre.ethers.utils.getAddress(sponsorAddress));
-  const paths = [];
-  for (let i = 0; i < 6; i++) {
-    const shiftedSponsorAddressBN = sponsorAddressBN.shr(31 * i);
-    paths.push(shiftedSponsorAddressBN.mask(31).toString());
-  }
-  return `${protocolId}/${paths.join('/')}`;
-};
-//TODO: remove once airnode-node 0.6 is released
-const deriveSponsorWalletFromMnemonic = (airnodeMnemonic: string, sponsorAddress: string, protocolId: string) =>
-  hre.ethers.Wallet.fromMnemonic(
-    airnodeMnemonic,
-    `m/44'/60'/0'/${deriveWalletPathFromSponsorAddress(sponsorAddress, protocolId)}`
-  );
 
 const PROTOCOL_ID_PSP = '2';
 const subscriptionIdETH = '0xc1ed31de05a9aa74410c24bccd6aa40235006f9063f1c65d47401e97ad04560e';
@@ -135,9 +117,9 @@ export const deployAndUpdateSubscriptions = async () => {
   const airnodeWallet = hre.ethers.Wallet.fromMnemonic(localConfigETH.airnodeMnemonic);
   const airnodePspSponsorWallet =
     // node.evm.
-    deriveSponsorWalletFromMnemonic(localConfigETH.airnodeMnemonic, roles.sponsor.address, PROTOCOL_ID_PSP).connect(
-      provider
-    );
+    node.evm
+      .deriveSponsorWalletFromMnemonic(localConfigETH.airnodeMnemonic, roles.sponsor.address, PROTOCOL_ID_PSP)
+      .connect(provider);
   await roles.deployer.sendTransaction({
     to: airnodePspSponsorWallet.address,
     value: hre.ethers.utils.parseEther('1'),
@@ -145,9 +127,9 @@ export const deployAndUpdateSubscriptions = async () => {
 
   const airseekerSponsorWallet =
     // node.evm.
-    deriveSponsorWalletFromMnemonic(localConfigETH.airnodeMnemonic, roles.sponsor.address, PROTOCOL_ID).connect(
-      provider
-    );
+    node.evm
+      .deriveSponsorWalletFromMnemonic(localConfigETH.airnodeMnemonic, roles.sponsor.address, PROTOCOL_ID)
+      .connect(provider);
 
   await roles.deployer.sendTransaction({
     to: airseekerSponsorWallet.address,

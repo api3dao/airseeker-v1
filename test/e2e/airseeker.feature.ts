@@ -273,6 +273,7 @@ describe('Airseeker', () => {
                 unit: 'gwei',
               },
               baseFeeMultiplier: 2,
+              fulfillmentGasLimit: 500_000,
             },
           },
         },
