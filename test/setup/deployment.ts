@@ -59,6 +59,20 @@ const getTimestampAndSignature = async (airnodeWallet: Wallet, subscriptionId: s
   return { timestamp, signature };
 };
 
+const signData = async (airnodeWallet: Wallet, templateId: string, data: string) => {
+  const timestamp = (await provider.getBlock('latest')).timestamp + 100;
+
+  const signature = await airnodeWallet.signMessage(
+    hre.ethers.utils.arrayify(
+      hre.ethers.utils.keccak256(
+        hre.ethers.utils.solidityPack(['bytes32', 'uint256', 'bytes'], [templateId, timestamp, data || '0x'])
+      )
+    )
+  );
+
+  return { timestamp, signature };
+};
+
 export const updateBeacon = async (
   dapiServer: Contract,
   airnodePspSponsorWallet: Wallet,
@@ -227,6 +241,20 @@ export const deployAndUpdateSubscriptions = async () => {
   // BTC subscription
   await updateBeacon(dapiServer, airnodePspSponsorWallet, airnodeWallet, subscriptionIdBTC, apiValueBTC);
 
+  const signedDataValue = '0x000000000000000000000000000000000000000000000000000000002bff42b7';
+  const { timestamp: signedDataTimestamp, signature: signedDataSignature } = await signData(
+    airnodeWallet,
+    templateIdETH,
+    signedDataValue
+  );
+  const signedData = {
+    data: {
+      timestamp: signedDataTimestamp.toString(),
+      value: signedDataValue,
+    },
+    signature: signedDataSignature,
+  };
+
   return {
     accessControlRegistryFactory,
     accessControlRegistry,
@@ -240,5 +268,6 @@ export const deployAndUpdateSubscriptions = async () => {
     airnodeWallet,
     subscriptionIdETH,
     subscriptionIdBTC,
+    signedData,
   };
 };
