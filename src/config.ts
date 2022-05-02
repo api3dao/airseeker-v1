@@ -1,6 +1,7 @@
 import fs from 'fs';
 import { z } from 'zod';
 import template from 'lodash/template';
+import { goSync } from '@api3/promise-utils';
 import { configSchema } from './validation';
 
 type Secrets = Record<string, string | undefined>;
@@ -16,7 +17,7 @@ export const loadConfig = (configPath: string, secrets: Record<string, string | 
   return config;
 };
 
-const readConfig = (configPath: string): unknown => {
+export const readConfig = (configPath: string): unknown => {
   try {
     return JSON.parse(fs.readFileSync(configPath, 'utf8'));
   } catch (err) {
@@ -51,18 +52,22 @@ const NO_MATCH_REGEXP = /($^)/;
 const ES_MATCH_REGEXP = /\$\{([^\\}]*(?:\\.[^\\}]*)*)\}/g;
 
 export const interpolateSecrets = (config: unknown, secrets: Secrets) => {
-  // TODO: Replace with go utils
-  try {
-    const interpolated = JSON.parse(
-      template(JSON.stringify(config), {
-        escape: NO_MATCH_REGEXP,
-        evaluate: NO_MATCH_REGEXP,
-        interpolate: ES_MATCH_REGEXP,
-      })(secrets)
-    );
+  const goInterpolated = goSync(() =>
+    template(JSON.stringify(config), {
+      escape: NO_MATCH_REGEXP,
+      evaluate: NO_MATCH_REGEXP,
+      interpolate: ES_MATCH_REGEXP,
+    })(secrets)
+  );
 
-    return interpolated;
-  } catch (err) {
-    throw new Error(`Error interpolating secrets. Make sure the secrets format is correct. ${err}`);
+  if (!goInterpolated.success) {
+    throw new Error(`Error interpolating secrets. Make sure the secrets format is correct. ${goInterpolated.error}`);
   }
+
+  const goJson = goSync(() => JSON.parse(goInterpolated.data));
+  if (!goJson.success) {
+    throw new Error('Configuration file is not a valid JSON after secrets interpolation.');
+  }
+
+  return goJson.data;
 };

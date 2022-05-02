@@ -1,45 +1,27 @@
 import * as path from 'path';
+import { logger } from './logging';
 import { loadConfig } from './config';
+import { initiateFetchingBeaconData } from './fetch-beacon-data';
+import { initiateBeaconUpdates } from './update-beacons';
+import { initializeProviders } from './providers';
+import { initializeState, updateState } from './state';
 
-const DATA_FETCH_FREQUENCY_MS = 5000;
-const BEACON_UPDATE_FREQUENCY_MS = 10_000;
-
-let stopSignalReceived = false;
-
-const handleStopSignal = (signal: string) => {
-  console.log(`Signal ${signal} received`);
-  console.log('Stopping Airseeeker...');
+export const handleStopSignal = (signal: string) => {
+  logger.log(`Signal ${signal} received`);
+  logger.log('Stopping Airseeker...');
   // Let the process wait for the last cycles instead of killing it immediately
-  stopSignalReceived = true;
+  updateState((state) => ({ ...state, stopSignalReceived: true }));
 };
 
-const fetchData = async () => {
-  console.log('Fetching data');
-  if (!stopSignalReceived) {
-    setTimeout(() => {
-      fetchData();
-    }, DATA_FETCH_FREQUENCY_MS);
-  }
-};
+export async function main() {
+  const config = loadConfig(path.join(__dirname, '..', 'config', 'airseeker.json'), process.env);
+  initializeState(config);
 
-const updateBeacons = async () => {
-  console.log('Updating beacons');
-  if (!stopSignalReceived) {
-    setTimeout(() => {
-      updateBeacons();
-    }, BEACON_UPDATE_FREQUENCY_MS);
-  }
-};
+  initializeProviders();
 
-// ============================
-// Load configuration
-// ============================
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const config = loadConfig(path.join(__dirname, '..', 'config', 'config.json'), process.env);
-// do something with config
+  initiateFetchingBeaconData();
+  initiateBeaconUpdates();
 
-fetchData();
-updateBeacons();
-
-process.on('SIGINT', handleStopSignal);
-process.on('SIGTERM', handleStopSignal);
+  process.on('SIGINT', handleStopSignal);
+  process.on('SIGTERM', handleStopSignal);
+}

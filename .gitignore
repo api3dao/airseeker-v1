@@ -14,5 +14,18 @@
 # Log files
 *.log
 
-config.json
-secrets.env
+airseeker.json
+*.env
+!*.example.env
+
+# Hardhat files
+cache
+
+# Ignore log files
+logs
+*.log
+
+# Terraform
+.terraform*
+terraform.tfstate*
+*.tfvars
