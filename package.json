@@ -1,9 +1,18 @@
 {
-  "name": "airseeker",
+  "name": "@api3/airseeker",
   "license": "MIT",
-  "version": "1.0.0",
-  "description": "A tool to update a beacons with signed responses from Airnode's gateway",
+  "version": "0.2.0",
+  "description": "A tool to update beacons with signed responses from remote Airnode gateways",
   "main": "./dist/src/index.js",
+  "types": "./dist/src/validation",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/api3dao/airseeker.git"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "files": [
     "dist",
     "airseeker-service.config.js"
