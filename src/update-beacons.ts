@@ -8,7 +8,7 @@ import { logger } from './logging';
 import { getGasPrice } from './gas-prices';
 import { getCurrentBlockNumber } from './block-number';
 import { getTransactionCount } from './transaction-count';
-import { checkSignedDataFreshness, checkUpdateCondition } from './check-condition';
+import { checkSignedDataFreshness, checkOnchainDataFreshness, checkUpdateCondition } from './check-condition';
 import { deriveSponsorWalletFromMnemonic, shortenAddress, sleep } from './utils';
 import {
   GAS_LIMIT,
@@ -205,26 +205,40 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
     }
 
     // Check signed data is newer than on chain value
-    const isDataFresh = checkSignedDataFreshness(onChainData.data, newBeaconResponse);
-    if (!isDataFresh) {
-      logger.log(`Sign data older then on chain record. Skipping.`);
+    const isSignedDataFresh = checkSignedDataFreshness(onChainData.data, newBeaconResponse);
+    if (!isSignedDataFresh) {
+      logger.log(`Signed data older than on chain record for beacon with ID ${beaconUpdateData.beaconId}. Skipping.`);
       continue;
     }
 
-    // Check beacon condition
-    const shouldUpdate = await checkUpdateCondition(
-      onChainData.data,
-      beaconUpdateData.deviationThreshold,
-      newBeaconValue
+    const isOnchainDataFresh = checkOnchainDataFreshness(
+      onChainData.data.timestamp,
+      beaconUpdateData.heartbeatInterval
     );
-    if (shouldUpdate === null) {
-      logger.log(`Unable to fetch current beacon value for beacon with ID ${beaconUpdateData.beaconId}.`);
-      // This can happen only if we reach the total timeout so it makes no sense to continue with the rest of the beacons
-      return;
-    }
-    if (!shouldUpdate) {
-      logger.log(`Deviation threshold not reached for beacon with ID ${beaconUpdateData.beaconId}. Skipping.`);
-      continue;
+
+    if (!isOnchainDataFresh) {
+      logger.log(
+        `On chain data timestamp older than heartbeat for beacon with ID ${beaconUpdateData.beaconId}. Updating without condition check.`
+      );
+    } else {
+      // Check beacon condition
+      const shouldUpdate = await checkUpdateCondition(
+        onChainData.data,
+        beaconUpdateData.deviationThreshold,
+        newBeaconValue
+      );
+      if (shouldUpdate) {
+        logger.log(`Deviation threshold reached for beacon with ID ${beaconUpdateData.beaconId}. Updating.`);
+      }
+      if (shouldUpdate === null) {
+        logger.log(`Unable to fetch current beacon value for beacon with ID ${beaconUpdateData.beaconId}.`);
+        // This can happen only if we reach the total timeout so it makes no sense to continue with the rest of the beacons
+        return;
+      }
+      if (!shouldUpdate) {
+        logger.log(`Deviation threshold not reached for beacon with ID ${beaconUpdateData.beaconId}. Skipping.`);
+        continue;
+      }
     }
 
     // Update beacon

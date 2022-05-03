@@ -45,3 +45,7 @@ export interface OnChainBeaconData {
 export const checkSignedDataFreshness = (onChainData: OnChainBeaconData, signedData: SignedData) => {
   return parseInt(signedData.data.timestamp, 10) > onChainData.timestamp;
 };
+
+export const checkOnchainDataFreshness = (timestamp: number, heartbeatInterval: number) => {
+  return timestamp > Date.now() / 1000 - heartbeatInterval;
+};
