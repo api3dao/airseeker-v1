@@ -46,6 +46,9 @@ export const checkSignedDataFreshness = (onChainData: OnChainBeaconData, signedD
   return parseInt(signedData.data.timestamp, 10) > onChainData.timestamp;
 };
 
+/**
+ * Returns true when the on chain data timestamp is newer than the heartbeat interval.
+ */
 export const checkOnchainDataFreshness = (timestamp: number, heartbeatInterval: number) => {
   return timestamp > Date.now() / 1000 - heartbeatInterval;
 };

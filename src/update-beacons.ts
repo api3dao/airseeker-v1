@@ -204,18 +204,18 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
       continue;
     }
 
-    // Check signed data is newer than on chain value
+    // Check that signed data is newer than on chain value
     const isSignedDataFresh = checkSignedDataFreshness(onChainData.data, newBeaconResponse);
     if (!isSignedDataFresh) {
       logger.log(`Signed data older than on chain record for beacon with ID ${beaconUpdateData.beaconId}. Skipping.`);
       continue;
     }
 
+    // Check that on chain data is newer than hearbeat interval
     const isOnchainDataFresh = checkOnchainDataFreshness(
       onChainData.data.timestamp,
       beaconUpdateData.heartbeatInterval
     );
-
     if (!isOnchainDataFresh) {
       logger.log(
         `On chain data timestamp older than heartbeat for beacon with ID ${beaconUpdateData.beaconId}. Updating without condition check.`
