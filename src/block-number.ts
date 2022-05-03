@@ -18,7 +18,7 @@ export const getCurrentBlockNumber = async (provider: Provider, goOptions: GoAsy
   }
 
   const blockNumber = goBlockNumber.data;
-  logger.log(`Current block number: ${blockNumber}`, logOptionsChainId);
+  logger.info(`Current block number: ${blockNumber}`, logOptionsChainId);
 
   return blockNumber;
 };

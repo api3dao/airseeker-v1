@@ -2,7 +2,7 @@ import { logger as airnodeLogger, LogOptions } from '@api3/airnode-utilities';
 import merge from 'lodash/merge';
 import { getState } from './state';
 
-type LogOptionsOverride = Partial<Pick<LogOptions, 'meta' | 'additional'>>;
+export type LogOptionsOverride = Partial<Pick<LogOptions, 'meta' | 'additional'>>;
 
 const debug = (message: string, logOptionsOverride?: LogOptionsOverride) =>
   airnodeLogger.debug(message, merge({ ...getState().logOptions }, logOptionsOverride));

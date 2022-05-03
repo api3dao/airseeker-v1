@@ -36,7 +36,7 @@ describe('makeSignedDataGatewayRequests', () => {
   const templateId = generateRandomBytes32();
 
   beforeEach(() => {
-    initializeState({ logFormat: 'plain', logLevel: 'INFO' } as any); // We don't need airseeker.json file
+    initializeState({ log: { format: 'plain', level: 'INFO' } } as any); // We don't need airseeker.json file
   });
 
   it('makes requests to all gateways and resolves with the first successful value', async () => {
@@ -48,8 +48,8 @@ describe('makeSignedDataGatewayRequests', () => {
       .mockReturnValueOnce({
         data: validSignedData,
       });
-    jest.spyOn(logger, 'log');
-    jest.spyOn(logger, 'error');
+    jest.spyOn(logger, 'info');
+    jest.spyOn(logger, 'warn');
 
     const response = await makeSignedDataGatewayRequests(
       [
@@ -62,7 +62,7 @@ describe('makeSignedDataGatewayRequests', () => {
 
     expect(response).toEqual(validSignedData);
     expect(mockedAxios).toHaveBeenCalledTimes(3);
-    expect(logger.error).toHaveBeenCalledWith(
+    expect(logger.warn).toHaveBeenCalledWith(
       'Failed to make signed data gateway request for gateway: "https://gateway-1.com/endpoint". Error: "Error: timeout error"',
       { additional: { 'Template-ID': templateId } }
     );
@@ -81,7 +81,7 @@ describe('makeSignedDataGatewayRequests', () => {
         path: ['signature'],
       },
     ];
-    expect(logger.error).toHaveBeenCalledWith(
+    expect(logger.warn).toHaveBeenCalledWith(
       `Failed to parse signed data response for gateway: "https://gateway-2.com/endpoint". Error: "${JSON.stringify(
         zodErrors,
         null,
@@ -89,7 +89,7 @@ describe('makeSignedDataGatewayRequests', () => {
       )}"`,
       { additional: { 'Template-ID': templateId } }
     );
-    expect(logger.log).toBeCalledWith(
+    expect(logger.info).toBeCalledWith(
       `Using the following signed data response: "${JSON.stringify(validSignedData)}"`,
       { additional: { 'Template-ID': templateId } }
     );
@@ -106,8 +106,8 @@ describe('makeSignedDataGatewayRequests', () => {
           signature: validSignedData.signature,
         },
       });
-    jest.spyOn(logger, 'log');
-    jest.spyOn(logger, 'error');
+    jest.spyOn(logger, 'info');
+    jest.spyOn(logger, 'warn');
 
     await expect(
       makeSignedDataGatewayRequests(
@@ -120,8 +120,8 @@ describe('makeSignedDataGatewayRequests', () => {
     ).rejects.toThrow();
 
     expect(mockedAxios).toHaveBeenCalledTimes(2);
-    expect(logger.log).not.toHaveBeenCalled();
-    expect(logger.error).toHaveBeenCalledWith(
+    expect(logger.info).not.toHaveBeenCalled();
+    expect(logger.warn).toHaveBeenCalledWith(
       'Failed to make signed data gateway request for gateway: "https://gateway-1.com/endpoint". Error: "Error: timeout error"',
       { additional: { 'Template-ID': templateId } }
     );
@@ -134,7 +134,7 @@ describe('makeSignedDataGatewayRequests', () => {
         message: 'Expected object, received string',
       },
     ];
-    expect(logger.error).toHaveBeenCalledWith(
+    expect(logger.warn).toHaveBeenCalledWith(
       `Failed to parse signed data response for gateway: "https://gateway-2.com/endpoint". Error: "${JSON.stringify(
         zodErrors,
         null,
@@ -142,7 +142,7 @@ describe('makeSignedDataGatewayRequests', () => {
       )}"`,
       { additional: { 'Template-ID': templateId } }
     );
-    expect(logger.error).toBeCalledWith(`All gateway requests have failed with an error. No response to be used`, {
+    expect(logger.warn).toBeCalledWith(`All gateway requests have failed with an error. No response to be used`, {
       additional: { 'Template-ID': templateId },
     });
   });

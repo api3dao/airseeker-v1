@@ -33,7 +33,7 @@ export const initializeState = (config: Config) => {
     beaconValues: {},
     providers: {},
     logOptions: buildBaseOptions(
-      { nodeSettings: { logFormat: config.logFormat, logLevel: config.logLevel } },
+      { nodeSettings: { logFormat: config.log.format, logLevel: config.log.level } },
       { coordinatorId: randomHexString(16) }
     ),
   };

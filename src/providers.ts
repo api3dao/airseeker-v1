@@ -2,7 +2,7 @@ import * as node from '@api3/airnode-node';
 import { logger } from './logging';
 import { getState, updateState, Providers, Provider } from './state';
 
-export const initializeProvider = (chainId: string, providerUrl: string): Provider => {
+export const initializeProvider = (chainId: string, providerUrl: string): Omit<Provider, 'providerName'> => {
   const rpcProvider = node.evm.buildEVMProvider(providerUrl, chainId);
 
   return { rpcProvider, chainId };

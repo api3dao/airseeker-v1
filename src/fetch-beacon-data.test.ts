@@ -7,8 +7,10 @@ import { validSignedData } from '../test/fixtures';
 
 const config: Config = {
   airseekerWalletMnemonic: 'achieve climb couple wait accident symbol spy blouse reduce foil echo label',
-  logFormat: 'plain',
-  logLevel: 'INFO',
+  log: {
+    format: 'plain',
+    level: 'INFO',
+  },
   beacons: {
     '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c': {
       airnode: '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
@@ -239,7 +241,7 @@ describe('fetchBeaconDataInLoop', () => {
           stopSignalReceived: true,
           beaconValues: {},
           providers: {},
-          logOptions: { format: 'plain', level: 'INFO', meta: {} },
+          logOptions: { ...config.log, meta: {} },
         };
       } else {
         return {
@@ -247,7 +249,7 @@ describe('fetchBeaconDataInLoop', () => {
           stopSignalReceived: false,
           beaconValues: {},
           providers: {},
-          logOptions: { format: 'plain', level: 'INFO', meta: {} },
+          logOptions: { ...config.log, meta: {} },
         };
       }
     });

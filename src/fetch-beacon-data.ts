@@ -1,6 +1,10 @@
-import { go } from '@api3/promise-utils';
-import { ethers } from 'ethers';
 import { isEmpty, uniq } from 'lodash';
+import { ethers } from 'ethers';
+import { go } from '@api3/promise-utils';
+import { logger } from './logging';
+import { getState, updateState } from './state';
+import { makeSignedDataGatewayRequests } from './make-request';
+import { shortenAddress, sleep } from './utils';
 import {
   GATEWAY_TIMEOUT_MS,
   INFINITE_RETRIES,
@@ -8,10 +12,6 @@ import {
   RANDOM_BACKOFF_MAX_MS,
   RANDOM_BACKOFF_MIN_MS,
 } from './constants';
-import { logger } from './logging';
-import { makeSignedDataGatewayRequests } from './make-request';
-import { getState, updateState } from './state';
-import { shortenAddress, sleep } from './utils';
 
 export const initiateFetchingBeaconData = async () => {
   logger.debug('Initiating fetching all beacon data');

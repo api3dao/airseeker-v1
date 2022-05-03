@@ -4,7 +4,7 @@ import { DapiServer__factory as DapiServerFactory, DapiServer } from '@api3/airn
 import { go, GoAsyncOptions } from '@api3/promise-utils';
 import { BeaconUpdate } from './validation';
 import { getState, Provider } from './state';
-import { logger } from './logging';
+import { logger, LogOptionsOverride } from './logging';
 import { getGasPrice } from './gas-prices';
 import { getCurrentBlockNumber } from './block-number';
 import { getTransactionCount } from './transaction-count';
@@ -36,7 +36,7 @@ export const groupBeaconsByProviderSponsor = () => {
 
     // TODO: Should be later part of the validation
     if (!providers) {
-      logger.log(`Missing providers for chain with ID ${chainId}`);
+      logger.info(`Missing providers for chain with ID ${chainId}`);
       return acc;
     }
 
@@ -47,7 +47,7 @@ export const groupBeaconsByProviderSponsor = () => {
         const foundBeacons = beacons.filter((beacon) => {
           if (config.beacons[beacon.beaconId]) return true;
 
-          logger.log(`Missing beacon with ID ${beacon.beaconId}. Skipping.`);
+          logger.info(`Missing beacon with ID ${beacon.beaconId}. Skipping.`);
           return false;
         });
 
@@ -70,7 +70,7 @@ export const initiateBeaconUpdates = () => {
 
   const providerSponsorBeaconsGroups = groupBeaconsByProviderSponsor();
   if (isEmpty(providerSponsorBeaconsGroups)) {
-    logger.log('No beacons for processing found. Stopping.');
+    logger.error('No beacons for processing found. Stopping.');
     process.exit(NO_BEACONS_EXIT_CODE);
   }
   providerSponsorBeaconsGroups.forEach(updateBeaconsInLoop);
@@ -205,7 +205,8 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
       voidSigner,
       contract,
       beaconUpdateData.beaconId,
-      prepareGoOptions(startTime, totalTimeout)
+      prepareGoOptions(startTime, totalTimeout),
+      logOptionsBeaconId
     );
     if (!onChainData) {
       continue;
@@ -274,7 +275,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
       return;
     }
 
-    logger.warn(
+    logger.info(
       `Beacon successfully updated with value ${newBeaconValue}. Tx hash ${tx.data.hash}.`,
       logOptionsBeaconId
     );
@@ -291,14 +292,21 @@ export const readOnChainBeaconData = async (
   voidSigner: ethers.VoidSigner,
   dapiServer: DapiServer,
   beaconId: string,
-  goOptions: GoAsyncOptions
+  goOptions: GoAsyncOptions,
+  logOptions: LogOptionsOverride
 ): Promise<OnChainBeaconData | null> => {
+  const logOptionsDapiServerAddress = {
+    ...logOptions,
+    additional: { ...logOptions.additional, 'Dapi-Server': dapiServer.address },
+  };
+
   const goDataFeed = await go(() => dapiServer.connect(voidSigner).readDataFeedWithId(beaconId), {
     ...goOptions,
-    onAttemptError: (goError) => logger.log(`Failed attempt to read data feed. Error: ${goError.error}`),
+    onAttemptError: (goError) =>
+      logger.warn(`Failed attempt to read data feed. Error: ${goError.error}`, logOptionsDapiServerAddress),
   });
   if (!goDataFeed.success) {
-    logger.log(`Unable to read data feed. Error: ${goDataFeed.error}`);
+    logger.warn(`Unable to read data feed. Error: ${goDataFeed.error}`, logOptionsDapiServerAddress);
     return null;
   }
 

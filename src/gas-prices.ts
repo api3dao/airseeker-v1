@@ -101,7 +101,7 @@ export const getGasPrice = async (provider: Provider, goOptions: GoAsyncOptions)
     const gweiPrice = node.evm.weiToGwei(gasTarget.gasPrice!);
     gasTargetMessage = `Gas price (legacy) set to ${gweiPrice} Gwei`;
   }
-  logger.log(gasTargetMessage, logOptionsChainId);
+  logger.info(gasTargetMessage, logOptionsChainId);
 
   return gasTarget;
 };

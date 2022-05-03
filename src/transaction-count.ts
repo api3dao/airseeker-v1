@@ -27,7 +27,7 @@ export const getTransactionCount = async (
   }
 
   const transactionCount = goTransactionCount.data;
-  logger.log(`Transaction count is ${transactionCount}`, logOptionsSponsorWallet);
+  logger.info(`Transaction count is ${transactionCount}`, logOptionsSponsorWallet);
 
   return transactionCount;
 };
