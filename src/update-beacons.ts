@@ -199,24 +199,19 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
       beaconUpdateData.beaconId,
       prepareGoOptions(startTime, totalTimeout)
     );
-    if (!onChainData.success) {
-      logger.log(`Unable to read data feed. Error: ${onChainData.error}`);
+    if (!onChainData) {
       continue;
     }
 
     // Check signed data is newer than on chain value
-    const isDataFresh = checkSignedDataFreshness(onChainData.data, newBeaconResponse);
+    const isDataFresh = checkSignedDataFreshness(onChainData, newBeaconResponse);
     if (!isDataFresh) {
       logger.log(`Sign data older then on chain record. Skipping.`);
       continue;
     }
 
     // Check beacon condition
-    const shouldUpdate = await checkUpdateCondition(
-      onChainData.data,
-      beaconUpdateData.deviationThreshold,
-      newBeaconValue
-    );
+    const shouldUpdate = await checkUpdateCondition(onChainData, beaconUpdateData.deviationThreshold, newBeaconValue);
     if (shouldUpdate === null) {
       logger.log(`Unable to fetch current beacon value for beacon with ID ${beaconUpdateData.beaconId}.`);
       // This can happen only if we reach the total timeout so it makes no sense to continue with the rest of the beacons
@@ -274,6 +269,10 @@ export const readOnChainBeaconData = async (
     ...goOptions,
     onAttemptError: (goError) => logger.log(`Failed attempt to read data feed. Error: ${goError.error}`),
   });
+  if (!goDataFeed.success) {
+    logger.log(`Unable to read data feed. Error: ${goDataFeed.error}`);
+    return null;
+  }
 
-  return goDataFeed;
+  return goDataFeed.data;
 };

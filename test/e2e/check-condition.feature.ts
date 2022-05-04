@@ -1,7 +1,6 @@
 import { ethers } from 'ethers';
 import * as hre from 'hardhat';
 import { DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol-v1';
-import { assertGoSuccess } from '@api3/promise-utils';
 import { checkUpdateCondition, OnChainBeaconData } from '../../src/check-condition';
 import { deployAndUpdateSubscriptions } from '../setup/deployment';
 import { readOnChainBeaconData } from '../../src/update-beacons';
@@ -33,9 +32,7 @@ describe('checkUpdateCondition', () => {
       ethers.utils.solidityPack(['address', 'bytes32'], [airnodeWallet.address, templateIdETH])
     );
 
-    const goReadChain = await readOnChainBeaconData(voidSigner, dapiServer, beaconId, {});
-    assertGoSuccess(goReadChain);
-    onChainValue = goReadChain.data;
+    onChainValue = await readOnChainBeaconData(voidSigner, dapiServer, beaconId, {});
   });
 
   it('returns true for increase above the deviationThreshold', async () => {

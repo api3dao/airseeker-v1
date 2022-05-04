@@ -25,12 +25,9 @@ it('readOnChainBeaconData', async () => {
     new ethers.providers.JsonRpcProvider(providerUrl)
   );
 
-  const onChainBeacon = await readOnChainBeaconData(voidSigner, dapiServer, 'some-id', { retries: 100_000 });
+  const onChainBeaconData = await readOnChainBeaconData(voidSigner, dapiServer, 'some-id', { retries: 100_000 });
 
-  expect(onChainBeacon).toEqual({
-    data: feedValue,
-    success: true,
-  });
+  expect(onChainBeaconData).toEqual(feedValue);
   expect(logger.log).toHaveBeenCalledTimes(2);
   expect(logger.log).toHaveBeenNthCalledWith(1, 'Failed attempt to read data feed. Error: Error: cannot read chain');
   expect(logger.log).toHaveBeenNthCalledWith(2, 'Failed attempt to read data feed. Error: Error: some other error');
