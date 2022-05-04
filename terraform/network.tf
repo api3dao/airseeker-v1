@@ -1,26 +1,19 @@
-resource "aws_vpc" "airseeker_aws_vpc" {
-  cidr_block           = var.vpc_cidr_block
-  enable_dns_hostnames = true
-  enable_dns_support   = true
-  tags = {
-    Name        = "${var.app_name}-vpc"
-    Environment = var.app_environment
-  }
+data "aws_vpc" "default_vpc" {
+  default = true
 }
 
-resource "aws_internet_gateway" "airseeker_aws_igw" {
-  vpc_id = aws_vpc.airseeker_aws_vpc.id
-  tags = {
-    Name        = "${var.app_name}-igw"
-    Environment = var.app_environment
-  }
-
+data "aws_nat_gateway" "default_ngw" {
+  vpc_id = data.aws_vpc.default_vpc.id
 }
 
-resource "aws_subnet" "private" {
-  vpc_id            = aws_vpc.airseeker_aws_vpc.id
-  count             = length(var.private_subnets)
-  cidr_block        = element(var.private_subnets, count.index)
+resource "aws_subnet" "airseeker_private_sn" {
+  count  = length(var.availability_zones)
+  vpc_id = data.aws_vpc.default_vpc.id
+  # The current default VPC has the IP CIDR of 172.31.0.0/16.
+  # To avoid collision with other subnets we currently have we want to start at
+  # 172.31.100.0/28, subnet containing 14 IP addresses, and potentially jumping
+  # in increments of that size.
+  cidr_block        = cidrsubnet(data.aws_vpc.default_vpc.cidr_block, 12, 1600 + count.index)
   availability_zone = element(var.availability_zones, count.index)
 
   tags = {
@@ -29,70 +22,26 @@ resource "aws_subnet" "private" {
   }
 }
 
-resource "aws_subnet" "public" {
-  vpc_id                  = aws_vpc.airseeker_aws_vpc.id
-  count                   = length(var.public_subnets)
-  cidr_block              = element(var.public_subnets, count.index)
-  availability_zone       = element(var.availability_zones, count.index)
-  map_public_ip_on_launch = true
-
-  tags = {
-    Name        = "${var.app_name}-public-subnet-${count.index + 1}"
-    Environment = var.app_environment
-  }
+resource "aws_route_table" "airseeker_private_rt" {
+  vpc_id = data.aws_vpc.default_vpc.id
 }
 
-resource "aws_eip" "airseeker_aws_eip" {
-  count = length(var.private_subnets)
-  vpc   = true
-}
-
-resource "aws_nat_gateway" "airseeker_aws_ngw" {
-  count         = length(var.private_subnets)
-  allocation_id = element(aws_eip.airseeker_aws_eip.*.id, count.index)
-  subnet_id     = element(aws_subnet.public.*.id, count.index)
-  depends_on    = [aws_internet_gateway.airseeker_aws_igw]
-}
-
-resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.airseeker_aws_vpc.id
-}
-
-resource "aws_route" "public" {
-  route_table_id         = aws_route_table.public.id
+resource "aws_route" "airseeker_private_r" {
+  route_table_id         = aws_route_table.airseeker_private_rt.id
   destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = aws_internet_gateway.airseeker_aws_igw.id
+  nat_gateway_id         = data.aws_nat_gateway.default_ngw.id
 }
 
-
-resource "aws_route_table" "private" {
-  count  = length(var.private_subnets)
-  vpc_id = aws_vpc.airseeker_aws_vpc.id
-}
-
-resource "aws_route" "private" {
-  count                  = length(compact(var.private_subnets))
-  route_table_id         = element(aws_route_table.private.*.id, count.index)
-  destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = element(aws_nat_gateway.airseeker_aws_ngw.*.id, count.index)
-}
-
-resource "aws_route_table_association" "private" {
-  count          = length(var.private_subnets)
-  subnet_id      = element(aws_subnet.private.*.id, count.index)
-  route_table_id = element(aws_route_table.private.*.id, count.index)
-}
-
-resource "aws_route_table_association" "public" {
-  count          = length(var.public_subnets)
-  subnet_id      = element(aws_subnet.public.*.id, count.index)
-  route_table_id = aws_route_table.public.id
+resource "aws_route_table_association" "airseeker_private_rta" {
+  count          = length(var.availability_zones)
+  subnet_id      = element(aws_subnet.airseeker_private_sn.*.id, count.index)
+  route_table_id = aws_route_table.airseeker_private_rt.id
 }
 
 resource "aws_security_group" "airseeker_aws_security_group" {
   name        = "${local.resource_prefix}-ecs-sg"
   description = "Allow only outgoing traffic"
-  vpc_id      = aws_vpc.airseeker_aws_vpc.id
+  vpc_id      = data.aws_vpc.default_vpc.id
 
   egress {
     from_port        = 0
