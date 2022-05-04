@@ -1,5 +1,4 @@
 import { ethers } from 'ethers';
-import { SignedData } from './validation';
 
 // Number that represents 100% is chosen to avoid overflows in DapiServer's
 // `calculateUpdateInPercentage()`. Since the reported data needs to fit
@@ -16,18 +15,12 @@ export const calculateUpdateInPercentage = (initialValue: ethers.BigNumber, upda
   return absoluteDelta.mul(ethers.BigNumber.from(HUNDRED_PERCENT)).div(absoluteInitialValue);
 };
 
-export interface OnChainBeaconData {
-  value: ethers.BigNumber;
-  timestamp: number;
-}
-
 export const checkUpdateCondition = async (
-  onChainData: OnChainBeaconData,
+  onChainVale: ethers.BigNumber,
   deviationThreshold: number,
   apiValue: ethers.BigNumber
 ): Promise<boolean> => {
-  const { value, timestamp: _timestamp } = onChainData;
-  const updateInPercentage = calculateUpdateInPercentage(value, apiValue);
+  const updateInPercentage = calculateUpdateInPercentage(onChainVale, apiValue);
   const threshold = ethers.BigNumber.from(Math.trunc(deviationThreshold * HUNDRED_PERCENT)).div(
     ethers.BigNumber.from(100)
   );
@@ -42,6 +35,6 @@ export const checkUpdateCondition = async (
  * https://github.com/api3dao/airnode-protocol-v1/blob/e0d778fabff0df888987a6db31498c93ee2f6219/contracts/dapis/DapiServer.sol#L867
  * This can happen if the gateway or Airseeker is down and Airkeeper does the updates instead.
  */
-export const checkSignedDataFreshness = (onChainData: OnChainBeaconData, signedData: SignedData) => {
-  return parseInt(signedData.data.timestamp, 10) > onChainData.timestamp;
+export const checkSignedDataFreshness = (onChainTimestamp: number, signedDataTimestamp: string) => {
+  return onChainTimestamp < parseInt(signedDataTimestamp, 10);
 };

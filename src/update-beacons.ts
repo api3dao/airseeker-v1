@@ -204,14 +204,18 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
     }
 
     // Check signed data is newer than on chain value
-    const isDataFresh = checkSignedDataFreshness(onChainData, newBeaconResponse);
+    const isDataFresh = checkSignedDataFreshness(onChainData.timestamp, newBeaconResponse.data.timestamp);
     if (!isDataFresh) {
       logger.log(`Sign data older then on chain record. Skipping.`);
       continue;
     }
 
     // Check beacon condition
-    const shouldUpdate = await checkUpdateCondition(onChainData, beaconUpdateData.deviationThreshold, newBeaconValue);
+    const shouldUpdate = await checkUpdateCondition(
+      onChainData.value,
+      beaconUpdateData.deviationThreshold,
+      newBeaconValue
+    );
     if (shouldUpdate === null) {
       logger.log(`Unable to fetch current beacon value for beacon with ID ${beaconUpdateData.beaconId}.`);
       // This can happen only if we reach the total timeout so it makes no sense to continue with the rest of the beacons
@@ -259,12 +263,17 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
   }
 };
 
+export interface OnChainBeaconData {
+  value: ethers.BigNumber;
+  timestamp: number;
+}
+
 export const readOnChainBeaconData = async (
   voidSigner: ethers.VoidSigner,
   dapiServer: DapiServer,
   beaconId: string,
   goOptions: GoAsyncOptions
-) => {
+): Promise<OnChainBeaconData | null> => {
   const goDataFeed = await go(() => dapiServer.connect(voidSigner).readDataFeedWithId(beaconId), {
     ...goOptions,
     onAttemptError: (goError) => logger.log(`Failed attempt to read data feed. Error: ${goError.error}`),
