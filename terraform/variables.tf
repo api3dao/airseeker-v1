@@ -64,26 +64,8 @@ variable "log_retention_period" {
   default     = "180"
 }
 
-variable "vpc_cidr_block" {
-  description = "The VPC's CIDR block"
-  type        = string
-  default     = "10.0.0.0/16"
-}
-
 variable "availability_zones" {
-  description = "A comma-separated list of availability zones, defaults to all AZ of the region, if set to something other than the defaults, both private_subnets and public_subnets have to be defined as well"
+  description = "A comma-separated list of availability zones, must match the AWS region, there will be as many subnets created as availability zones defined"
   type        = list(string)
-  default     = ["us-east-1a", "us-east-1b", "us-east-1c"]
-}
-
-variable "private_subnets" {
-  description = "A list of CIDRs for private subnets in your VPC, must be set if the cidr variable is defined, needs to have as many elements as there are availability zones"
-  type        = list(string)
-  default     = ["10.0.0.0/24", "10.0.1.0/24", "10.0.2.0/24"]
-}
-
-variable "public_subnets" {
-  description = "A list of CIDRs for public subnets in your VPC, must be set if the cidr variable is defined, needs to have as many elements as there are availability zones"
-  type        = list(string)
-  default     = ["10.0.100.0/24", "10.0.101.0/24", "10.0.102.0/24"]
+  default     = ["us-east-1a"]
 }

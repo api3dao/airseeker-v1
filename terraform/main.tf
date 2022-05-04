@@ -80,7 +80,7 @@ resource "aws_ecs_service" "airkeeper_ecs_service" {
   desired_count   = var.ecs_application_count
 
   network_configuration {
-    subnets          = aws_subnet.private.*.id
+    subnets          = aws_subnet.airseeker_private_sn.*.id
     security_groups  = [aws_security_group.airseeker_aws_security_group.id]
     assign_public_ip = false
   }
