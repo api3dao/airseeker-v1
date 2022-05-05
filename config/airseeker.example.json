@@ -28,6 +28,11 @@
           "unit": "gwei"
         },
         "baseFeeMultiplier": 2
+      },
+      "gasOracle": {
+        "sampleBlockCount": 20,
+        "percentile": 60,
+        "updateInterval": 20
       }
     },
     "3": {
