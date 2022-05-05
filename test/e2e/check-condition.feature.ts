@@ -3,6 +3,7 @@ import * as hre from 'hardhat';
 import { DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol-v1';
 import { checkUpdateCondition } from '../../src/check-condition';
 import { deployAndUpdateSubscriptions } from '../setup/deployment';
+import { readOnChainBeaconData, OnChainBeaconData } from '../../src/update-beacons';
 
 // Jest version 27 has a bug where jest.setTimeout does not work correctly inside describe or test blocks
 // https://github.com/facebook/jest/issues/11607
@@ -12,11 +13,12 @@ const providerUrl = 'http://127.0.0.1:8545/';
 const provider = new ethers.providers.JsonRpcProvider(providerUrl);
 const voidSigner = new ethers.VoidSigner(ethers.constants.AddressZero, provider);
 const dapiServer = DapiServerFactory.connect('0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0', provider);
-const goOptions = {};
 
 const apiValue = 723.39202;
 const _times = 1_000_000;
 const deviationThreshold = 0.2;
+
+let onChainValue: OnChainBeaconData;
 
 describe('checkUpdateCondition', () => {
   let beaconId: string;
@@ -29,16 +31,15 @@ describe('checkUpdateCondition', () => {
     beaconId = ethers.utils.keccak256(
       ethers.utils.solidityPack(['address', 'bytes32'], [airnodeWallet.address, templateIdETH])
     );
+
+    onChainValue = (await readOnChainBeaconData(voidSigner, dapiServer, beaconId, {}))!;
   });
 
   it('returns true for increase above the deviationThreshold', async () => {
     const checkResult = await checkUpdateCondition(
-      voidSigner,
-      dapiServer,
-      beaconId,
+      onChainValue.value,
       deviationThreshold,
-      ethers.BigNumber.from(Math.floor(apiValue * (1 + 0.3 / 100) * _times)),
-      goOptions
+      ethers.BigNumber.from(Math.floor(apiValue * (1 + 0.3 / 100) * _times))
     );
 
     expect(checkResult).toEqual(true);
@@ -46,12 +47,9 @@ describe('checkUpdateCondition', () => {
 
   it('returns false for increase below the deviationThreshold', async () => {
     const checkResult = await checkUpdateCondition(
-      voidSigner,
-      dapiServer,
-      beaconId,
+      onChainValue.value,
       deviationThreshold,
-      ethers.BigNumber.from(Math.floor(apiValue * (1 + 0.1 / 100) * _times)),
-      goOptions
+      ethers.BigNumber.from(Math.floor(apiValue * (1 + 0.1 / 100) * _times))
     );
 
     expect(checkResult).toEqual(false);
@@ -59,12 +57,9 @@ describe('checkUpdateCondition', () => {
 
   it('returns true for decrease above the deviationThreshold', async () => {
     const checkResult = await checkUpdateCondition(
-      voidSigner,
-      dapiServer,
-      beaconId,
+      onChainValue.value,
       deviationThreshold,
-      ethers.BigNumber.from(Math.floor(apiValue * (1 - 0.3 / 100) * _times)),
-      goOptions
+      ethers.BigNumber.from(Math.floor(apiValue * (1 - 0.3 / 100) * _times))
     );
 
     expect(checkResult).toEqual(true);
@@ -72,12 +67,9 @@ describe('checkUpdateCondition', () => {
 
   it('returns false for decrease below the deviationThreshold', async () => {
     const checkResult = await checkUpdateCondition(
-      voidSigner,
-      dapiServer,
-      beaconId,
+      onChainValue.value,
       deviationThreshold,
-      ethers.BigNumber.from(Math.floor(apiValue * (1 - 0.1 / 100) * _times)),
-      goOptions
+      ethers.BigNumber.from(Math.floor(apiValue * (1 - 0.1 / 100) * _times))
     );
 
     expect(checkResult).toEqual(false);
@@ -85,12 +77,9 @@ describe('checkUpdateCondition', () => {
 
   it('returns false for no change', async () => {
     const checkResult = await checkUpdateCondition(
-      voidSigner,
-      dapiServer,
-      beaconId,
+      onChainValue.value,
       deviationThreshold,
-      ethers.BigNumber.from(apiValue * _times),
-      goOptions
+      ethers.BigNumber.from(apiValue * _times)
     );
 
     expect(checkResult).toEqual(false);

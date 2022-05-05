@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import { isEmpty } from 'lodash';
-import { DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol-v1';
+import { DapiServer__factory as DapiServerFactory, DapiServer } from '@api3/airnode-protocol-v1';
 import { go, GoAsyncOptions } from '@api3/promise-utils';
 import { BeaconUpdate } from './validation';
 import { getState, Provider } from './state';
@@ -8,7 +8,7 @@ import { logger } from './logging';
 import { getGasPrice } from './gas-prices';
 import { getCurrentBlockNumber } from './block-number';
 import { getTransactionCount } from './transaction-count';
-import { checkUpdateCondition } from './check-condition';
+import { checkSignedDataFreshness, checkUpdateCondition } from './check-condition';
 import { deriveSponsorWalletFromMnemonic, shortenAddress, sleep } from './utils';
 import {
   GAS_LIMIT,
@@ -193,14 +193,28 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
       continue;
     }
 
-    // Check beacon condition
-    const shouldUpdate = await checkUpdateCondition(
+    const onChainData = await readOnChainBeaconData(
       voidSigner,
       contract,
       beaconUpdateData.beaconId,
-      beaconUpdateData.deviationThreshold,
-      newBeaconValue,
       prepareGoOptions(startTime, totalTimeout)
+    );
+    if (!onChainData) {
+      continue;
+    }
+
+    // Check signed data is newer than on chain value
+    const isDataFresh = checkSignedDataFreshness(onChainData.timestamp, newBeaconResponse.data.timestamp);
+    if (!isDataFresh) {
+      logger.log(`Sign data older then on chain record. Skipping.`);
+      continue;
+    }
+
+    // Check beacon condition
+    const shouldUpdate = await checkUpdateCondition(
+      onChainData.value,
+      beaconUpdateData.deviationThreshold,
+      newBeaconValue
     );
     if (shouldUpdate === null) {
       logger.log(`Unable to fetch current beacon value for beacon with ID ${beaconUpdateData.beaconId}.`);
@@ -243,8 +257,31 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
     }
 
     logger.log(
-      `Beacon with ID ${beaconUpdateData.beaconId} sucessfully updated with value ${newBeaconValue}. Tx hash ${tx.data.hash}.`
+      `Beacon with ID ${beaconUpdateData.beaconId} successfully updated with value ${newBeaconValue}. Tx hash ${tx.data.hash}.`
     );
     nonce++;
   }
+};
+
+export interface OnChainBeaconData {
+  value: ethers.BigNumber;
+  timestamp: number;
+}
+
+export const readOnChainBeaconData = async (
+  voidSigner: ethers.VoidSigner,
+  dapiServer: DapiServer,
+  beaconId: string,
+  goOptions: GoAsyncOptions
+): Promise<OnChainBeaconData | null> => {
+  const goDataFeed = await go(() => dapiServer.connect(voidSigner).readDataFeedWithId(beaconId), {
+    ...goOptions,
+    onAttemptError: (goError) => logger.log(`Failed attempt to read data feed. Error: ${goError.error}`),
+  });
+  if (!goDataFeed.success) {
+    logger.log(`Unable to read data feed. Error: ${goDataFeed.error}`);
+    return null;
+  }
+
+  return goDataFeed.data;
 };
