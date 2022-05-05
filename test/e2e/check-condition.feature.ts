@@ -1,10 +1,9 @@
 import { ethers } from 'ethers';
 import * as hre from 'hardhat';
 import { DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol-v1';
-import { assertGoSuccess } from '@api3/promise-utils';
-import { checkUpdateCondition, OnChainBeaconData } from '../../src/check-condition';
+import { checkUpdateCondition } from '../../src/check-condition';
 import { deployAndUpdateSubscriptions } from '../setup/deployment';
-import { readOnChainBeaconData } from '../../src/update-beacons';
+import { readOnChainBeaconData, OnChainBeaconData } from '../../src/update-beacons';
 
 // Jest version 27 has a bug where jest.setTimeout does not work correctly inside describe or test blocks
 // https://github.com/facebook/jest/issues/11607
@@ -33,14 +32,12 @@ describe('checkUpdateCondition', () => {
       ethers.utils.solidityPack(['address', 'bytes32'], [airnodeWallet.address, templateIdETH])
     );
 
-    const goReadChain = await readOnChainBeaconData(voidSigner, dapiServer, beaconId, {});
-    assertGoSuccess(goReadChain);
-    onChainValue = goReadChain.data;
+    onChainValue = (await readOnChainBeaconData(voidSigner, dapiServer, beaconId, {}))!;
   });
 
   it('returns true for increase above the deviationThreshold', async () => {
     const checkResult = await checkUpdateCondition(
-      onChainValue,
+      onChainValue.value,
       deviationThreshold,
       ethers.BigNumber.from(Math.floor(apiValue * (1 + 0.3 / 100) * _times))
     );
@@ -50,7 +47,7 @@ describe('checkUpdateCondition', () => {
 
   it('returns false for increase below the deviationThreshold', async () => {
     const checkResult = await checkUpdateCondition(
-      onChainValue,
+      onChainValue.value,
       deviationThreshold,
       ethers.BigNumber.from(Math.floor(apiValue * (1 + 0.1 / 100) * _times))
     );
@@ -60,7 +57,7 @@ describe('checkUpdateCondition', () => {
 
   it('returns true for decrease above the deviationThreshold', async () => {
     const checkResult = await checkUpdateCondition(
-      onChainValue,
+      onChainValue.value,
       deviationThreshold,
       ethers.BigNumber.from(Math.floor(apiValue * (1 - 0.3 / 100) * _times))
     );
@@ -70,7 +67,7 @@ describe('checkUpdateCondition', () => {
 
   it('returns false for decrease below the deviationThreshold', async () => {
     const checkResult = await checkUpdateCondition(
-      onChainValue,
+      onChainValue.value,
       deviationThreshold,
       ethers.BigNumber.from(Math.floor(apiValue * (1 - 0.1 / 100) * _times))
     );
@@ -80,7 +77,7 @@ describe('checkUpdateCondition', () => {
 
   it('returns false for no change', async () => {
     const checkResult = await checkUpdateCondition(
-      onChainValue,
+      onChainValue.value,
       deviationThreshold,
       ethers.BigNumber.from(apiValue * _times)
     );

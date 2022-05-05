@@ -1,11 +1,10 @@
-import { BigNumber, ethers } from 'ethers';
+import { ethers } from 'ethers';
 import {
   calculateUpdateInPercentage,
   checkSignedDataFreshness,
   checkOnchainDataFreshness,
   checkUpdateCondition,
   HUNDRED_PERCENT,
-  OnChainBeaconData,
 } from './check-condition';
 import { DEFAULT_LOG_OPTIONS } from './constants';
 import { State, updateState } from './state';
@@ -61,49 +60,40 @@ describe('calculateUpdateInPercentage', () => {
 });
 
 describe('checkUpdateCondition', () => {
-  const onChainData: OnChainBeaconData = {
-    value: ethers.BigNumber.from(500),
-    timestamp: getUnixTimestamp('2019-3-21'),
-  };
+  const onChainValue = ethers.BigNumber.from(500);
 
   it('reads dapiserver value and checks the threshold condition to be true for increase', async () => {
-    const shouldUpdate = await checkUpdateCondition(onChainData, 10, ethers.BigNumber.from(560));
+    const shouldUpdate = await checkUpdateCondition(onChainValue, 10, ethers.BigNumber.from(560));
 
     expect(shouldUpdate).toEqual(true);
   });
 
   it('reads dapiserver value and checks the threshold condition to be true for decrease', async () => {
-    const shouldUpdate = await checkUpdateCondition(onChainData, 10, ethers.BigNumber.from(440));
+    const shouldUpdate = await checkUpdateCondition(onChainValue, 10, ethers.BigNumber.from(440));
 
     expect(shouldUpdate).toEqual(true);
   });
 
   it('reads dapiserver value and checks the threshold condition to be false', async () => {
-    const shouldUpdate = await checkUpdateCondition(onChainData, 10, ethers.BigNumber.from(480));
+    const shouldUpdate = await checkUpdateCondition(onChainValue, 10, ethers.BigNumber.from(480));
 
     expect(shouldUpdate).toEqual(false);
   });
 
   it('handles correctly bad JS math', async () => {
-    await expect(checkUpdateCondition(onChainData, 0.14, ethers.BigNumber.from(560))).resolves.not.toThrow();
+    await expect(checkUpdateCondition(onChainValue, 0.14, ethers.BigNumber.from(560))).resolves.not.toThrow();
   });
 });
 
 describe('checkSignedDataFreshness', () => {
   it('returns true if signed data gateway is newer than on chain record', () => {
-    const isFresh = checkSignedDataFreshness(
-      { value: BigNumber.from('123'), timestamp: getUnixTimestamp('2022-4-28') },
-      validSignedData
-    );
+    const isFresh = checkSignedDataFreshness(getUnixTimestamp('2022-4-28'), validSignedData.data.timestamp);
 
     expect(isFresh).toBe(false);
   });
 
   it('returns false if signed data gateway is older than on chain record', () => {
-    const isFresh = checkSignedDataFreshness(
-      { value: BigNumber.from('123'), timestamp: getUnixTimestamp('2019-4-28') },
-      validSignedData
-    );
+    const isFresh = checkSignedDataFreshness(getUnixTimestamp('2019-4-28'), validSignedData.data.timestamp);
 
     expect(isFresh).toBe(true);
   });

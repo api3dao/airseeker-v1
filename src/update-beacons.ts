@@ -199,23 +199,19 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
       beaconUpdateData.beaconId,
       prepareGoOptions(startTime, totalTimeout)
     );
-    if (!onChainData.success) {
-      logger.log(`Unable to read data feed. Error: ${onChainData.error}`);
+    if (!onChainData) {
       continue;
     }
 
     // Check that signed data is newer than on chain value
-    const isSignedDataFresh = checkSignedDataFreshness(onChainData.data, newBeaconResponse);
+    const isSignedDataFresh = checkSignedDataFreshness(onChainData.timestamp, newBeaconResponse.data.timestamp);
     if (!isSignedDataFresh) {
       logger.log(`Signed data older than on chain record for beacon with ID ${beaconUpdateData.beaconId}. Skipping.`);
       continue;
     }
 
     // Check that on chain data is newer than hearbeat interval
-    const isOnchainDataFresh = checkOnchainDataFreshness(
-      onChainData.data.timestamp,
-      beaconUpdateData.heartbeatInterval
-    );
+    const isOnchainDataFresh = checkOnchainDataFreshness(onChainData.timestamp, beaconUpdateData.heartbeatInterval);
     if (!isOnchainDataFresh) {
       logger.log(
         `On chain data timestamp older than heartbeat for beacon with ID ${beaconUpdateData.beaconId}. Updating without condition check.`
@@ -223,7 +219,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
     } else {
       // Check beacon condition
       const shouldUpdate = await checkUpdateCondition(
-        onChainData.data,
+        onChainData.value,
         beaconUpdateData.deviationThreshold,
         newBeaconValue
       );
@@ -236,7 +232,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
         logger.log(`Deviation threshold not reached for beacon with ID ${beaconUpdateData.beaconId}. Skipping.`);
         continue;
       }
-      
+
       logger.log(`Deviation threshold reached for beacon with ID ${beaconUpdateData.beaconId}. Updating.`);
     }
 
@@ -277,16 +273,25 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
   }
 };
 
+export interface OnChainBeaconData {
+  value: ethers.BigNumber;
+  timestamp: number;
+}
+
 export const readOnChainBeaconData = async (
   voidSigner: ethers.VoidSigner,
   dapiServer: DapiServer,
   beaconId: string,
   goOptions: GoAsyncOptions
-) => {
+): Promise<OnChainBeaconData | null> => {
   const goDataFeed = await go(() => dapiServer.connect(voidSigner).readDataFeedWithId(beaconId), {
     ...goOptions,
     onAttemptError: (goError) => logger.log(`Failed attempt to read data feed. Error: ${goError.error}`),
   });
+  if (!goDataFeed.success) {
+    logger.log(`Unable to read data feed. Error: ${goDataFeed.error}`);
+    return null;
+  }
 
-  return goDataFeed;
+  return goDataFeed.data;
 };
