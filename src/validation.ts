@@ -20,11 +20,20 @@ export const beaconsSchema = z.record(evmBeaconIdSchema, beaconSchema);
 // TODO: Will be refined once we start supporting beacon sets
 export const beaconSetsSchema = emptyObjectSchema;
 
+export const gasOracleSchema = z
+  .object({
+    sampleBlockCount: z.number().int().positive().optional(),
+    percentile: z.number().int().positive().optional(),
+    updateInterval: z.number().int().positive().optional(),
+  })
+  .optional();
+
 export const chainSchema = z
   .object({
     contracts: z.record(evmAddressSchema),
     providers: z.record(providerSchema),
     options: chainOptionsSchema,
+    gasOracle: gasOracleSchema,
   })
   .strict();
 

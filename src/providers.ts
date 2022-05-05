@@ -20,7 +20,10 @@ export const initializeProviders = () => {
       return acc;
     }
 
-    const chainProviders = Object.values(chain.providers).map((provider) => initializeProvider(chainId, provider.url));
+    const chainProviders = Object.entries(chain.providers).map(([providerName, provider]) => ({
+      providerName,
+      ...initializeProvider(chainId, provider.url),
+    }));
 
     return { ...acc, [chainId]: chainProviders };
   }, {});

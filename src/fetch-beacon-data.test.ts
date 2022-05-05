@@ -237,6 +237,7 @@ describe('fetchBeaconDataInLoop', () => {
           stopSignalReceived: true,
           beaconValues: {},
           providers: {},
+          gasOracles: {},
           logOptions: DEFAULT_LOG_OPTIONS,
         };
       } else {
@@ -245,6 +246,7 @@ describe('fetchBeaconDataInLoop', () => {
           stopSignalReceived: false,
           beaconValues: {},
           providers: {},
+          gasOracles: {},
           logOptions: DEFAULT_LOG_OPTIONS,
         };
       }

@@ -2,11 +2,13 @@ import { ethers } from 'ethers';
 import { LogOptions } from '@api3/airnode-utilities';
 import { BeaconId, Config, SignedData } from './validation';
 import { DEFAULT_LOG_OPTIONS } from './constants';
+import { GasOracles } from './gas-oracle';
 
 export type BeaconValueStorage = Record<BeaconId, SignedData>;
 export type Provider = {
   rpcProvider: ethers.providers.StaticJsonRpcProvider;
   chainId: string;
+  providerName: string;
 };
 // chainId => Provider[]
 export type Providers = Record<string, Provider[]>;
@@ -16,6 +18,7 @@ export interface State {
   stopSignalReceived: boolean;
   beaconValues: BeaconValueStorage;
   providers: Providers;
+  gasOracles: GasOracles;
   logOptions: LogOptions;
 }
 
@@ -28,6 +31,7 @@ export const initializeState = (config: Config) => {
     stopSignalReceived: false,
     beaconValues: {},
     providers: {},
+    gasOracles: {},
     logOptions: DEFAULT_LOG_OPTIONS,
   };
 };
