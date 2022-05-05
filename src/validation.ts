@@ -1,5 +1,7 @@
-import { z } from 'zod';
+import { ethers } from 'ethers';
+import { SuperRefinement, z } from 'zod';
 import { chainOptionsSchema, providerSchema } from '@api3/airnode-validator';
+import isNil from 'lodash/isNil';
 
 export const logFormatSchema = z.union([z.literal('json'), z.literal('plain')]);
 export const logLevelSchema = z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARN'), z.literal('ERROR')]);
@@ -30,7 +32,9 @@ export const beaconSetsSchema = emptyObjectSchema;
 
 export const chainSchema = z
   .object({
-    contracts: z.record(evmAddressSchema),
+    contracts: z.record(evmAddressSchema).refine((contracts) => {
+      return !isNil(contracts['DapiServer']);
+    }, 'DapiServer contract address is missing'),
     providers: z.record(providerSchema),
     options: chainOptionsSchema,
   })
@@ -82,6 +86,68 @@ export const triggersSchema = z.object({
   beaconSetUpdates: emptyObjectSchema,
 });
 
+const validateBeacons: SuperRefinement<{ beacons: Beacons; templates: Templates }> = (config, ctx) => {
+  Object.entries(config.beacons).forEach(([beaconId, beacon]) => {
+    // Verify BeaconId
+    const derivedBeaconId = ethers.utils.solidityKeccak256(['address', 'bytes32'], [beacon.airnode, beacon.templateId]);
+    if (derivedBeaconId !== beaconId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Beacon ID "${beaconId}" is invalid`,
+        path: [beaconId],
+      });
+    }
+
+    // Verify TemplateId
+    const template = config.templates[beacon.templateId];
+    if (isNil(template)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Template ID "${beacon.templateId}" is not defined in the config.templates object`,
+        path: [beaconId, 'templateId'],
+      });
+    } else {
+      const derivedTemplateId = ethers.utils.solidityKeccak256(
+        ['bytes32', 'bytes'],
+        [template.endpointId, template.parameters]
+      );
+      if (derivedTemplateId !== beacon.templateId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Template ID "${beacon.templateId}" is invalid`,
+          path: [beaconId, 'templateId'],
+        });
+      }
+    }
+  });
+};
+
+const validateTriggersBeaconUpdates: SuperRefinement<{ beacons: Beacons; chains: Chains; triggers: Triggers }> = (
+  config,
+  ctx
+) => {
+  Object.entries(config.triggers.beaconUpdates).forEach(([chainId, beaconUpdatesPerSponsor]) => {
+    if (!config.chains[chainId]) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Chain ID "${chainId}" is not defined in the config.chains object`,
+        path: ['triggers', 'beaconUpdates', chainId],
+      });
+    }
+    Object.entries(beaconUpdatesPerSponsor).forEach(([sponsorAddress, beaconUpdate]) => {
+      beaconUpdate.beacons.forEach((beacon, index) => {
+        if (!config.beacons[beacon.beaconId]) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Beacon ID "${beacon.beaconId}" is not defined in the config.beacons object`,
+            path: ['triggers', 'beaconUpdates', chainId, sponsorAddress, 'beacons', index],
+          });
+        }
+      });
+    });
+  });
+};
+
 export const configSchema = z
   .object({
     airseekerWalletMnemonic: z.string(),
@@ -93,8 +159,9 @@ export const configSchema = z
     templates: templatesSchema,
     triggers: triggersSchema,
   })
-  .strict();
-
+  .strict()
+  .superRefine(validateBeacons)
+  .superRefine(validateTriggersBeaconUpdates);
 export const encodedValueSchema = z.string().regex(/^0x[a-fA-F0-9]{64}$/);
 export const signatureSchema = z.string().regex(/^0x[a-fA-F0-9]{130}$/);
 export const signedDataSchema = z.object({
