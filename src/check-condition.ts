@@ -38,3 +38,10 @@ export const checkUpdateCondition = async (
 export const checkSignedDataFreshness = (onChainTimestamp: number, signedDataTimestamp: string) => {
   return onChainTimestamp < parseInt(signedDataTimestamp, 10);
 };
+
+/**
+ * Returns true when the on chain data timestamp is newer than the heartbeat interval.
+ */
+export const checkOnchainDataFreshness = (timestamp: number, heartbeatInterval: number) => {
+  return timestamp > Date.now() / 1000 - heartbeatInterval;
+};

@@ -2,6 +2,7 @@ import { ethers } from 'ethers';
 import {
   calculateUpdateInPercentage,
   checkSignedDataFreshness,
+  checkOnchainDataFreshness,
   checkUpdateCondition,
   HUNDRED_PERCENT,
 } from './check-condition';
@@ -85,15 +86,28 @@ describe('checkUpdateCondition', () => {
 });
 
 describe('checkSignedDataFreshness', () => {
-  it('returns true if signed data gateway is newer then on chain record', () => {
+  it('returns true if signed data gateway is newer than on chain record', () => {
     const isFresh = checkSignedDataFreshness(getUnixTimestamp('2022-4-28'), validSignedData.data.timestamp);
 
     expect(isFresh).toBe(false);
   });
 
-  it('returns false if signed data gateway is older then on chain record', () => {
+  it('returns false if signed data gateway is older than on chain record', () => {
     const isFresh = checkSignedDataFreshness(getUnixTimestamp('2019-4-28'), validSignedData.data.timestamp);
 
     expect(isFresh).toBe(true);
+  });
+
+  describe('checkOnchainDataFreshness', () => {
+    it('returns true if on chain data timestamp is newer than heartbeat interval', () => {
+      const isFresh = checkOnchainDataFreshness(Date.now() / 1000 - 100, 200);
+
+      expect(isFresh).toEqual(true);
+    });
+    it('returns false if on chain data timestamp is older than heartbeat interval', () => {
+      const isFresh = checkOnchainDataFreshness(Date.now() / 1000 - 300, 200);
+
+      expect(isFresh).toEqual(false);
+    });
   });
 });
