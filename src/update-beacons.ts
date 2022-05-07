@@ -1,7 +1,7 @@
 import { ethers } from 'ethers';
 import { isEmpty } from 'lodash';
 import { DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol-v1';
-import { go, GoAsyncOptions } from '@api3/promise-utils';
+import { go } from '@api3/promise-utils';
 import { BeaconUpdate } from './validation';
 import { getState, Provider } from './state';
 import { logger } from './logging';
@@ -9,18 +9,8 @@ import { getGasPrice } from './gas-prices';
 import { getCurrentBlockNumber } from './block-number';
 import { getTransactionCount } from './transaction-count';
 import { checkUpdateCondition } from './check-condition';
-import { deriveSponsorWalletFromMnemonic, shortenAddress, sleep } from './utils';
-import {
-  GAS_LIMIT,
-  INFINITE_RETRIES,
-  INT224_MAX,
-  INT224_MIN,
-  NO_BEACONS_EXIT_CODE,
-  PROTOCOL_ID,
-  PROVIDER_TIMEOUT_MS,
-  RANDOM_BACKOFF_MAX_MS,
-  RANDOM_BACKOFF_MIN_MS,
-} from './constants';
+import { deriveSponsorWalletFromMnemonic, shortenAddress, sleep, prepareGoOptions } from './utils';
+import { GAS_LIMIT, INT224_MAX, INT224_MIN, NO_BEACONS_EXIT_CODE, PROTOCOL_ID } from './constants';
 
 type ProviderSponsorBeacons = {
   provider: Provider;
@@ -88,17 +78,6 @@ export const updateBeaconsInLoop = async (providerSponsorBeacons: ProviderSponso
     await sleep(waitTime);
   }
 };
-
-const calculateTimeout = (startTime: number, totalTimeout: number) => totalTimeout - (Date.now() - startTime);
-
-// We retry all chain operations with a random back-off infinitely until the next updates cycle
-// TODO: Errors are not displayed with this approach. Problem?
-const prepareGoOptions = (startTime: number, totalTimeout: number): GoAsyncOptions => ({
-  attemptTimeoutMs: PROVIDER_TIMEOUT_MS,
-  totalTimeoutMs: calculateTimeout(startTime, totalTimeout),
-  retries: INFINITE_RETRIES,
-  delay: { type: 'random' as const, minDelayMs: RANDOM_BACKOFF_MIN_MS, maxDelayMs: RANDOM_BACKOFF_MAX_MS },
-});
 
 // We pass return value from `prepareGoOptions` (with calculated timeout) to every `go` call in the function to enforce the update cycle.
 // This solution is not precise but since chain operations are the only ones that actually take some time this should be a good enough solution.

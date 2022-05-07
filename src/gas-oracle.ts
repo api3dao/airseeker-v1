@@ -3,7 +3,7 @@ import { ethers } from 'ethers';
 import { logger } from '@api3/airnode-utilities';
 import { go } from '@api3/promise-utils';
 import { Provider, getState, updateState } from './state';
-import { sleep } from './utils';
+import { prepareGoOptions, sleep } from './utils';
 import {
   DEFAULT_GAS_ORACLE_UPDATE_INTERVAL,
   DEFAULT_GAS_PRICE_PERCENTILE,
@@ -20,7 +20,7 @@ interface ProviderBlockData {
   percentileGasPrice: ethers.BigNumber;
 }
 
-interface BlockData {
+export interface BlockData {
   blockNumber: number;
   gasPrices: ethers.BigNumber[];
 }
@@ -30,7 +30,7 @@ export const getChainProviderPercentileGasPrice = (chainId: string, providerName
   return gasOracles[chainId][providerName].percentileGasPrice;
 };
 
-const updateBlockData = (
+export const updateBlockData = (
   newBlockData: BlockData[],
   stateBlockData: BlockData[],
   chainId: string,
@@ -71,19 +71,28 @@ const updateBlockData = (
   }));
 };
 
-const getPercentile = (percentile: number, array: ethers.BigNumber[]) => {
+export const getPercentile = (percentile: number, array: ethers.BigNumber[]) => {
   array.sort((a, b) => (a.gt(b) ? 1 : -1));
 
   const index = Math.ceil(array.length * (percentile / 100)) - 1;
   return array[index];
 };
 
-const fetchUpdateBlockData = async (provider: Provider, sampleBlockCount: number, percentile: number) => {
+export const fetchUpdateBlockData = async (
+  provider: Provider,
+  updateInterval: number,
+  sampleBlockCount: number,
+  percentile: number
+) => {
   const { rpcProvider, chainId, providerName } = provider;
   logger.log(`Fetching blocks on chain with ID ${chainId} for provider with name ${providerName}`);
 
+  const startTime = Date.now();
+  const totalTimeout = updateInterval * 1_000;
+
   // Get latest block
   const goRes = await go(() => rpcProvider.getBlockWithTransactions('latest'), {
+    ...prepareGoOptions(startTime, totalTimeout),
     onAttemptError: (goError) => logger.log(`Failed attempt to get block. Error: ${goError.error}`),
   });
   if (!goRes.success) {
@@ -131,6 +140,7 @@ const fetchUpdateBlockData = async (provider: Provider, sampleBlockCount: number
   while (newBlockData.length < blockCountToFetch) {
     const blockNumberToFetch = latestBlock.number - loopIndex;
     const goRes = await go(() => rpcProvider.getBlockWithTransactions(blockNumberToFetch), {
+      ...prepareGoOptions(startTime, totalTimeout),
       onAttemptError: (goError) => logger.log(`Failed attempt to get block. Error: ${goError.error}`),
     });
     if (!goRes.success) {
@@ -172,7 +182,7 @@ export const fetchBlockDataInLoop = async (provider: Provider) => {
   while (!getState().stopSignalReceived) {
     const startTimestamp = Date.now();
 
-    await fetchUpdateBlockData(provider, sampleBlockCount, percentile);
+    await fetchUpdateBlockData(provider, updateInterval, sampleBlockCount, percentile);
 
     const duration = Date.now() - startTimestamp;
     const waitTime = Math.max(0, updateInterval * 1_000 - duration);
