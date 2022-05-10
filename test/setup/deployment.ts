@@ -115,21 +115,17 @@ export const deployAndUpdateSubscriptions = async () => {
 
   // Wallets
   const airnodeWallet = hre.ethers.Wallet.fromMnemonic(localConfigETH.airnodeMnemonic);
-  const airnodePspSponsorWallet =
-    // node.evm.
-    node.evm
-      .deriveSponsorWalletFromMnemonic(localConfigETH.airnodeMnemonic, roles.sponsor.address, PROTOCOL_ID_PSP)
-      .connect(provider);
+  const airnodePspSponsorWallet = node.evm
+    .deriveSponsorWalletFromMnemonic(localConfigETH.airnodeMnemonic, roles.sponsor.address, PROTOCOL_ID_PSP)
+    .connect(provider);
   await roles.deployer.sendTransaction({
     to: airnodePspSponsorWallet.address,
     value: hre.ethers.utils.parseEther('1'),
   });
 
-  const airseekerSponsorWallet =
-    // node.evm.
-    node.evm
-      .deriveSponsorWalletFromMnemonic(localConfigETH.airnodeMnemonic, roles.sponsor.address, PROTOCOL_ID)
-      .connect(provider);
+  const airseekerSponsorWallet = node.evm
+    .deriveSponsorWalletFromMnemonic(localConfigETH.airnodeMnemonic, roles.sponsor.address, PROTOCOL_ID)
+    .connect(provider);
 
   await roles.deployer.sendTransaction({
     to: airseekerSponsorWallet.address,

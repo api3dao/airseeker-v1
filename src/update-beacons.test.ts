@@ -56,6 +56,7 @@ const config: Config = {
           unit: 'gwei',
         },
         baseFeeMultiplier: 2,
+        fulfillmentGasLimit: 500_000,
       },
     },
     '3': {
@@ -74,6 +75,7 @@ const config: Config = {
           unit: 'gwei',
         },
         baseFeeMultiplier: 2,
+        fulfillmentGasLimit: 500_000,
       },
     },
   },
