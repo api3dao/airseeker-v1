@@ -39,14 +39,13 @@ it('fails if chain is missing DapiServer contract address', () => {
   );
 });
 
-it('fails if beacons.beaconId in beacons is invalid', () => {
+it('fails if derived beaconId is different to beacons.<beaconId>', () => {
   const config: Config = JSON.parse(
     fs.readFileSync(path.join(__dirname, '..', 'config', 'airseeker.example.json'), 'utf8')
   );
   const firstBeaconId = Object.keys(config.beacons)[0];
   const randomBeaconId = ethers.utils.hexlify(ethers.utils.randomBytes(32));
   config.beacons[randomBeaconId] = config.beacons[firstBeaconId];
-  delete config.beacons[firstBeaconId];
   const interpolatedConfig = interpolateSecrets(config, envVariables);
 
   expect(() => configSchema.parse(interpolatedConfig)).toThrow(
@@ -55,41 +54,6 @@ it('fails if beacons.beaconId in beacons is invalid', () => {
         code: 'custom',
         message: `Beacon ID "${randomBeaconId}" is invalid`,
         path: [randomBeaconId],
-      },
-      {
-        code: 'custom',
-        message: `Beacon ID "${firstBeaconId}" is not defined in the config.beacons object`,
-        path: ['triggers', 'beaconUpdates', '1', '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC', 'beacons', 0],
-      },
-      {
-        code: 'custom',
-        message: `Beacon ID "${firstBeaconId}" is not defined in the config.beacons object`,
-        path: ['triggers', 'beaconUpdates', '3', '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC', 'beacons', 0],
-      },
-    ])
-  );
-});
-
-it('fails if derived beaconId is different to beacons.beaconId', () => {
-  const config: Config = JSON.parse(
-    fs.readFileSync(path.join(__dirname, '..', 'config', 'airseeker.example.json'), 'utf8')
-  );
-  const firstBeaconId = Object.keys(config.beacons)[0];
-  const randomTemplateId = ethers.utils.hexlify(ethers.utils.randomBytes(32));
-  config.beacons[firstBeaconId].templateId = randomTemplateId;
-  const interpolatedConfig = interpolateSecrets(config, envVariables);
-
-  expect(() => configSchema.parse(interpolatedConfig)).toThrow(
-    new ZodError([
-      {
-        code: 'custom',
-        message: `Beacon ID "${firstBeaconId}" is invalid`,
-        path: [firstBeaconId],
-      },
-      {
-        code: 'custom',
-        message: `Template ID "${randomTemplateId}" is not defined in the config.templates object`,
-        path: [firstBeaconId, 'templateId'],
       },
     ])
   );
