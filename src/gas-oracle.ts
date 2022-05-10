@@ -27,8 +27,7 @@ export interface BlockData {
 
 export const getChainProviderPercentileGasPrice = (chainId: string, providerName: string) => {
   const { gasOracles } = getState();
-  const gasOracle = gasOracles[chainId][providerName];
-  if (!gasOracle) {
+  if (!gasOracles[chainId] || !gasOracles[chainId][providerName]) {
     return null;
   }
   return gasOracles[chainId][providerName].percentileGasPrice;
