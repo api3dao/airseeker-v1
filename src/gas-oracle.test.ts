@@ -380,6 +380,12 @@ describe('Gas oracle', () => {
     );
   });
 
+  it('returns null for missing chainProviderGasPrice', () => {
+    const chainProviderPercentileGasPrice = api.getChainProviderPercentileGasPrice('invalidChain', 'invalidProvider');
+
+    expect(chainProviderPercentileGasPrice).toEqual(null);
+  });
+
   it('calls fetchUpdateBlockData in a loop', async () => {
     let requestCount = 0;
     jest.spyOn(api, 'fetchUpdateBlockData').mockImplementation(async () => {
