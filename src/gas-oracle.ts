@@ -1,7 +1,7 @@
 import { isEmpty } from 'lodash';
 import { ethers } from 'ethers';
-import { logger } from '@api3/airnode-utilities';
 import { go } from '@api3/promise-utils';
+import { logger } from './logging';
 import { Provider, getState, updateState } from './state';
 import { prepareGoOptions, sleep } from './utils';
 import {
@@ -27,6 +27,10 @@ export interface BlockData {
 
 export const getChainProviderPercentileGasPrice = (chainId: string, providerName: string) => {
   const { gasOracles } = getState();
+  const gasOracle = gasOracles[chainId][providerName];
+  if (!gasOracle) {
+    return null;
+  }
   return gasOracles[chainId][providerName].percentileGasPrice;
 };
 
