@@ -1,12 +1,16 @@
+import { buildBaseOptions, LogOptions, randomHexString } from '@api3/airnode-utilities';
 import { ethers } from 'ethers';
-import { LogOptions } from '@api3/airnode-utilities';
 import { BeaconId, Config, SignedData } from './validation';
-import { DEFAULT_LOG_OPTIONS } from './constants';
+
+export type Id<T> = T & {
+  id: string;
+};
 
 export type BeaconValueStorage = Record<BeaconId, SignedData>;
 export type Provider = {
   rpcProvider: ethers.providers.StaticJsonRpcProvider;
   chainId: string;
+  providerName: string;
 };
 // chainId => Provider[]
 export type Providers = Record<string, Provider[]>;
@@ -28,7 +32,10 @@ export const initializeState = (config: Config) => {
     stopSignalReceived: false,
     beaconValues: {},
     providers: {},
-    logOptions: DEFAULT_LOG_OPTIONS,
+    logOptions: buildBaseOptions(
+      { nodeSettings: { logFormat: config.log.format, logLevel: config.log.level } },
+      { coordinatorId: randomHexString(16) }
+    ),
   };
 };
 

@@ -7,7 +7,7 @@ describe('getCurrentBlockNumber', () => {
   const goOptions = {};
 
   beforeEach(() => {
-    initializeState(null as any); // We don't need airseeker.json file
+    initializeState({ log: { format: 'plain', level: 'INFO' } } as any); // We don't need airseeker.json file
   });
 
   it('returns current block number', async () => {
@@ -17,6 +17,7 @@ describe('getCurrentBlockNumber', () => {
         getBlockNumber: mockGetBlockNumber,
       } as unknown as ethers.providers.StaticJsonRpcProvider,
       chainId,
+      providerName: 'mock-provider',
     };
 
     const blockNumber = await getCurrentBlockNumber(provider, goOptions);
@@ -32,6 +33,7 @@ describe('getCurrentBlockNumber', () => {
         getBlockNumber: mockGetBlockNumber,
       } as unknown as ethers.providers.StaticJsonRpcProvider,
       chainId,
+      providerName: 'mock-provider',
     };
 
     const blockNumber = await getCurrentBlockNumber(provider, goOptions);

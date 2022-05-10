@@ -4,11 +4,14 @@ import * as state from './state';
 import { BeaconUpdate, Config } from './validation';
 import { initializeProviders } from './providers';
 import * as api from './update-beacons';
-import { DEFAULT_LOG_OPTIONS } from './constants';
 import { getUnixTimestamp } from '../test/fixtures';
 
 const config: Config = {
   airseekerWalletMnemonic: 'achieve climb couple wait accident symbol spy blouse reduce foil echo label',
+  log: {
+    format: 'plain',
+    level: 'DEBUG',
+  },
   beacons: {
     '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c': {
       airnode: '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
@@ -217,7 +220,7 @@ describe('updateBeaconsInLoop', () => {
           stopSignalReceived: true,
           beaconValues: {},
           providers: {},
-          logOptions: DEFAULT_LOG_OPTIONS,
+          logOptions: { ...config.log, meta: {} },
         };
       } else {
         return {
@@ -225,7 +228,7 @@ describe('updateBeaconsInLoop', () => {
           stopSignalReceived: false,
           beaconValues: {},
           providers: {},
-          logOptions: DEFAULT_LOG_OPTIONS,
+          logOptions: { ...config.log, meta: {} },
         };
       }
     });
@@ -263,7 +266,7 @@ describe('prepareGoOptions', () => {
 });
 
 it('readOnChainBeaconData', async () => {
-  jest.spyOn(logger, 'log');
+  jest.spyOn(logger, 'warn');
   const feedValue = { value: ethers.BigNumber.from('123'), timestamp: getUnixTimestamp('2019-3-21') };
   const readDataFeedWithIdMock = jest
     .fn()
@@ -272,6 +275,7 @@ it('readOnChainBeaconData', async () => {
     .mockResolvedValue(feedValue);
 
   const dapiServer: any = {
+    address: ethers.utils.getAddress(ethers.utils.hexlify(ethers.utils.randomBytes(20))),
     connect() {
       return this;
     },
@@ -284,10 +288,20 @@ it('readOnChainBeaconData', async () => {
     new ethers.providers.JsonRpcProvider(providerUrl)
   );
 
-  const onChainBeaconData = await api.readOnChainBeaconData(voidSigner, dapiServer, 'some-id', { retries: 100_000 });
+  const onChainBeaconData = await api.readOnChainBeaconData(
+    voidSigner,
+    dapiServer,
+    'some-id',
+    { retries: 100_000 },
+    {}
+  );
 
   expect(onChainBeaconData).toEqual(feedValue);
-  expect(logger.log).toHaveBeenCalledTimes(2);
-  expect(logger.log).toHaveBeenNthCalledWith(1, 'Failed attempt to read data feed. Error: Error: cannot read chain');
-  expect(logger.log).toHaveBeenNthCalledWith(2, 'Failed attempt to read data feed. Error: Error: some other error');
+  expect(logger.warn).toHaveBeenCalledTimes(2);
+  expect(logger.warn).toHaveBeenNthCalledWith(1, 'Failed attempt to read data feed. Error: Error: cannot read chain', {
+    additional: { 'Dapi-Server': dapiServer.address },
+  });
+  expect(logger.warn).toHaveBeenNthCalledWith(2, 'Failed attempt to read data feed. Error: Error: some other error', {
+    additional: { 'Dapi-Server': dapiServer.address },
+  });
 });

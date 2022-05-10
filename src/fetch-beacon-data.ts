@@ -4,7 +4,7 @@ import { go } from '@api3/promise-utils';
 import { logger } from './logging';
 import { getState, updateState } from './state';
 import { makeSignedDataGatewayRequests } from './make-request';
-import { sleep } from './utils';
+import { shortenAddress, sleep } from './utils';
 import {
   GATEWAY_TIMEOUT_MS,
   INFINITE_RETRIES,
@@ -14,18 +14,21 @@ import {
 } from './constants';
 
 export const initiateFetchingBeaconData = async () => {
-  logger.log('Initiating fetching all beacon data');
+  logger.debug('Initiating fetching all beacon data');
   const { config } = getState();
 
   const beaconIdsToUpdate = uniq(
-    Object.values(config.triggers.beaconUpdates).flatMap((beaconUpdatesPerSponsor) => {
-      return Object.values(beaconUpdatesPerSponsor).flatMap((beaconUpdate) => {
+    Object.entries(config.triggers.beaconUpdates).flatMap(([chainId, beaconUpdatesPerSponsor]) => {
+      return Object.entries(beaconUpdatesPerSponsor).flatMap(([sponsorAddress, beaconUpdate]) => {
         const { beacons } = beaconUpdate;
         // TODO: Should be later part of the validation
         const foundBeacons = beacons.filter((beacon) => {
           if (config.beacons[beacon.beaconId]) return true;
 
-          logger.log(`Missing beacon with ID ${beacon.beaconId}. Skipping.`);
+          logger.warn(`Missing beacon with ID ${beacon.beaconId}. Skipping.`, {
+            meta: { chainId },
+            additional: { Sponsor: shortenAddress(sponsorAddress) },
+          });
           return false;
         });
         return foundBeacons.flatMap((b) => b.beaconId);
@@ -34,7 +37,7 @@ export const initiateFetchingBeaconData = async () => {
   );
 
   if (isEmpty(beaconIdsToUpdate)) {
-    logger.log('No beacons to fetch data for found. Stopping.');
+    logger.error('No beacons to fetch data for found. Stopping.');
     process.exit(NO_FETCH_EXIT_CODE);
   }
 
@@ -67,7 +70,8 @@ export const fetchBeaconDataInLoop = async (beaconId: string) => {
 };
 
 export const fetchBeaconData = async (beaconId: string) => {
-  logger.log(`Fetching beacon data for: ${beaconId}`);
+  const logOptionsBeaconId = { additional: { 'Beacon-ID': beaconId } };
+  logger.debug('Fetching beacon data', logOptionsBeaconId);
   const { config } = getState();
 
   const { fetchInterval, airnode, templateId } = config.beacons[beaconId];
@@ -80,19 +84,20 @@ export const fetchBeaconData = async (beaconId: string) => {
     [template.endpointId, template.parameters]
   );
   if (derivedTemplateId !== templateId) {
-    logger.log(`Invalid template ID ${templateId}. Skipping.`);
+    logger.warn(`Invalid template ID ${templateId}. Skipping.`, logOptionsBeaconId);
     return;
   }
 
-  const goRes = await go(() => makeSignedDataGatewayRequests(gateway, template), {
+  const goRes = await go(() => makeSignedDataGatewayRequests(gateway, { ...template, id: templateId }), {
     attemptTimeoutMs: GATEWAY_TIMEOUT_MS,
     retries: INFINITE_RETRIES,
     delay: { type: 'random', minDelayMs: RANDOM_BACKOFF_MIN_MS, maxDelayMs: RANDOM_BACKOFF_MAX_MS },
     totalTimeoutMs: fetchInterval * 1_000,
-    onAttemptError: (goError) => logger.log(`Failed attempt to call signed data gateway. Error: ${goError.error}`),
+    onAttemptError: (goError) =>
+      logger.warn(`Failed attempt to call signed data gateway. Error: ${goError.error}`, logOptionsBeaconId),
   });
   if (!goRes.success) {
-    logger.log(`Unable to call signed data gateway. Error: "${goRes.error}"`);
+    logger.warn(`Unable to call signed data gateway. Error: "${goRes.error}"`, logOptionsBeaconId);
     return;
   }
 
