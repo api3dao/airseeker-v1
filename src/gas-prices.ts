@@ -1,6 +1,7 @@
 // Taken from @api3/airnode-utils so custom retry & timeout options can be used
 
 import * as node from '@api3/airnode-node';
+import * as nodeUtils from '@api3/airnode-utilities';
 import { go, GoAsyncOptions } from '@api3/promise-utils';
 import { BigNumber, ethers } from 'ethers';
 import { getState, Provider } from './state';
@@ -18,13 +19,14 @@ export type EIP1559GasTarget = {
   maxFeePerGas: BigNumber;
 };
 
-export type GasTarget = LegacyGasTarget | EIP1559GasTarget;
+export type GasTarget = { gasLimit?: BigNumber } & (LegacyGasTarget | EIP1559GasTarget);
 
 export const parsePriorityFee = ({ value, unit }: node.PriorityFee) =>
   ethers.utils.parseUnits(value.toString(), unit ?? 'wei');
 
 export const getLegacyGasPrice = async (
   provider: Provider,
+  chainOptions: node.ChainOptions,
   goOptions: GoAsyncOptions
 ): Promise<LegacyGasTarget | null> => {
   const { chainId, rpcProvider, providerName } = provider;
@@ -40,7 +42,11 @@ export const getLegacyGasPrice = async (
     return null;
   }
 
-  return { txType: 'legacy', gasPrice: goGasPrice.data };
+  return {
+    txType: 'legacy',
+    gasPrice: goGasPrice.data,
+    ...nodeUtils.getGasLimit(chainOptions.fulfillmentGasLimit),
+  };
 };
 
 export const getEip1559GasPricing = async (
@@ -72,7 +78,12 @@ export const getEip1559GasPricing = async (
   const baseFeeMultiplier = chainOptions.baseFeeMultiplier ? chainOptions.baseFeeMultiplier : BASE_FEE_MULTIPLIER;
   const maxFeePerGas = block.baseFeePerGas!.mul(BigNumber.from(baseFeeMultiplier)).add(maxPriorityFeePerGas!);
 
-  return { txType: 'eip1559', maxPriorityFeePerGas, maxFeePerGas };
+  return {
+    txType: 'eip1559',
+    maxPriorityFeePerGas,
+    maxFeePerGas,
+    ...nodeUtils.getGasLimit(chainOptions.fulfillmentGasLimit),
+  };
 };
 
 export const getGasPrice = async (provider: Provider, goOptions: GoAsyncOptions): Promise<GasTarget | null> => {
@@ -83,7 +94,7 @@ export const getGasPrice = async (provider: Provider, goOptions: GoAsyncOptions)
   let gasTarget: GasTarget | null;
   switch (chainOptions.txType) {
     case 'legacy':
-      gasTarget = await getLegacyGasPrice(provider, goOptions);
+      gasTarget = await getLegacyGasPrice(provider, chainOptions, goOptions);
       break;
     case 'eip1559':
       gasTarget = await getEip1559GasPricing(provider, chainOptions, goOptions);

@@ -1,18 +1,11 @@
+import * as node from '@api3/airnode-node';
+import { DapiServer, DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol-v1';
+import { go, GoAsyncOptions } from '@api3/promise-utils';
 import { ethers } from 'ethers';
 import { isEmpty } from 'lodash';
-import { DapiServer__factory as DapiServerFactory, DapiServer } from '@api3/airnode-protocol-v1';
-import { go, GoAsyncOptions } from '@api3/promise-utils';
-import * as node from '@api3/airnode-node';
-import { BeaconUpdate } from './validation';
-import { getState, Provider } from './state';
-import { logger, LogOptionsOverride } from './logging';
-import { getGasPrice } from './gas-prices';
 import { getCurrentBlockNumber } from './block-number';
-import { getTransactionCount } from './transaction-count';
-import { checkSignedDataFreshness, checkOnchainDataFreshness, checkUpdateCondition } from './check-condition';
-import { shortenAddress, sleep } from './utils';
+import { checkOnchainDataFreshness, checkSignedDataFreshness, checkUpdateCondition } from './check-condition';
 import {
-  GAS_LIMIT,
   INFINITE_RETRIES,
   INT224_MAX,
   INT224_MIN,
@@ -22,6 +15,12 @@ import {
   RANDOM_BACKOFF_MAX_MS,
   RANDOM_BACKOFF_MIN_MS,
 } from './constants';
+import { getGasPrice } from './gas-prices';
+import { logger, LogOptionsOverride } from './logging';
+import { getState, Provider } from './state';
+import { getTransactionCount } from './transaction-count';
+import { shortenAddress, sleep } from './utils';
+import { BeaconUpdate } from './validation';
 
 type ProviderSponsorBeacons = {
   provider: Provider;
@@ -139,7 +138,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
     logger.warn(`Unable to fetch gas price`, logOptionsSponsor);
     return;
   }
-  const { txType: _txType, ...gatTargetOverride } = gasTarget;
+  const { txType: _txType, ...gasTargetOverride } = gasTarget;
 
   // Derive sponsor wallet address
   const sponsorWallet = node.evm
@@ -257,8 +256,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
             newBeaconResponse.data.value,
             newBeaconResponse.signature,
             {
-              gasLimit: GAS_LIMIT,
-              ...gatTargetOverride,
+              ...gasTargetOverride,
               nonce,
             }
           ),
