@@ -25,7 +25,20 @@ export const beaconSchema = z
   })
   .strict();
 
-export const beaconsSchema = z.record(evmBeaconIdSchema, beaconSchema);
+export const beaconsSchema = z.record(evmBeaconIdSchema, beaconSchema).superRefine((beacons, ctx) => {
+  Object.entries(beacons).forEach(([beaconId, beacon]) => {
+    // Verify that config.beacons.<beaconId> is valid
+    // by deriving the hash of the airnode address and templateId
+    const derivedBeaconId = ethers.utils.solidityKeccak256(['address', 'bytes32'], [beacon.airnode, beacon.templateId]);
+    if (derivedBeaconId !== beaconId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Beacon ID "${beaconId}" is invalid`,
+        path: [beaconId],
+      });
+    }
+  });
+});
 
 // TODO: Will be refined once we start supporting beacon sets
 export const beaconSetsSchema = emptyObjectSchema;
@@ -60,7 +73,23 @@ export const templateSchema = z
   })
   .strict();
 
-export const templatesSchema = z.record(evmTemplateIdSchema, templateSchema);
+export const templatesSchema = z.record(evmTemplateIdSchema, templateSchema).superRefine((templates, ctx) => {
+  Object.entries(templates).forEach(([templateId, template]) => {
+    // Verify that config.templates.<templateId> is valid
+    // by deriving the hash of the endpointId and parameters
+    const derivedTemplateId = ethers.utils.solidityKeccak256(
+      ['bytes32', 'bytes'],
+      [template.endpointId, template.parameters]
+    );
+    if (derivedTemplateId !== templateId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Template ID "${templateId}" is invalid`,
+        path: [templateId],
+      });
+    }
+  });
+});
 
 export const beaconUpdateSchema = z
   .object({
@@ -86,47 +115,29 @@ export const triggersSchema = z.object({
   beaconSetUpdates: emptyObjectSchema,
 });
 
-const validateBeacons: SuperRefinement<{ beacons: Beacons; templates: Templates }> = (config, ctx) => {
+const validateBeaconsReferences: SuperRefinement<{ beacons: Beacons; templates: Templates }> = (config, ctx) => {
   Object.entries(config.beacons).forEach(([beaconId, beacon]) => {
-    // Verify BeaconId
-    const derivedBeaconId = ethers.utils.solidityKeccak256(['address', 'bytes32'], [beacon.airnode, beacon.templateId]);
-    if (derivedBeaconId !== beaconId) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `Beacon ID "${beaconId}" is invalid`,
-        path: [beaconId],
-      });
-    }
-
-    // Verify TemplateId
+    // Verify that config.beacons.<beaconId>.templateId is
+    // referencing a valid config.templates.<templateId> object
     const template = config.templates[beacon.templateId];
     if (isNil(template)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: `Template ID "${beacon.templateId}" is not defined in the config.templates object`,
-        path: [beaconId, 'templateId'],
+        path: ['beacons', beaconId, 'templateId'],
       });
-    } else {
-      const derivedTemplateId = ethers.utils.solidityKeccak256(
-        ['bytes32', 'bytes'],
-        [template.endpointId, template.parameters]
-      );
-      if (derivedTemplateId !== beacon.templateId) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `Template ID "${beacon.templateId}" is invalid`,
-          path: [beaconId, 'templateId'],
-        });
-      }
     }
   });
 };
 
-const validateTriggersBeaconUpdates: SuperRefinement<{ beacons: Beacons; chains: Chains; triggers: Triggers }> = (
-  config,
-  ctx
-) => {
+const validateBeaconUpdatesReferences: SuperRefinement<{
+  beacons: Beacons;
+  chains: Chains;
+  triggers: Triggers;
+}> = (config, ctx) => {
   Object.entries(config.triggers.beaconUpdates).forEach(([chainId, beaconUpdatesPerSponsor]) => {
+    // Verify that config.triggers.beaconUpdates.<chainId> is
+    // referencing a valid config.chains.<chainId> object
     if (!config.chains[chainId]) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -136,6 +147,8 @@ const validateTriggersBeaconUpdates: SuperRefinement<{ beacons: Beacons; chains:
     }
     Object.entries(beaconUpdatesPerSponsor).forEach(([sponsorAddress, beaconUpdate]) => {
       beaconUpdate.beacons.forEach((beacon, index) => {
+        // Verify that config.triggers.beaconUpdates.<chainId>.<sponsorAddress>.beacons.beaconId is
+        // referencing a valid config.beacons.<beaconId> object
         if (!config.beacons[beacon.beaconId]) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
@@ -160,8 +173,8 @@ export const configSchema = z
     triggers: triggersSchema,
   })
   .strict()
-  .superRefine(validateBeacons)
-  .superRefine(validateTriggersBeaconUpdates);
+  .superRefine(validateBeaconsReferences)
+  .superRefine(validateBeaconUpdatesReferences);
 export const encodedValueSchema = z.string().regex(/^0x[a-fA-F0-9]{64}$/);
 export const signatureSchema = z.string().regex(/^0x[a-fA-F0-9]{130}$/);
 export const signedDataSchema = z.object({

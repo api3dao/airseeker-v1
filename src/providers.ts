@@ -9,8 +9,8 @@ export const initializeProvider = (chainId: string, providerUrl: string): Omit<P
 
 export const initializeProviders = () => {
   const { config } = getState();
-  const sponsorBeaconsByChainId = Object.keys(config.triggers.beaconUpdates);
-  const providers = sponsorBeaconsByChainId.reduce((acc: Providers, chainId: string) => {
+  const beaconUpdatesChains = Object.keys(config.triggers.beaconUpdates);
+  const providers = beaconUpdatesChains.reduce((acc: Providers, chainId: string) => {
     const chain = config.chains[chainId];
 
     const chainProviders = Object.entries(chain.providers).map(([providerName, provider]) => ({

@@ -53,7 +53,27 @@ it('fails if derived beaconId is different to beacons.<beaconId>', () => {
       {
         code: 'custom',
         message: `Beacon ID "${randomBeaconId}" is invalid`,
-        path: [randomBeaconId],
+        path: ['beacons', randomBeaconId],
+      },
+    ])
+  );
+});
+
+it('fails if derived templateId is different to templates.<templateId>', () => {
+  const config: Config = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '..', 'config', 'airseeker.example.json'), 'utf8')
+  );
+  const [firstTemplateId, firstTemplateValues] = Object.entries(config.templates)[0];
+  const randomEndpointId = ethers.utils.hexlify(ethers.utils.randomBytes(32));
+  firstTemplateValues.endpointId = randomEndpointId;
+  const interpolatedConfig = interpolateSecrets(config, envVariables);
+
+  expect(() => configSchema.parse(interpolatedConfig)).toThrow(
+    new ZodError([
+      {
+        code: 'custom',
+        message: `Template ID "${firstTemplateId}" is invalid`,
+        path: ['templates', firstTemplateId],
       },
     ])
   );
@@ -72,27 +92,7 @@ it('fails if beacons.<beaconId>.templateId is not defined in templates', () => {
       {
         code: 'custom',
         message: `Template ID "${firstBeaconValue.templateId}" is not defined in the config.templates object`,
-        path: [firstBeaconId, 'templateId'],
-      },
-    ])
-  );
-});
-
-it('fails if derived templateId is different to beacons.<beaconId>.templateId', () => {
-  const config: Config = JSON.parse(
-    fs.readFileSync(path.join(__dirname, '..', 'config', 'airseeker.example.json'), 'utf8')
-  );
-  const [firstBeaconId, firstBeaconValue] = Object.entries(config.beacons)[0];
-  const randomEndpointId = ethers.utils.hexlify(ethers.utils.randomBytes(32));
-  config.templates[firstBeaconValue.templateId].endpointId = randomEndpointId;
-  const interpolatedConfig = interpolateSecrets(config, envVariables);
-
-  expect(() => configSchema.parse(interpolatedConfig)).toThrow(
-    new ZodError([
-      {
-        code: 'custom',
-        message: `Template ID "${firstBeaconValue.templateId}" is invalid`,
-        path: [firstBeaconId, 'templateId'],
+        path: ['beacons', firstBeaconId, 'templateId'],
       },
     ])
   );
