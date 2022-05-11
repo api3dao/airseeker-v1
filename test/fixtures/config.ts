@@ -31,6 +31,11 @@ export const buildAirseekerConfig = () => ({
         },
         baseFeeMultiplier: 2,
       },
+      gasOracle: {
+        sampleBlockCount: 20,
+        percentile: 60,
+        updateInterval: 8,
+      },
     },
   },
   gateways: {
