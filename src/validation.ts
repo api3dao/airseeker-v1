@@ -115,8 +115,22 @@ export const triggersSchema = z.object({
   beaconSetUpdates: emptyObjectSchema,
 });
 
-const validateBeaconsReferences: SuperRefinement<{ beacons: Beacons; templates: Templates }> = (config, ctx) => {
+const validateBeaconsReferences: SuperRefinement<{ beacons: Beacons; gateways: Gateways; templates: Templates }> = (
+  config,
+  ctx
+) => {
   Object.entries(config.beacons).forEach(([beaconId, beacon]) => {
+    // Verify that config.beacons.<beaconId>.airnode is
+    // referencing a valid config.gateways.<airnode> object
+    const airnode = config.gateways[beacon.airnode];
+    if (isNil(airnode)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Gateway "${beacon.airnode}" is not defined in the config.gateways object`,
+        path: ['beacons', beaconId, 'airnode'],
+      });
+    }
+
     // Verify that config.beacons.<beaconId>.templateId is
     // referencing a valid config.templates.<templateId> object
     const template = config.templates[beacon.templateId];

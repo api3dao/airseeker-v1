@@ -79,6 +79,25 @@ it('fails if derived templateId is different to templates.<templateId>', () => {
   );
 });
 
+it('fails if beacons.<beaconId>.airnode is not defined in gateways', () => {
+  const config: Config = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '..', 'config', 'airseeker.example.json'), 'utf8')
+  );
+  const [firstBeaconId, firstBeaconValue] = Object.entries(config.beacons)[0];
+  delete config.gateways[firstBeaconValue.airnode];
+  const interpolatedConfig = interpolateSecrets(config, envVariables);
+
+  expect(() => configSchema.parse(interpolatedConfig)).toThrow(
+    new ZodError([
+      {
+        code: 'custom',
+        message: `Gateway "${firstBeaconValue.airnode}" is not defined in the config.gateways object`,
+        path: ['beacons', firstBeaconId, 'airnode'],
+      },
+    ])
+  );
+});
+
 it('fails if beacons.<beaconId>.templateId is not defined in templates', () => {
   const config: Config = JSON.parse(
     fs.readFileSync(path.join(__dirname, '..', 'config', 'airseeker.example.json'), 'utf8')
