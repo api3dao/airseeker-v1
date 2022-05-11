@@ -8,18 +8,22 @@ import { getState, Provider } from './state';
 import { PRIORITY_FEE_IN_WEI, BASE_FEE_MULTIPLIER } from './constants';
 import { logger } from './logging';
 
-export type LegacyGasTarget = {
+interface BaseGasTarget {
+  gasLimit?: BigNumber;
+}
+
+export interface LegacyGasTarget extends BaseGasTarget {
   txType: 'legacy';
   gasPrice: BigNumber;
-};
+}
 
-export type EIP1559GasTarget = {
+export interface EIP1559GasTarget extends BaseGasTarget {
   txType: 'eip1559';
   maxPriorityFeePerGas: BigNumber;
   maxFeePerGas: BigNumber;
-};
+}
 
-export type GasTarget = { gasLimit?: BigNumber } & (LegacyGasTarget | EIP1559GasTarget);
+export type GasTarget = LegacyGasTarget | EIP1559GasTarget;
 
 export const parsePriorityFee = ({ value, unit }: node.PriorityFee) =>
   ethers.utils.parseUnits(value.toString(), unit ?? 'wei');
