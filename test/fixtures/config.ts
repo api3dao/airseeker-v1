@@ -34,6 +34,7 @@ export const buildAirseekerConfig = () => ({
           unit: 'gwei',
         },
         baseFeeMultiplier: 2,
+        fulfillmentGasLimit: 500_000,
       },
     },
   },
