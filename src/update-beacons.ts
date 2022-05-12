@@ -5,7 +5,7 @@ import { go } from '@api3/promise-utils';
 import { BeaconUpdate } from './validation';
 import { getState, Provider } from './state';
 import { logger } from './logging';
-import { getGasPrice } from './gas-prices';
+import { getChainProviderGasPrice } from './gas-oracle';
 import { getCurrentBlockNumber } from './block-number';
 import { getTransactionCount } from './transaction-count';
 import { checkUpdateCondition } from './check-condition';
@@ -84,7 +84,7 @@ export const updateBeaconsInLoop = async (providerSponsorBeacons: ProviderSponso
 export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeacons) => {
   const { config, beaconValues } = getState();
   const { provider, sponsorAddress, beacons } = providerSponsorBeacons;
-  const { rpcProvider, chainId } = provider;
+  const { rpcProvider, chainId, providerName } = provider;
   logger.log(
     `Processing beacon updates for chain with ID ${chainId} and sponsor with address ${providerSponsorBeacons.sponsorAddress}.`
   );
@@ -108,14 +108,6 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
     logger.log(`Unable to obtain block number for chain with ID ${chainId}.`);
     return;
   }
-
-  // Get gas price
-  const gasTarget = await getGasPrice(provider, prepareGoOptions(startTime, totalTimeout));
-  if (gasTarget === null) {
-    logger.log(`Unable to fetch gas price for chain with ID ${chainId}.`);
-    return;
-  }
-  const { txType: _txType, ...gatTargetOverride } = gasTarget;
 
   // Derive sponsor wallet address
   const sponsorWallet = deriveSponsorWalletFromMnemonic(
@@ -191,6 +183,9 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
       continue;
     }
 
+    // Get gas price from oracle
+    const gasPrice = getChainProviderGasPrice(chainId, providerName);
+
     // Update beacon
     const tx = await go(
       () =>
@@ -204,7 +199,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
             newBeaconResponse.signature,
             {
               gasLimit: GAS_LIMIT,
-              ...gatTargetOverride,
+              gasPrice,
               nonce,
             }
           ),
