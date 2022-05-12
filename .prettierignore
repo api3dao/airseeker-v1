@@ -21,3 +21,6 @@ secrets.env
 .terraform*
 terraform.tfstate*
 *.tfvars
+
+.serverless
+.build

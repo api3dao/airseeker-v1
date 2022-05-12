@@ -19,3 +19,6 @@ secrets.env
 
 # Scripts
 /scripts
+
+.serverless
+.build
