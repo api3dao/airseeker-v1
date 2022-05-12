@@ -1,15 +1,17 @@
+import { ethers } from 'ethers';
 import { logger } from './logging';
-import * as api from './fetch-beacon-data';
-import { Config } from './validation';
-import * as makeRequestApi from './make-request';
 import * as state from './state';
-import { validSignedData } from '../test/fixtures';
+import { BeaconUpdate, Config } from './validation';
+import { initializeProviders } from './providers';
+import * as api from './update-beacons';
+import * as utils from './utils';
+import { getUnixTimestamp } from '../test/fixtures';
 
 const config: Config = {
   airseekerWalletMnemonic: 'achieve climb couple wait accident symbol spy blouse reduce foil echo label',
   log: {
     format: 'plain',
-    level: 'INFO',
+    level: 'DEBUG',
   },
   beacons: {
     '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c': {
@@ -125,11 +127,12 @@ const config: Config = {
               heartbeatInterval: 15_000,
             },
           ],
-          updateInterval: 30,
+          // Artificially low interval to make the tests run fast without mocking
+          updateInterval: 1,
         },
       },
       '3': {
-        '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC': {
+        '0x417B205fEdB1b2352c7996B0F050A7a61544c5e2': {
           beacons: [
             {
               beaconId: '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c',
@@ -137,7 +140,7 @@ const config: Config = {
               heartbeatInterval: 86_400,
             },
           ],
-          updateInterval: 30,
+          updateInterval: 40,
         },
       },
     },
@@ -145,69 +148,73 @@ const config: Config = {
   },
 };
 state.initializeState(config);
+initializeProviders();
 
-describe('initiateFetchingBeaconData', () => {
-  it('starts fetching data for all unique beacons', async () => {
-    const fetchBeaconDataIds: string[] = [];
-    jest.spyOn(api, 'fetchBeaconDataInLoop').mockImplementation(async (id) => {
-      fetchBeaconDataIds.push(id);
-    });
+// Can't compare RPC provider instances so comparing groups where the provider is represented by its URL
+type ComparableProviderSponsorBeacons = {
+  provider: string;
+  sponsorAddress: string;
+  updateInterval: number;
+  beacons: BeaconUpdate[];
+};
 
-    await api.initiateFetchingBeaconData();
+const cpsbg: ComparableProviderSponsorBeacons[] = [
+  {
+    provider: 'https://some.self.hosted.mainnet.url',
+    sponsorAddress: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
+    updateInterval: 1,
+    beacons: config.triggers.beaconUpdates['1']['0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC'].beacons,
+  },
+  {
+    provider: 'https://some.infura.mainnet.url',
+    sponsorAddress: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
+    updateInterval: 1,
+    beacons: config.triggers.beaconUpdates['1']['0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC'].beacons,
+  },
+  {
+    provider: 'https://some.influra.ropsten.url',
+    sponsorAddress: '0x417B205fEdB1b2352c7996B0F050A7a61544c5e2',
+    updateInterval: 40,
+    beacons: config.triggers.beaconUpdates['3']['0x417B205fEdB1b2352c7996B0F050A7a61544c5e2'].beacons,
+  },
+];
 
-    expect(fetchBeaconDataIds).toEqual([
-      '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c',
-      '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2',
-    ]);
+describe('groupBeaconsByProviderSponsor', () => {
+  it('groups beacons by provider+sponsor pair', () => {
+    const providerSponsorBeaconsGroups = api.groupBeaconsByProviderSponsor();
+    const comparableProviderSponsorBeaconsGroups = providerSponsorBeaconsGroups.map((psbg) => ({
+      ...psbg,
+      provider: psbg.provider.rpcProvider.connection.url,
+    }));
+
+    expect(providerSponsorBeaconsGroups).toHaveLength(3);
+    expect(comparableProviderSponsorBeaconsGroups).toContainEqual(cpsbg[0]);
+    expect(comparableProviderSponsorBeaconsGroups).toContainEqual(cpsbg[1]);
+    expect(comparableProviderSponsorBeaconsGroups).toContainEqual(cpsbg[2]);
   });
 });
 
-describe('fetchBeaconData', () => {
-  it('does nothing if signed data call fails', async () => {
-    jest.spyOn(makeRequestApi, 'makeSignedDataGatewayRequests').mockImplementation(async () => {
-      throw new Error('API timeout');
-    });
-    jest.spyOn(logger, 'log');
-    jest.spyOn(state, 'updateState');
-
-    await api.fetchBeaconData('0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2');
-
-    expect(state.updateState).not.toHaveBeenCalled();
-  });
-
-  it('updates retries multiple times', async () => {
-    jest.spyOn(makeRequestApi, 'makeSignedDataGatewayRequests').mockImplementation(async () => {
-      throw new Error('some error');
-    });
-    // 0.08 * 2_500 (max wait time) = 200 (actual wait time)
-    // This means that 2 retries should definitely be done in 500ms
-    jest.spyOn(global.Math, 'random').mockImplementation(() => 0.08);
-
-    await api.fetchBeaconData('0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2');
-
-    expect(makeRequestApi.makeSignedDataGatewayRequests).toHaveBeenCalledTimes(3);
-  });
-
-  it('updates state with the api response value', async () => {
-    jest.spyOn(makeRequestApi, 'makeSignedDataGatewayRequests').mockImplementation(async () => {
-      return validSignedData;
+describe('initiateBeaconUpdates', () => {
+  it('initiates beacon updates', async () => {
+    const comparableProviderSponsorBeaconsGroups: ComparableProviderSponsorBeacons[] = [];
+    jest.spyOn(api, 'updateBeaconsInLoop').mockImplementation(async (group) => {
+      comparableProviderSponsorBeaconsGroups.push({ ...group, provider: group.provider.rpcProvider.connection.url });
     });
 
-    await api.fetchBeaconData('0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2');
-
-    expect(state.getState().beaconValues).toEqual({
-      '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2': validSignedData,
-    });
+    api.initiateBeaconUpdates();
+    expect(comparableProviderSponsorBeaconsGroups).toHaveLength(3);
+    expect(comparableProviderSponsorBeaconsGroups).toContainEqual(cpsbg[0]);
+    expect(comparableProviderSponsorBeaconsGroups).toContainEqual(cpsbg[1]);
+    expect(comparableProviderSponsorBeaconsGroups).toContainEqual(cpsbg[2]);
   });
 });
 
-describe('fetchBeaconDataInLoop', () => {
-  it('calls fetchBeaconData in a loop', async () => {
+describe('updateBeaconsInLoop', () => {
+  it('calls updateBeacons in a loop', async () => {
+    const groups = api.groupBeaconsByProviderSponsor();
     let requestCount = 0;
-    jest.spyOn(api, 'fetchBeaconData');
-    jest.spyOn(makeRequestApi, 'makeSignedDataGatewayRequests').mockImplementation(async () => {
+    jest.spyOn(api, 'updateBeacons').mockImplementation(async () => {
       requestCount++;
-      return validSignedData;
     });
     jest.spyOn(state, 'getState').mockImplementation(() => {
       if (requestCount === 2) {
@@ -231,8 +238,75 @@ describe('fetchBeaconDataInLoop', () => {
       }
     });
 
-    await api.fetchBeaconDataInLoop('0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2');
+    await api.updateBeaconsInLoop(groups[0]);
 
-    expect(api.fetchBeaconData).toHaveBeenCalledTimes(2);
+    expect(api.updateBeacons).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('calculateTimeout', () => {
+  it('calculates the remaining time for timeout', () => {
+    const startTime = 1650548022000;
+    const totalTimeout = 3000;
+    jest.spyOn(Date, 'now').mockReturnValue(1650548023000);
+
+    expect(utils.calculateTimeout(startTime, totalTimeout)).toEqual(2000);
+  });
+});
+
+describe('prepareGoOptions', () => {
+  it('prepares options for the go function', () => {
+    const startTime = 1650548022000;
+    const totalTimeout = 3000;
+    jest.spyOn(Date, 'now').mockReturnValue(1650548023000);
+
+    const expectedGoOptions = {
+      attemptTimeoutMs: 5_000,
+      totalTimeoutMs: 2000,
+      retries: 100_000,
+      delay: { type: 'random' as const, minDelayMs: 0, maxDelayMs: 2_500 },
+    };
+    expect(utils.prepareGoOptions(startTime, totalTimeout)).toEqual(expectedGoOptions);
+  });
+});
+
+it('readOnChainBeaconData', async () => {
+  jest.spyOn(logger, 'warn');
+  const feedValue = { value: ethers.BigNumber.from('123'), timestamp: getUnixTimestamp('2019-3-21') };
+  const readDataFeedWithIdMock = jest
+    .fn()
+    .mockRejectedValueOnce(new Error('cannot read chain'))
+    .mockRejectedValueOnce(new Error('some other error'))
+    .mockResolvedValue(feedValue);
+
+  const dapiServer: any = {
+    address: ethers.utils.getAddress(ethers.utils.hexlify(ethers.utils.randomBytes(20))),
+    connect() {
+      return this;
+    },
+    readDataFeedWithId: readDataFeedWithIdMock,
+  };
+
+  const providerUrl = 'http://127.0.0.1:8545/';
+  const voidSigner = new ethers.VoidSigner(
+    ethers.constants.AddressZero,
+    new ethers.providers.JsonRpcProvider(providerUrl)
+  );
+
+  const onChainBeaconData = await api.readOnChainBeaconData(
+    voidSigner,
+    dapiServer,
+    'some-id',
+    { retries: 100_000 },
+    {}
+  );
+
+  expect(onChainBeaconData).toEqual(feedValue);
+  expect(logger.warn).toHaveBeenCalledTimes(2);
+  expect(logger.warn).toHaveBeenNthCalledWith(1, 'Failed attempt to read data feed. Error: Error: cannot read chain', {
+    additional: { 'Dapi-Server': dapiServer.address },
+  });
+  expect(logger.warn).toHaveBeenNthCalledWith(2, 'Failed attempt to read data feed. Error: Error: some other error', {
+    additional: { 'Dapi-Server': dapiServer.address },
   });
 });

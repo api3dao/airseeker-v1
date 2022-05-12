@@ -1,22 +1,27 @@
 // Taken from @api3/airnode-utils so custom retry & timeout options can be used
 
 import * as node from '@api3/airnode-node';
+import * as nodeUtils from '@api3/airnode-utilities';
 import { go, GoAsyncOptions } from '@api3/promise-utils';
 import { BigNumber, ethers } from 'ethers';
 import { getState, Provider } from './state';
 import { PRIORITY_FEE_IN_WEI, BASE_FEE_MULTIPLIER } from './constants';
 import { logger } from './logging';
 
-type LegacyGasTarget = {
+interface BaseGasTarget {
+  gasLimit?: BigNumber;
+}
+
+export interface LegacyGasTarget extends BaseGasTarget {
   txType: 'legacy';
   gasPrice: BigNumber;
-};
+}
 
-type EIP1559GasTarget = {
+export interface EIP1559GasTarget extends BaseGasTarget {
   txType: 'eip1559';
   maxPriorityFeePerGas: BigNumber;
   maxFeePerGas: BigNumber;
-};
+}
 
 export type GasTarget = LegacyGasTarget | EIP1559GasTarget;
 
@@ -25,18 +30,27 @@ export const parsePriorityFee = ({ value, unit }: node.PriorityFee) =>
 
 export const getLegacyGasPrice = async (
   provider: Provider,
+  chainOptions: node.ChainOptions,
   goOptions: GoAsyncOptions
 ): Promise<LegacyGasTarget | null> => {
-  const goGasPrice = await go(() => provider.rpcProvider.getGasPrice(), {
+  const { chainId, rpcProvider, providerName } = provider;
+  const logOptionsChainId = { meta: { chainId, providerName } };
+
+  const goGasPrice = await go(() => rpcProvider.getGasPrice(), {
     ...goOptions,
-    onAttemptError: (goError) => logger.log(`Failed attempt to get legacy gas price. Error ${goError.error}`),
+    onAttemptError: (goError) =>
+      logger.warn(`Failed attempt to get legacy gas price. Error ${goError.error}`, logOptionsChainId),
   });
   if (!goGasPrice.success) {
-    logger.log(`Unable to get legacy gas price for chain with ID ${provider.chainId}. Error: ${goGasPrice.error}`);
+    logger.warn(`Unable to get legacy gas price. Error: ${goGasPrice.error}`, logOptionsChainId);
     return null;
   }
 
-  return { txType: 'legacy', gasPrice: goGasPrice.data };
+  return {
+    txType: 'legacy',
+    gasPrice: goGasPrice.data,
+    ...nodeUtils.getGasLimit(chainOptions.fulfillmentGasLimit),
+  };
 };
 
 export const getEip1559GasPricing = async (
@@ -44,16 +58,20 @@ export const getEip1559GasPricing = async (
   chainOptions: node.ChainOptions,
   goOptions: GoAsyncOptions
 ): Promise<EIP1559GasTarget | null> => {
-  const goBlock = await go(() => provider.rpcProvider.getBlock('latest'), {
+  const { chainId, rpcProvider, providerName } = provider;
+  const logOptionsChainId = { meta: { chainId, providerName } };
+
+  const goBlock = await go(() => rpcProvider.getBlock('latest'), {
     ...goOptions,
-    onAttemptError: (goError) => logger.log(`Failed attempt to get EIP-1559 gas pricing. Error ${goError.error}`),
+    onAttemptError: (goError) =>
+      logger.warn(`Failed attempt to get EIP-1559 gas pricing. Error ${goError.error}`, logOptionsChainId),
   });
   if (!goBlock.success) {
-    logger.log(`Unable to get EIP-1559 gas pricing from chain with ID ${provider.chainId}. Error: ${goBlock.error}`);
+    logger.warn(`Unable to get EIP-1559 gas pricing. Error: ${goBlock.error}`, logOptionsChainId);
     return null;
   }
   if (!goBlock.data.baseFeePerGas) {
-    logger.log(`Unable to get base fee per gas from chain with ID ${provider.chainId}.`);
+    logger.warn(`Unable to get base fee per gas.`, logOptionsChainId);
     return null;
   }
 
@@ -64,15 +82,23 @@ export const getEip1559GasPricing = async (
   const baseFeeMultiplier = chainOptions.baseFeeMultiplier ? chainOptions.baseFeeMultiplier : BASE_FEE_MULTIPLIER;
   const maxFeePerGas = block.baseFeePerGas!.mul(BigNumber.from(baseFeeMultiplier)).add(maxPriorityFeePerGas!);
 
-  return { txType: 'eip1559', maxPriorityFeePerGas, maxFeePerGas };
+  return {
+    txType: 'eip1559',
+    maxPriorityFeePerGas,
+    maxFeePerGas,
+    ...nodeUtils.getGasLimit(chainOptions.fulfillmentGasLimit),
+  };
 };
 
 export const getGasPrice = async (provider: Provider, goOptions: GoAsyncOptions): Promise<GasTarget | null> => {
-  const chainOptions = getState().config.chains[provider.chainId].options;
+  const { chainId, providerName } = provider;
+  const logOptionsChainId = { meta: { chainId, providerName } };
+
+  const chainOptions = getState().config.chains[chainId].options;
   let gasTarget: GasTarget | null;
   switch (chainOptions.txType) {
     case 'legacy':
-      gasTarget = await getLegacyGasPrice(provider, goOptions);
+      gasTarget = await getLegacyGasPrice(provider, chainOptions, goOptions);
       break;
     case 'eip1559':
       gasTarget = await getEip1559GasPricing(provider, chainOptions, goOptions);
@@ -90,7 +116,7 @@ export const getGasPrice = async (provider: Provider, goOptions: GoAsyncOptions)
     const gweiPrice = node.evm.weiToGwei(gasTarget.gasPrice!);
     gasTargetMessage = `Gas price (legacy) set to ${gweiPrice} Gwei`;
   }
-  logger.log(gasTargetMessage);
+  logger.info(gasTargetMessage, logOptionsChainId);
 
   return gasTarget;
 };

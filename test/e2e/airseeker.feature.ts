@@ -164,6 +164,60 @@ describe('Airseeker', () => {
     expect(beaconValueBTCNew).toEqual(hre.ethers.BigNumber.from(beaconValueBTC));
   });
 
+  it('updates if the dapiserver timestamp is older than hearbeatinterval', async () => {
+    mockReadFileSync(
+      'airseeker.json',
+      JSON.stringify({
+        ...airseekerConfig,
+        triggers: {
+          beaconUpdates: {
+            '31337': {
+              '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC': {
+                beacons: [
+                  {
+                    beaconId: '0x924b5d4cb3ec6366ae4302a1ca6aec035594ea3ea48a102d160b50b0c43ebfb5',
+                    deviationThreshold: 50,
+                    heartbeatInterval: 1,
+                  },
+                  {
+                    beaconId: '0xbf7ce55d109fd196de2a8bf1515d166c56c9decbe9cb473656bbca30d5743990',
+                    deviationThreshold: 50,
+                    heartbeatInterval: 1,
+                  },
+                ],
+                updateInterval: 6,
+              },
+            },
+          },
+          beaconSetUpdates: {},
+        },
+      })
+    );
+
+    await main().then(async () => {
+      // Wait for Airseeker cycles to finish
+      await sleep(8_000);
+      // Stop Airseeker
+      handleStopSignal('stop');
+      // Wait for last cycle to finish
+      await sleep(8_000);
+    });
+
+    const beaconValueETHNew = await readBeaconValue(
+      '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
+      deployment.templateIdETH,
+      deployment.dapiServer
+    );
+    const beaconValueBTCNew = await readBeaconValue(
+      '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
+      deployment.templateIdBTC,
+      deployment.dapiServer
+    );
+
+    expect(beaconValueETHNew).toEqual(hre.ethers.BigNumber.from(800 * 1_000_000));
+    expect(beaconValueBTCNew).toEqual(hre.ethers.BigNumber.from(43_000 * 1_000_000));
+  });
+
   it('updates the beacons successfully after retrying a failed api call', async () => {
     mockReadFileSync('airseeker.json', JSON.stringify(airseekerConfig));
 
@@ -219,77 +273,9 @@ describe('Airseeker', () => {
                 unit: 'gwei',
               },
               baseFeeMultiplier: 2,
+              fulfillmentGasLimit: 500_000,
             },
           },
-        },
-      })
-    );
-
-    await main().then(async () => {
-      // Wait for Airseeker cycles to finish
-      await sleep(8_000);
-      // Stop Airseeker
-      handleStopSignal('stop');
-      // Wait for last cycle to finish
-      await sleep(8_000);
-    });
-
-    const beaconValueETHNew = await readBeaconValue(
-      '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
-      deployment.templateIdETH,
-      deployment.dapiServer
-    );
-    const beaconValueBTCNew = await readBeaconValue(
-      '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
-      deployment.templateIdBTC,
-      deployment.dapiServer
-    );
-
-    expect(beaconValueETHNew).toEqual(hre.ethers.BigNumber.from(800 * 1_000_000));
-    expect(beaconValueBTCNew).toEqual(hre.ethers.BigNumber.from(43_000 * 1_000_000));
-  });
-
-  it('updates the beacon successfully with one invalid beacon present', async () => {
-    mockReadFileSync(
-      'airseeker.json',
-      JSON.stringify({
-        ...airseekerConfig,
-        beacons: {
-          ...airseekerConfig.beacons,
-          // invalid beaconId
-          '0xbf7ce55d109fd196de2a8bf1515d166c56c9decbe9cb473656bbca30d1111111': {
-            airnode: '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
-            templateId: '0x0bbf5f2ec4b0e9faf5b89b4ddbed9bdad7a542cc258ffd7b106b523aeae039a6',
-            fetchInterval: 8,
-          },
-        },
-        triggers: {
-          beaconUpdates: {
-            '31337': {
-              '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC': {
-                beacons: [
-                  {
-                    beaconId: '0x924b5d4cb3ec6366ae4302a1ca6aec035594ea3ea48a102d160b50b0c43ebfb5',
-                    deviationThreshold: 0.2,
-                    heartbeatInterval: 86400,
-                  },
-                  // invalid beaconId
-                  {
-                    beaconId: '0xbf7ce55d109fd196de2a8bf1515d166c56c9decbe9cb473656bbca30d1111111',
-                    deviationThreshold: 0.2,
-                    heartbeatInterval: 86400,
-                  },
-                  {
-                    beaconId: '0xbf7ce55d109fd196de2a8bf1515d166c56c9decbe9cb473656bbca30d5743990',
-                    deviationThreshold: 0.2,
-                    heartbeatInterval: 86400,
-                  },
-                ],
-                updateInterval: 6,
-              },
-            },
-          },
-          beaconSetUpdates: {},
         },
       })
     );

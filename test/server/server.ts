@@ -5,7 +5,7 @@ import { validSignedData } from '../fixtures/index';
 import { logger } from '../../src/logging';
 import { initializeState } from '../../src/state';
 
-initializeState(null as any); // We don't care about airseeker.json file
+initializeState({ log: { format: 'plain', level: 'INFO' } } as any); // We don't care about airseeker.json file
 
 const templateIdETH = '0xea30f92923ece1a97af69d450a8418db31be5a26a886540a13c09c739ba8eaaa';
 const templateIdBTC = '0x0bbf5f2ec4b0e9faf5b89b4ddbed9bdad7a542cc258ffd7b106b523aeae039a6';
@@ -71,5 +71,5 @@ app.post('/signed-data-gateway/:endpoint', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  logger.log(`Server is running at http://localhost:${PORT}`);
+  logger.info(`Server is running at http://localhost:${PORT}`);
 });

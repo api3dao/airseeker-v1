@@ -1,9 +1,15 @@
 import { ethers } from 'ethers';
-import { calculateUpdateInPercentage, checkUpdateCondition, HUNDRED_PERCENT } from './check-condition';
-import { DEFAULT_LOG_OPTIONS } from './constants';
+import {
+  calculateUpdateInPercentage,
+  checkSignedDataFreshness,
+  checkOnchainDataFreshness,
+  checkUpdateCondition,
+  HUNDRED_PERCENT,
+} from './check-condition';
 import { State, updateState } from './state';
+import { getUnixTimestamp, validSignedData } from '../test/fixtures';
 
-updateState((_state) => ({ logOptions: DEFAULT_LOG_OPTIONS } as unknown as State));
+updateState((_state) => ({ logOptions: {} } as unknown as State));
 
 describe('calculateUpdateInPercentage', () => {
   it('calculates zero change', () => {
@@ -53,93 +59,54 @@ describe('calculateUpdateInPercentage', () => {
 });
 
 describe('checkUpdateCondition', () => {
-  const providerUrl = 'http://127.0.0.1:8545/';
-  const beaconId = '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c';
-  const provider = new ethers.providers.JsonRpcProvider(providerUrl);
-  const voidSigner = new ethers.VoidSigner(ethers.constants.AddressZero, provider);
-  const goOptions = {};
-
-  let readDataFeedWithIdSpy: jest.Mock;
-  let dapiServerMock: {
-    connect(_signerOrProvider: ethers.Signer | ethers.providers.Provider | string): typeof dapiServerMock;
-    readDataFeedWithId: jest.Mock;
-  };
-
-  beforeEach(() => {
-    const readDataFeedWithIdMock = () => Promise.resolve([ethers.BigNumber.from(500)]);
-    readDataFeedWithIdSpy = jest.fn().mockImplementation(readDataFeedWithIdMock);
-    dapiServerMock = {
-      connect(_signerOrProvider: ethers.Signer | ethers.providers.Provider | string) {
-        return this;
-      },
-      readDataFeedWithId: readDataFeedWithIdSpy,
-    };
-  });
+  const onChainValue = ethers.BigNumber.from(500);
 
   it('reads dapiserver value and checks the threshold condition to be true for increase', async () => {
-    const checkUpdateConditionResult = await checkUpdateCondition(
-      voidSigner,
-      dapiServerMock as any,
-      beaconId,
-      10,
-      ethers.BigNumber.from(560),
-      goOptions
-    );
+    const shouldUpdate = await checkUpdateCondition(onChainValue, 10, ethers.BigNumber.from(560));
 
-    expect(readDataFeedWithIdSpy).toHaveBeenNthCalledWith(1, beaconId);
-    expect(checkUpdateConditionResult).toEqual(true);
+    expect(shouldUpdate).toEqual(true);
   });
 
   it('reads dapiserver value and checks the threshold condition to be true for decrease', async () => {
-    const checkUpdateConditionResult = await checkUpdateCondition(
-      voidSigner,
-      dapiServerMock as any,
-      beaconId,
-      10,
-      ethers.BigNumber.from(440),
-      goOptions
-    );
+    const shouldUpdate = await checkUpdateCondition(onChainValue, 10, ethers.BigNumber.from(440));
 
-    expect(readDataFeedWithIdSpy).toHaveBeenNthCalledWith(1, beaconId);
-    expect(checkUpdateConditionResult).toEqual(true);
+    expect(shouldUpdate).toEqual(true);
   });
 
   it('reads dapiserver value and checks the threshold condition to be false', async () => {
-    const checkUpdateConditionResult = await checkUpdateCondition(
-      voidSigner,
-      dapiServerMock as any,
-      beaconId,
-      10,
-      ethers.BigNumber.from(480),
-      goOptions
-    );
+    const shouldUpdate = await checkUpdateCondition(onChainValue, 10, ethers.BigNumber.from(480));
 
-    expect(readDataFeedWithIdSpy).toHaveBeenNthCalledWith(1, beaconId);
-    expect(checkUpdateConditionResult).toEqual(false);
-  });
-
-  it('returns null if it is not able to fetch the data feed', async () => {
-    readDataFeedWithIdSpy = jest.fn().mockImplementation(() => {
-      throw new Error('Mock error');
-    });
-    dapiServerMock = { ...dapiServerMock, readDataFeedWithId: readDataFeedWithIdSpy };
-
-    const checkUpdateConditionResult = await checkUpdateCondition(
-      voidSigner,
-      dapiServerMock as any,
-      beaconId,
-      10,
-      ethers.BigNumber.from(560),
-      goOptions
-    );
-
-    expect(readDataFeedWithIdSpy).toHaveBeenNthCalledWith(1, beaconId);
-    expect(checkUpdateConditionResult).toBeNull();
+    expect(shouldUpdate).toEqual(false);
   });
 
   it('handles correctly bad JS math', async () => {
-    await expect(
-      checkUpdateCondition(voidSigner, dapiServerMock as any, beaconId, 0.14, ethers.BigNumber.from(560), goOptions)
-    ).resolves.not.toThrow();
+    await expect(checkUpdateCondition(onChainValue, 0.14, ethers.BigNumber.from(560))).resolves.not.toThrow();
+  });
+});
+
+describe('checkSignedDataFreshness', () => {
+  it('returns true if signed data gateway is newer than on chain record', () => {
+    const isFresh = checkSignedDataFreshness(getUnixTimestamp('2022-4-28'), validSignedData.data.timestamp);
+
+    expect(isFresh).toBe(false);
+  });
+
+  it('returns false if signed data gateway is older than on chain record', () => {
+    const isFresh = checkSignedDataFreshness(getUnixTimestamp('2019-4-28'), validSignedData.data.timestamp);
+
+    expect(isFresh).toBe(true);
+  });
+
+  describe('checkOnchainDataFreshness', () => {
+    it('returns true if on chain data timestamp is newer than heartbeat interval', () => {
+      const isFresh = checkOnchainDataFreshness(Date.now() / 1000 - 100, 200);
+
+      expect(isFresh).toEqual(true);
+    });
+    it('returns false if on chain data timestamp is older than heartbeat interval', () => {
+      const isFresh = checkOnchainDataFreshness(Date.now() / 1000 - 300, 200);
+
+      expect(isFresh).toEqual(false);
+    });
   });
 });

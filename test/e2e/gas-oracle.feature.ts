@@ -99,6 +99,7 @@ describe('Gas oracle', () => {
                   unit: 'gwei',
                 },
                 baseFeeMultiplier: 2,
+                fulfillmentGasLimit: 500_000,
               },
               gasOracle: {
                 sampleBlockCount: 20,

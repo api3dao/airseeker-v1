@@ -2,10 +2,14 @@ import { ethers } from 'ethers';
 import { Config } from './validation';
 import * as api from './gas-oracle';
 import * as state from './state';
-import { DEFAULT_LOG_OPTIONS, DEFAULT_BACK_UP_GAS_PRICE_GWEI } from './constants';
+import { DEFAULT_BACK_UP_GAS_PRICE_GWEI } from './constants';
 
 const config: Config = {
   airseekerWalletMnemonic: 'achieve climb couple wait accident symbol spy blouse reduce foil echo label',
+  log: {
+    format: 'plain',
+    level: 'INFO',
+  },
   beacons: {
     '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c': {
       airnode: '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
@@ -50,6 +54,7 @@ const config: Config = {
           unit: 'gwei',
         },
         baseFeeMultiplier: 2,
+        fulfillmentGasLimit: 500_000,
       },
       gasOracle: {
         sampleBlockCount: 6,
@@ -76,6 +81,7 @@ const config: Config = {
           unit: 'gwei',
         },
         baseFeeMultiplier: 2,
+        fulfillmentGasLimit: 500_000,
       },
       gasOracle: {
         sampleBlockCount: 6,
@@ -99,6 +105,7 @@ const config: Config = {
           unit: 'gwei',
         },
         baseFeeMultiplier: 2,
+        fulfillmentGasLimit: 500_000,
       },
       gasOracle: {
         sampleBlockCount: 6,
@@ -396,7 +403,7 @@ describe('Gas oracle', () => {
           beaconValues: {},
           providers: {},
           gasOracles: {},
-          logOptions: DEFAULT_LOG_OPTIONS,
+          logOptions: { ...config.log, meta: {} },
         };
       } else {
         return {
@@ -405,7 +412,7 @@ describe('Gas oracle', () => {
           beaconValues: {},
           providers: {},
           gasOracles: {},
-          logOptions: DEFAULT_LOG_OPTIONS,
+          logOptions: { ...config.log, meta: {} },
         };
       }
     });

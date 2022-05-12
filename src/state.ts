@@ -1,8 +1,11 @@
+import { buildBaseOptions, LogOptions, randomHexString } from '@api3/airnode-utilities';
 import { ethers } from 'ethers';
-import { LogOptions } from '@api3/airnode-utilities';
 import { BeaconId, Config, SignedData } from './validation';
-import { DEFAULT_LOG_OPTIONS } from './constants';
 import { GasOracles } from './gas-oracle';
+
+export type Id<T> = T & {
+  id: string;
+};
 
 export type BeaconValueStorage = Record<BeaconId, SignedData>;
 export type Provider = {
@@ -32,7 +35,10 @@ export const initializeState = (config: Config) => {
     beaconValues: {},
     providers: {},
     gasOracles: {},
-    logOptions: DEFAULT_LOG_OPTIONS,
+    logOptions: buildBaseOptions(
+      { nodeSettings: { logFormat: config.log.format, logLevel: config.log.level } },
+      { coordinatorId: randomHexString(16) }
+    ),
   };
 };
 
