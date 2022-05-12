@@ -11,12 +11,15 @@
 # Coverage
 /coverage
 
-# Log files
-*.log
-
 airseeker.json
 *.env
 !*.example.env
+
+# Inline config
+src/config-inline.ts
+
+# GCP Config Secrets
+config/secrets.yml
 
 # Hardhat files
 cache

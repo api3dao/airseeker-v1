@@ -11,11 +11,22 @@
 # Coverage
 /coverage
 
-# Log files
-*.log
-
 airseeker.json
-secrets.env
+*.env
+!*.example.env
+
+# Inline config
+src/config-inline.ts
+
+# GCP Config Secrets
+config/secrets.yml
+
+# Hardhat files
+cache
+
+# Ignore log files
+logs
+*.log
 
 # Terraform
 .terraform*

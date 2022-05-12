@@ -2,6 +2,7 @@ import fs from 'fs';
 import { z } from 'zod';
 import template from 'lodash/template';
 import { goSync } from '@api3/promise-utils';
+import { logger } from '@api3/airnode-utilities';
 import { configSchema } from './validation';
 
 type Secrets = Record<string, string | undefined>;
@@ -18,6 +19,20 @@ export const loadConfig = (configPath: string, secrets: Record<string, string | 
 };
 
 export const readConfig = (configPath: string): unknown => {
+  // GCP specifically makes life hard if you want to upload non-js resources.
+  // A simple work-around is to render the config file as a .ts file during build.
+  try {
+    logger.log(`Trying inline config. Current directory: ${__dirname}`);
+
+    const possibleConfig = require('./config-inline');
+    if (possibleConfig) {
+      logger.log(`Proceeding with inline config`);
+      return possibleConfig.config;
+    }
+  } catch (e) {
+    logger.log(`Inline config load failed: ${e}`);
+  }
+
   try {
     return JSON.parse(fs.readFileSync(configPath, 'utf8'));
   } catch (err) {
