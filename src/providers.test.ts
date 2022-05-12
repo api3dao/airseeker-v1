@@ -48,7 +48,6 @@ describe('initializeProviders', () => {
     triggers: {
       beaconUpdates: {
         '1': {},
-        '2': {},
         '3': {},
       },
     },

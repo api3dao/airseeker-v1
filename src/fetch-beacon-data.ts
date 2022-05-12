@@ -1,10 +1,9 @@
 import { isEmpty, uniq } from 'lodash';
-import { ethers } from 'ethers';
 import { go } from '@api3/promise-utils';
 import { logger } from './logging';
 import { getState, updateState } from './state';
 import { makeSignedDataGatewayRequests } from './make-request';
-import { shortenAddress, sleep } from './utils';
+import { sleep } from './utils';
 import {
   GATEWAY_TIMEOUT_MS,
   INFINITE_RETRIES,
@@ -18,20 +17,9 @@ export const initiateFetchingBeaconData = async () => {
   const { config } = getState();
 
   const beaconIdsToUpdate = uniq(
-    Object.entries(config.triggers.beaconUpdates).flatMap(([chainId, beaconUpdatesPerSponsor]) => {
-      return Object.entries(beaconUpdatesPerSponsor).flatMap(([sponsorAddress, beaconUpdate]) => {
-        const { beacons } = beaconUpdate;
-        // TODO: Should be later part of the validation
-        const foundBeacons = beacons.filter((beacon) => {
-          if (config.beacons[beacon.beaconId]) return true;
-
-          logger.warn(`Missing beacon with ID ${beacon.beaconId}. Skipping.`, {
-            meta: { chainId },
-            additional: { Sponsor: shortenAddress(sponsorAddress) },
-          });
-          return false;
-        });
-        return foundBeacons.flatMap((b) => b.beaconId);
+    Object.values(config.triggers.beaconUpdates).flatMap((beaconUpdatesPerSponsor) => {
+      return Object.values(beaconUpdatesPerSponsor).flatMap((beaconUpdate) => {
+        return beaconUpdate.beacons.flatMap((b) => b.beaconId);
       });
     })
   );
@@ -77,16 +65,6 @@ export const fetchBeaconData = async (beaconId: string) => {
   const { fetchInterval, airnode, templateId } = config.beacons[beaconId];
   const gateway = config.gateways[airnode];
   const template = config.templates[templateId];
-
-  // TODO: Should be later part of the validation
-  const derivedTemplateId = ethers.utils.solidityKeccak256(
-    ['bytes32', 'bytes'],
-    [template.endpointId, template.parameters]
-  );
-  if (derivedTemplateId !== templateId) {
-    logger.warn(`Invalid template ID ${templateId}. Skipping.`, logOptionsBeaconId);
-    return;
-  }
 
   const goRes = await go(() => makeSignedDataGatewayRequests(gateway, { ...template, id: templateId }), {
     attemptTimeoutMs: GATEWAY_TIMEOUT_MS,

@@ -31,38 +31,21 @@ type ProviderSponsorBeacons = {
 
 export const groupBeaconsByProviderSponsor = () => {
   const { config, providers: stateProviders } = getState();
-  return Object.entries(config.triggers.beaconUpdates).reduce((acc: ProviderSponsorBeacons[], [chainId, sponsors]) => {
-    const providers = stateProviders[chainId];
+  return Object.entries(config.triggers.beaconUpdates).reduce(
+    (acc: ProviderSponsorBeacons[], [chainId, beaconUpdatesPerSponsor]) => {
+      const providers = stateProviders[chainId];
 
-    // TODO: Should be later part of the validation
-    if (!providers) {
-      logger.info(`Missing providers for chain with ID ${chainId}`);
-      return acc;
-    }
+      const providerSponsorGroups = Object.entries(beaconUpdatesPerSponsor).reduce(
+        (acc: ProviderSponsorBeacons[], [sponsorAddress, beaconUpdate]) => {
+          return [...acc, ...providers.map((provider) => ({ provider, sponsorAddress, ...beaconUpdate }))];
+        },
+        []
+      );
 
-    const providerSponsorGroups = Object.entries(sponsors).reduce(
-      (acc: ProviderSponsorBeacons[], [sponsorAddress, beaconUpdate]) => {
-        const { beacons } = beaconUpdate;
-        // TODO: Should be later part of the validation
-        const foundBeacons = beacons.filter((beacon) => {
-          if (config.beacons[beacon.beaconId]) return true;
-
-          logger.info(`Missing beacon with ID ${beacon.beaconId}. Skipping.`);
-          return false;
-        });
-
-        if (isEmpty(foundBeacons)) return acc;
-
-        return [
-          ...acc,
-          ...providers.map((provider) => ({ provider, sponsorAddress, ...beaconUpdate, beacons: foundBeacons })),
-        ];
-      },
-      []
-    );
-
-    return [...acc, ...providerSponsorGroups];
-  }, []);
+      return [...acc, ...providerSponsorGroups];
+    },
+    []
+  );
 };
 
 export const initiateBeaconUpdates = () => {
@@ -118,11 +101,6 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
 
   // Prepare contract for beacon updates
   const contractAddress = config.chains[chainId].contracts['DapiServer'];
-  // TODO: Should be later part of the validation
-  if (!contractAddress) {
-    logger.warn(`Missing contract address for DapiServer`, logOptionsSponsor);
-    return;
-  }
   const contract = DapiServerFactory.connect(contractAddress, rpcProvider);
 
   // Get current block number
@@ -172,15 +150,6 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
     };
 
     const beaconUpdateData = { ...beacon, ...config.beacons[beacon.beaconId] };
-
-    // TODO: Should be later part of the validation
-    const derivedBeaconId = ethers.utils.solidityKeccak256(
-      ['address', 'bytes32'],
-      [beaconUpdateData.airnode, beaconUpdateData.templateId]
-    );
-    if (derivedBeaconId !== beaconUpdateData.beaconId) {
-      continue;
-    }
 
     logger.debug(`Updating beacon`, logOptionsBeaconId);
     // Check whether we have a value for given beacon
