@@ -25,6 +25,7 @@ export const gasOracleSchema = z
     sampleBlockCount: z.number().int().positive().optional(),
     percentile: z.number().int().positive().optional(),
     updateInterval: z.number().int().positive().optional(),
+    backupGasPriceGwei: z.number().positive().optional(),
   })
   .optional();
 

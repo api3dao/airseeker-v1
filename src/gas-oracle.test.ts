@@ -2,7 +2,7 @@ import { ethers } from 'ethers';
 import { Config } from './validation';
 import * as api from './gas-oracle';
 import * as state from './state';
-import { DEFAULT_LOG_OPTIONS } from './constants';
+import { DEFAULT_LOG_OPTIONS, DEFAULT_BACK_UP_GAS_PRICE_GWEI } from './constants';
 
 const config: Config = {
   airseekerWalletMnemonic: 'achieve climb couple wait accident symbol spy blouse reduce foil echo label',
@@ -300,7 +300,7 @@ describe('Gas oracle', () => {
 
     const updateBlockDataSpy = jest.spyOn(api, 'updateBlockData');
 
-    await api.fetchUpdateBlockData(stateProvider, 1, sampleBlockCount, 60);
+    await api.fetchUpdateBlockData(stateProvider, 1, sampleBlockCount, 60, 10);
 
     expect(getBlockWithTransactionsSpy).toHaveBeenCalledTimes(sampleBlockCount);
     expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(1, 'latest');
@@ -331,10 +331,13 @@ describe('Gas oracle', () => {
     // Mock random backoff time for prepareGoOptions
     jest.spyOn(global.Math, 'random').mockImplementation(() => 0.15);
 
-    await api.fetchUpdateBlockData(stateProvider, 1, 20, 60);
+    await api.fetchUpdateBlockData(stateProvider, 1, 20, 60, 10);
 
     expect(getBlockWithTransactionsSpy).toHaveBeenCalledTimes(3);
-    expect(state.getState().gasOracles[chainId]).toBeUndefined();
+    expect(state.getState().gasOracles[chainId][providerName].percentileGasPrice).toBeUndefined();
+    expect(state.getState().gasOracles[chainId][providerName].backupGasPrice).toEqual(
+      ethers.utils.parseUnits(DEFAULT_BACK_UP_GAS_PRICE_GWEI.toString(), 'gwei')
+    );
   });
 
   it('updates state with the blockData and percentileGasPrice', () => {
@@ -373,17 +376,11 @@ describe('Gas oracle', () => {
     api.updateBlockData(newBlockData, [], chainId, providerName, 20, 70);
 
     const percentileGasPrice = api.getPercentile(70, gasPriceArray);
-    const chainProviderPercentileGasPrice = api.getChainProviderPercentileGasPrice(chainId, providerName);
+    const chainProviderPercentileGasPrice = api.getChainProviderGasPrice(chainId, providerName);
     expect(percentileGasPrice).toEqual(chainProviderPercentileGasPrice);
     expect(state.getState().gasOracles[chainId][providerName].percentileGasPrice).toEqual(
       chainProviderPercentileGasPrice
     );
-  });
-
-  it('returns null for missing chainProviderGasPrice', () => {
-    const chainProviderPercentileGasPrice = api.getChainProviderPercentileGasPrice('invalidChain', 'invalidProvider');
-
-    expect(chainProviderPercentileGasPrice).toEqual(null);
   });
 
   it('calls fetchUpdateBlockData in a loop', async () => {

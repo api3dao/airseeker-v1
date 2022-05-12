@@ -8,6 +8,7 @@ import {
   DEFAULT_GAS_ORACLE_UPDATE_INTERVAL,
   DEFAULT_GAS_PRICE_PERCENTILE,
   DEFAULT_SAMPLE_BLOCK_COUNT,
+  DEFAULT_BACK_UP_GAS_PRICE_GWEI,
   NO_ORACLE_EXIT_CODE,
 } from './constants';
 
@@ -17,7 +18,8 @@ type ChainBlockData = Record<string, ProviderBlockData>;
 
 interface ProviderBlockData {
   blockData: BlockData[];
-  percentileGasPrice: ethers.BigNumber;
+  percentileGasPrice?: ethers.BigNumber;
+  backupGasPrice?: ethers.BigNumber;
 }
 
 export interface BlockData {
@@ -25,12 +27,15 @@ export interface BlockData {
   gasPrices: ethers.BigNumber[];
 }
 
-export const getChainProviderPercentileGasPrice = (chainId: string, providerName: string) => {
+export const getChainProviderGasPrice = (chainId: string, providerName: string) => {
   const { gasOracles } = getState();
-  if (!gasOracles[chainId] || !gasOracles[chainId][providerName]) {
-    return null;
+  if (!gasOracles[chainId][providerName].percentileGasPrice) {
+    logger.log(
+      `No percentileGasPrice found for chain with ID ${chainId} and provider with name ${providerName}. Using back up gas price.`
+    );
+    return gasOracles[chainId][providerName].backupGasPrice!;
   }
-  return gasOracles[chainId][providerName].percentileGasPrice;
+  return gasOracles[chainId][providerName].percentileGasPrice!;
 };
 
 export const updateBlockData = (
@@ -81,15 +86,35 @@ export const getPercentile = (percentile: number, array: ethers.BigNumber[]) => 
   return array[index];
 };
 
+export const updateBackupGasPrice = (chainId: string, providerName: string, backupGasPrice: ethers.BigNumber) => {
+  updateState((state) => ({
+    ...state,
+    gasOracles: {
+      ...state.gasOracles,
+      [chainId]: {
+        ...state.gasOracles[chainId],
+        [providerName]: {
+          ...(state.gasOracles[chainId] && state.gasOracles[chainId][providerName]
+            ? state.gasOracles[chainId][providerName]
+            : { blockData: [] }),
+          backupGasPrice,
+        },
+      },
+    },
+  }));
+};
+
 export const fetchUpdateBlockData = async (
   provider: Provider,
   updateInterval: number,
   sampleBlockCount: number,
-  percentile: number
+  percentile: number,
+  backupGasPriceGwei: number
 ) => {
   const { rpcProvider, chainId, providerName } = provider;
   logger.log(`Fetching blocks on chain with ID ${chainId} for provider with name ${providerName}`);
 
+  const state = getState();
   const startTime = Date.now();
   const totalTimeout = updateInterval * 1_000;
 
@@ -100,21 +125,47 @@ export const fetchUpdateBlockData = async (
   });
   if (!goRes.success) {
     logger.log(
-      `Unable to fetch latest block with number on chain with ID ${chainId} for provider with name ${providerName}`
+      `Unable to fetch latest block with number on chain with ID ${chainId} for provider with name ${providerName}. Fetching backup feeData.`
     );
+
+    // Attempt to get gas price from provider if fetching the latest block fails
+    const feeDataRes = await go(() => rpcProvider.getFeeData(), {
+      // TODO: check retry options
+      ...prepareGoOptions(startTime, totalTimeout),
+      onAttemptError: (goError) => logger.log(`Failed attempt to get fee data. Error: ${goError.error}`),
+    });
+
+    if (!feeDataRes.success || !feeDataRes.data.gasPrice || !feeDataRes.data.maxFeePerGas) {
+      logger.log(`Unable to fetch gas price for chain with ID ${chainId} and provider with name ${providerName}.`);
+
+      // Use the hardcoded back if back up gasTarget cannot be fetched and there are no gas values in state
+      if (
+        !state.gasOracles[chainId] ||
+        !state.gasOracles[chainId][providerName] ||
+        !state.gasOracles[chainId][providerName].percentileGasPrice ||
+        !state.gasOracles[chainId][providerName].backupGasPrice
+      ) {
+        updateBackupGasPrice(chainId, providerName, ethers.utils.parseUnits(backupGasPriceGwei.toString(), 'gwei'));
+      }
+      return;
+    }
+
+    // Add back up gasTarget to state
+    const { gasPrice, maxFeePerGas } = feeDataRes.data;
+    updateBackupGasPrice(chainId, providerName, gasPrice || maxFeePerGas);
     return;
   }
 
   const { data: latestBlock } = goRes;
 
-  const state = getState();
-
   // Calculate how many blocks to fetch since the last update
   const stateBlockData = state.gasOracles[chainId]?.[providerName]?.blockData || [];
   const latestBlockNumberInState = stateBlockData[0]?.blockNumber || 0;
+  // Check if the latest block is already in state
+  const latestBlockInStateMatch = stateBlockData.find((stateBlock) => stateBlock.blockNumber === latestBlock.number);
 
   // Skip processing if the latest block is already in state
-  if (latestBlock.number === latestBlockNumberInState) {
+  if (latestBlockInStateMatch) {
     logger.log(
       `Latest block on chain with ID ${chainId} for provider with name ${providerName} already in state. Skipping.`
     );
@@ -181,11 +232,12 @@ export const fetchBlockDataInLoop = async (provider: Provider) => {
   const updateInterval = gasOracleConfig?.updateInterval || DEFAULT_GAS_ORACLE_UPDATE_INTERVAL;
   const sampleBlockCount = gasOracleConfig?.sampleBlockCount || DEFAULT_SAMPLE_BLOCK_COUNT;
   const percentile = gasOracleConfig?.percentile || DEFAULT_GAS_PRICE_PERCENTILE;
+  const backupGasPriceGwei = gasOracleConfig?.backupGasPriceGwei || DEFAULT_BACK_UP_GAS_PRICE_GWEI;
 
   while (!getState().stopSignalReceived) {
     const startTimestamp = Date.now();
 
-    await fetchUpdateBlockData(provider, updateInterval, sampleBlockCount, percentile);
+    await fetchUpdateBlockData(provider, updateInterval, sampleBlockCount, percentile, backupGasPriceGwei);
 
     const duration = Date.now() - startTimestamp;
     const waitTime = Math.max(0, updateInterval * 1_000 - duration);

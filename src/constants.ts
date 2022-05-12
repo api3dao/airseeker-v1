@@ -22,6 +22,8 @@ export const NO_ORACLE_EXIT_CODE = 3;
 export const DEFAULT_GAS_ORACLE_UPDATE_INTERVAL = 20;
 export const DEFAULT_GAS_PRICE_PERCENTILE = 60;
 export const DEFAULT_SAMPLE_BLOCK_COUNT = 20;
+// The gas price to use if the gas oracle fails to fetch any values from the provider and no value is specified in airseeker.json
+export const DEFAULT_BACK_UP_GAS_PRICE_GWEI = 10;
 
 export const DEFAULT_LOG_OPTIONS: LogOptions = {
   format: 'plain',
