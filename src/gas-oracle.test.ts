@@ -206,6 +206,7 @@ describe('Gas oracle', () => {
     chainId,
     providerName,
   };
+  const chainOptions = { sampleBlockCount: 6, percentile: 60, updateInterval: 1, backupGasPriceGwei: 10 };
   const gasPriceArray = [
     ethers.BigNumber.from(10),
     ethers.BigNumber.from(20),
@@ -262,8 +263,8 @@ describe('Gas oracle', () => {
 
     const calledProviders: state.Provider[] = [];
     const fetchBlockDataInLoopSpy = jest.spyOn(api, 'fetchBlockDataInLoop');
-    fetchBlockDataInLoopSpy.mockImplementation(async (provider) => {
-      calledProviders.push(provider);
+    fetchBlockDataInLoopSpy.mockImplementation(async (chainProvider) => {
+      calledProviders.push(chainProvider.provider);
     });
 
     api.initiateFetchingBlockData();
@@ -281,8 +282,8 @@ describe('Gas oracle', () => {
 
     const calledProviders: state.Provider[] = [];
     const fetchBlockDataInLoopSpy = jest.spyOn(api, 'fetchBlockDataInLoop');
-    fetchBlockDataInLoopSpy.mockImplementation(async (provider) => {
-      calledProviders.push(provider);
+    fetchBlockDataInLoopSpy.mockImplementation(async (chainProvider) => {
+      calledProviders.push(chainProvider.provider);
     });
 
     api.initiateFetchingBlockData();
@@ -307,7 +308,7 @@ describe('Gas oracle', () => {
 
     const updateBlockDataSpy = jest.spyOn(api, 'updateBlockData');
 
-    await api.fetchUpdateBlockData(stateProvider, 1, sampleBlockCount, 60, 10);
+    await api.fetchUpdateBlockData(stateProvider, { ...chainOptions, sampleBlockCount });
 
     expect(getBlockWithTransactionsSpy).toHaveBeenCalledTimes(sampleBlockCount);
     expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(1, 'latest');
@@ -338,7 +339,7 @@ describe('Gas oracle', () => {
     // Mock random backoff time for prepareGoOptions
     jest.spyOn(global.Math, 'random').mockImplementation(() => 0.15);
 
-    await api.fetchUpdateBlockData(stateProvider, 1, 20, 60, 10);
+    await api.fetchUpdateBlockData(stateProvider, chainOptions);
 
     expect(getBlockWithTransactionsSpy).toHaveBeenCalledTimes(3);
     expect(state.getState().gasOracles[chainId][providerName].percentileGasPrice).toBeUndefined();
@@ -417,7 +418,7 @@ describe('Gas oracle', () => {
       }
     });
 
-    await api.fetchBlockDataInLoop(stateProvider);
+    await api.fetchBlockDataInLoop({ provider: stateProvider, chainOptions });
 
     expect(api.fetchUpdateBlockData).toHaveBeenCalledTimes(2);
   });
