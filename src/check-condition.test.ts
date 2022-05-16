@@ -6,11 +6,10 @@ import {
   checkUpdateCondition,
   HUNDRED_PERCENT,
 } from './check-condition';
-import { DEFAULT_LOG_OPTIONS } from './constants';
 import { State, updateState } from './state';
 import { getUnixTimestamp, validSignedData } from '../test/fixtures';
 
-updateState((_state) => ({ logOptions: DEFAULT_LOG_OPTIONS } as unknown as State));
+updateState((_state) => ({ logOptions: {} } as unknown as State));
 
 describe('calculateUpdateInPercentage', () => {
   it('calculates zero change', () => {

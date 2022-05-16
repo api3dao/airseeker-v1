@@ -3,11 +3,14 @@ import * as api from './fetch-beacon-data';
 import { Config } from './validation';
 import * as makeRequestApi from './make-request';
 import * as state from './state';
-import { DEFAULT_LOG_OPTIONS } from './constants';
 import { validSignedData } from '../test/fixtures';
 
 const config: Config = {
   airseekerWalletMnemonic: 'achieve climb couple wait accident symbol spy blouse reduce foil echo label',
+  log: {
+    format: 'plain',
+    level: 'INFO',
+  },
   beacons: {
     '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c': {
       airnode: '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
@@ -52,6 +55,7 @@ const config: Config = {
           unit: 'gwei',
         },
         baseFeeMultiplier: 2,
+        fulfillmentGasLimit: 500_000,
       },
     },
     '3': {
@@ -70,6 +74,7 @@ const config: Config = {
           unit: 'gwei',
         },
         baseFeeMultiplier: 2,
+        fulfillmentGasLimit: 500_000,
       },
     },
   },
@@ -155,20 +160,6 @@ describe('initiateFetchingBeaconData', () => {
       '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2',
     ]);
   });
-
-  it('exits if there are no beacons to be fetched data for', async () => {
-    jest.spyOn(state, 'getState').mockReturnValue({ ...state.getState(), config: { ...config, beacons: {} } });
-    jest.spyOn(process, 'exit').mockImplementationOnce(() => undefined as never);
-    const fetchBeaconDataIds: string[] = [];
-    jest.spyOn(api, 'fetchBeaconDataInLoop').mockImplementation(async (id) => {
-      fetchBeaconDataIds.push(id);
-    });
-
-    await api.initiateFetchingBeaconData();
-
-    expect(fetchBeaconDataIds).toHaveLength(0);
-    expect(process.exit).toBeCalledWith(2);
-  });
 });
 
 describe('fetchBeaconData', () => {
@@ -181,18 +172,6 @@ describe('fetchBeaconData', () => {
 
     await api.fetchBeaconData('0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2');
 
-    expect(state.updateState).not.toHaveBeenCalled();
-  });
-
-  it('does nothing for invalid template ID', async () => {
-    jest.spyOn(logger, 'log');
-    jest.spyOn(state, 'updateState');
-
-    await api.fetchBeaconData('0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469beabcdabcd');
-
-    expect(logger.log).toHaveBeenCalledWith(
-      `Invalid template ID 0x9ec34b00a5019442dcd05a4860ff2bf015164b368cb83fcb756088fcabcdabcd. Skipping.`
-    );
     expect(state.updateState).not.toHaveBeenCalled();
   });
 
@@ -237,7 +216,7 @@ describe('fetchBeaconDataInLoop', () => {
           stopSignalReceived: true,
           beaconValues: {},
           providers: {},
-          logOptions: DEFAULT_LOG_OPTIONS,
+          logOptions: { ...config.log, meta: {} },
         };
       } else {
         return {
@@ -245,7 +224,7 @@ describe('fetchBeaconDataInLoop', () => {
           stopSignalReceived: false,
           beaconValues: {},
           providers: {},
-          logOptions: DEFAULT_LOG_OPTIONS,
+          logOptions: { ...config.log, meta: {} },
         };
       }
     });

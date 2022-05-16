@@ -15,6 +15,10 @@ describe('initializeProvider', () => {
 
 describe('initializeProviders', () => {
   const config = {
+    log: {
+      format: 'plain',
+      level: 'DEBUG',
+    },
     chains: {
       '1': {
         providers: {
@@ -44,7 +48,6 @@ describe('initializeProviders', () => {
     triggers: {
       beaconUpdates: {
         '1': {},
-        '2': {},
         '3': {},
       },
     },

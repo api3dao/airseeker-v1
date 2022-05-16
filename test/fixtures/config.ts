@@ -1,5 +1,9 @@
 export const buildAirseekerConfig = () => ({
   airseekerWalletMnemonic: '${AIRSEEKER_WALLET_MNEMONIC}',
+  log: {
+    format: 'plain',
+    level: 'DEBUG',
+  },
   beacons: {
     '0x924b5d4cb3ec6366ae4302a1ca6aec035594ea3ea48a102d160b50b0c43ebfb5': {
       airnode: '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
@@ -30,6 +34,7 @@ export const buildAirseekerConfig = () => ({
           unit: 'gwei',
         },
         baseFeeMultiplier: 2,
+        fulfillmentGasLimit: 500_000,
       },
     },
   },

@@ -18,6 +18,7 @@ const setupMocks = () => {
 const createProvider = (chainId: string) => ({
   rpcProvider: new ethers.providers.JsonRpcProvider(),
   chainId,
+  providerName: 'mock-provider',
 });
 
 const createMockState = () =>

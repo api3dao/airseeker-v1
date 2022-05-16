@@ -1,17 +1,11 @@
+import * as node from '@api3/airnode-node';
+import { DapiServer, DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol-v1';
+import { go, GoAsyncOptions } from '@api3/promise-utils';
 import { ethers } from 'ethers';
 import { isEmpty } from 'lodash';
-import { DapiServer__factory as DapiServerFactory, DapiServer } from '@api3/airnode-protocol-v1';
-import { go, GoAsyncOptions } from '@api3/promise-utils';
-import { BeaconUpdate } from './validation';
-import { getState, Provider } from './state';
-import { logger } from './logging';
-import { getGasPrice } from './gas-prices';
 import { getCurrentBlockNumber } from './block-number';
-import { getTransactionCount } from './transaction-count';
-import { checkSignedDataFreshness, checkOnchainDataFreshness, checkUpdateCondition } from './check-condition';
-import { deriveSponsorWalletFromMnemonic, shortenAddress, sleep } from './utils';
+import { checkOnchainDataFreshness, checkSignedDataFreshness, checkUpdateCondition } from './check-condition';
 import {
-  GAS_LIMIT,
   INFINITE_RETRIES,
   INT224_MAX,
   INT224_MIN,
@@ -21,6 +15,12 @@ import {
   RANDOM_BACKOFF_MAX_MS,
   RANDOM_BACKOFF_MIN_MS,
 } from './constants';
+import { getGasPrice } from './gas-prices';
+import { logger, LogOptionsOverride } from './logging';
+import { getState, Provider } from './state';
+import { getTransactionCount } from './transaction-count';
+import { shortenAddress, sleep } from './utils';
+import { BeaconUpdate } from './validation';
 
 type ProviderSponsorBeacons = {
   provider: Provider;
@@ -31,46 +31,29 @@ type ProviderSponsorBeacons = {
 
 export const groupBeaconsByProviderSponsor = () => {
   const { config, providers: stateProviders } = getState();
-  return Object.entries(config.triggers.beaconUpdates).reduce((acc: ProviderSponsorBeacons[], [chainId, sponsors]) => {
-    const providers = stateProviders[chainId];
+  return Object.entries(config.triggers.beaconUpdates).reduce(
+    (acc: ProviderSponsorBeacons[], [chainId, beaconUpdatesPerSponsor]) => {
+      const providers = stateProviders[chainId];
 
-    // TODO: Should be later part of the validation
-    if (!providers) {
-      logger.log(`Missing providers for chain with ID ${chainId}`);
-      return acc;
-    }
+      const providerSponsorGroups = Object.entries(beaconUpdatesPerSponsor).reduce(
+        (acc: ProviderSponsorBeacons[], [sponsorAddress, beaconUpdate]) => {
+          return [...acc, ...providers.map((provider) => ({ provider, sponsorAddress, ...beaconUpdate }))];
+        },
+        []
+      );
 
-    const providerSponsorGroups = Object.entries(sponsors).reduce(
-      (acc: ProviderSponsorBeacons[], [sponsorAddress, beaconUpdate]) => {
-        const { beacons } = beaconUpdate;
-        // TODO: Should be later part of the validation
-        const foundBeacons = beacons.filter((beacon) => {
-          if (config.beacons[beacon.beaconId]) return true;
-
-          logger.log(`Missing beacon with ID ${beacon.beaconId}. Skipping.`);
-          return false;
-        });
-
-        if (isEmpty(foundBeacons)) return acc;
-
-        return [
-          ...acc,
-          ...providers.map((provider) => ({ provider, sponsorAddress, ...beaconUpdate, beacons: foundBeacons })),
-        ];
-      },
-      []
-    );
-
-    return [...acc, ...providerSponsorGroups];
-  }, []);
+      return [...acc, ...providerSponsorGroups];
+    },
+    []
+  );
 };
 
 export const initiateBeaconUpdates = () => {
-  logger.log('Initiating beacon updates');
+  logger.debug('Initiating beacon updates');
 
   const providerSponsorBeaconsGroups = groupBeaconsByProviderSponsor();
   if (isEmpty(providerSponsorBeaconsGroups)) {
-    logger.log('No beacons for processing found. Stopping.');
+    logger.error('No beacons for processing found. Stopping.');
     process.exit(NO_BEACONS_EXIT_CODE);
   }
   providerSponsorBeaconsGroups.forEach(updateBeaconsInLoop);
@@ -105,10 +88,12 @@ export const prepareGoOptions = (startTime: number, totalTimeout: number): GoAsy
 export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeacons) => {
   const { config, beaconValues } = getState();
   const { provider, sponsorAddress, beacons } = providerSponsorBeacons;
-  const { rpcProvider, chainId } = provider;
-  logger.log(
-    `Processing beacon updates for chain with ID ${chainId} and sponsor with address ${providerSponsorBeacons.sponsorAddress}.`
-  );
+  const { rpcProvider, chainId, providerName } = provider;
+  const logOptionsSponsor = {
+    meta: { chainId, providerName },
+    additional: { Sponsor: shortenAddress(sponsorAddress) },
+  };
+  logger.debug(`Processing beacon updates`, logOptionsSponsor);
 
   const startTime = Date.now();
   // All the beacon updates for given provider & sponsor have up to <updateInterval> seconds to finish
@@ -116,46 +101,37 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
 
   // Prepare contract for beacon updates
   const contractAddress = config.chains[chainId].contracts['DapiServer'];
-  // TODO: Should be later part of the validation
-  if (!contractAddress) {
-    logger.log(`Missing contract address for DapiServer on chain with ID ${chainId}.`);
-    return;
-  }
   const contract = DapiServerFactory.connect(contractAddress, rpcProvider);
 
   // Get current block number
   const blockNumber = await getCurrentBlockNumber(provider, prepareGoOptions(startTime, totalTimeout));
   if (blockNumber === null) {
-    logger.log(`Unable to obtain block number for chain with ID ${chainId}.`);
+    logger.warn(`Unable to obtain block number`, logOptionsSponsor);
     return;
   }
 
   // Get gas price
   const gasTarget = await getGasPrice(provider, prepareGoOptions(startTime, totalTimeout));
   if (gasTarget === null) {
-    logger.log(`Unable to fetch gas price for chain with ID ${chainId}.`);
+    logger.warn(`Unable to fetch gas price`, logOptionsSponsor);
     return;
   }
-  const { txType: _txType, ...gatTargetOverride } = gasTarget;
+  const { txType: _txType, ...gasTargetOverride } = gasTarget;
 
   // Derive sponsor wallet address
-  const sponsorWallet = deriveSponsorWalletFromMnemonic(
-    config.airseekerWalletMnemonic,
-    sponsorAddress,
-    PROTOCOL_ID
-  ).connect(rpcProvider);
+  const sponsorWallet = node.evm
+    .deriveSponsorWalletFromMnemonic(config.airseekerWalletMnemonic, sponsorAddress, PROTOCOL_ID)
+    .connect(rpcProvider);
 
   // Get transaction count
   const transactionCount = await getTransactionCount(
-    rpcProvider,
+    provider,
     sponsorWallet.address,
     blockNumber,
     prepareGoOptions(startTime, totalTimeout)
   );
   if (transactionCount === null) {
-    logger.log(
-      `Unable to fetch transaction count for sponsor ${shortenAddress(sponsorAddress)} on chain with ID ${chainId}.`
-    );
+    logger.warn(`Unable to fetch transaction count`, logOptionsSponsor);
     return;
   }
 
@@ -164,23 +140,22 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
   const voidSigner = new ethers.VoidSigner(ethers.constants.AddressZero, rpcProvider);
 
   for (const beacon of beacons) {
+    const logOptionsBeaconId = {
+      ...logOptionsSponsor,
+      additional: {
+        ...logOptionsSponsor.additional,
+        'Sponsor-Wallet': shortenAddress(sponsorWallet.address),
+        'Beacon-ID': beacon.beaconId,
+      },
+    };
+
     const beaconUpdateData = { ...beacon, ...config.beacons[beacon.beaconId] };
 
-    // TODO: Should be later part of the validation
-    const derivedBeaconId = ethers.utils.solidityKeccak256(
-      ['address', 'bytes32'],
-      [beaconUpdateData.airnode, beaconUpdateData.templateId]
-    );
-    if (derivedBeaconId !== beaconUpdateData.beaconId) {
-      logger.log(`Invalid beacon ID ${beaconUpdateData.beaconId}. Skipping.`);
-      continue;
-    }
-
-    logger.log(`Updating beacon with ID ${beaconUpdateData.beaconId}`);
+    logger.debug(`Updating beacon`, logOptionsBeaconId);
     // Check whether we have a value for given beacon
     const newBeaconResponse = beaconValues[beaconUpdateData.beaconId];
     if (!newBeaconResponse) {
-      logger.log(`No data available for beacon with ID ${beaconUpdateData.beaconId}. Skipping.`);
+      logger.warn(`No data available for beacon. Skipping.`, logOptionsBeaconId);
       continue;
     }
 
@@ -189,7 +164,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
       ethers.utils.defaultAbiCoder.decode(['int256'], newBeaconResponse.data.value)[0]
     );
     if (newBeaconValue.gt(INT224_MAX) || newBeaconValue.lt(INT224_MIN)) {
-      logger.log(`New beacon value for beacon with ID ${beaconUpdateData.beaconId} is out of type range. Skipping.`);
+      logger.warn(`New beacon value is out of type range. Skipping.`, logOptionsBeaconId);
       continue;
     }
 
@@ -197,7 +172,8 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
       voidSigner,
       contract,
       beaconUpdateData.beaconId,
-      prepareGoOptions(startTime, totalTimeout)
+      prepareGoOptions(startTime, totalTimeout),
+      logOptionsBeaconId
     );
     if (!onChainData) {
       continue;
@@ -206,15 +182,16 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
     // Check that signed data is newer than on chain value
     const isSignedDataFresh = checkSignedDataFreshness(onChainData.timestamp, newBeaconResponse.data.timestamp);
     if (!isSignedDataFresh) {
-      logger.log(`Signed data older than on chain record for beacon with ID ${beaconUpdateData.beaconId}. Skipping.`);
+      logger.warn(`Signed data older than on chain record. Skipping.`, logOptionsBeaconId);
       continue;
     }
 
     // Check that on chain data is newer than hearbeat interval
     const isOnchainDataFresh = checkOnchainDataFreshness(onChainData.timestamp, beaconUpdateData.heartbeatInterval);
     if (!isOnchainDataFresh) {
-      logger.log(
-        `On chain data timestamp older than heartbeat for beacon with ID ${beaconUpdateData.beaconId}. Updating without condition check.`
+      logger.info(
+        `On chain data timestamp older than heartbeat. Updating without condition check.`,
+        logOptionsBeaconId
       );
     } else {
       // Check beacon condition
@@ -224,16 +201,16 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
         newBeaconValue
       );
       if (shouldUpdate === null) {
-        logger.log(`Unable to fetch current beacon value for beacon with ID ${beaconUpdateData.beaconId}.`);
+        logger.warn(`Unable to fetch current beacon value`, logOptionsBeaconId);
         // This can happen only if we reach the total timeout so it makes no sense to continue with the rest of the beacons
         return;
       }
       if (!shouldUpdate) {
-        logger.log(`Deviation threshold not reached for beacon with ID ${beaconUpdateData.beaconId}. Skipping.`);
+        logger.info(`Deviation threshold not reached. Skipping.`, logOptionsBeaconId);
         continue;
       }
 
-      logger.log(`Deviation threshold reached for beacon with ID ${beaconUpdateData.beaconId}. Updating.`);
+      logger.info(`Deviation threshold reached. Updating.`, logOptionsBeaconId);
     }
 
     // Update beacon
@@ -248,26 +225,25 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
             newBeaconResponse.data.value,
             newBeaconResponse.signature,
             {
-              gasLimit: GAS_LIMIT,
-              ...gatTargetOverride,
+              ...gasTargetOverride,
               nonce,
             }
           ),
       {
         ...prepareGoOptions(startTime, totalTimeout),
-        onAttemptError: (goError) => logger.log(`Failed attempt to update beacon. Error ${goError.error}`),
+        onAttemptError: (goError) =>
+          logger.warn(`Failed attempt to update beacon. Error ${goError.error}`, logOptionsBeaconId),
       }
     );
 
     if (!tx.success) {
-      logger.log(
-        `Unable to update beacon with ID ${beaconUpdateData.beaconId} using wallet ${sponsorWallet.address} and nonce ${nonce}. Error: ${tx.error}`
-      );
+      logger.warn(`Unable to update beacon with nonce ${nonce}. Error: ${tx.error}`, logOptionsBeaconId);
       return;
     }
 
-    logger.log(
-      `Beacon with ID ${beaconUpdateData.beaconId} successfully updated with value ${newBeaconValue}. Tx hash ${tx.data.hash}.`
+    logger.info(
+      `Beacon successfully updated with value ${newBeaconValue}. Tx hash ${tx.data.hash}.`,
+      logOptionsBeaconId
     );
     nonce++;
   }
@@ -282,14 +258,21 @@ export const readOnChainBeaconData = async (
   voidSigner: ethers.VoidSigner,
   dapiServer: DapiServer,
   beaconId: string,
-  goOptions: GoAsyncOptions
+  goOptions: GoAsyncOptions,
+  logOptions: LogOptionsOverride
 ): Promise<OnChainBeaconData | null> => {
+  const logOptionsDapiServerAddress = {
+    ...logOptions,
+    additional: { ...logOptions.additional, 'Dapi-Server': dapiServer.address },
+  };
+
   const goDataFeed = await go(() => dapiServer.connect(voidSigner).readDataFeedWithId(beaconId), {
     ...goOptions,
-    onAttemptError: (goError) => logger.log(`Failed attempt to read data feed. Error: ${goError.error}`),
+    onAttemptError: (goError) =>
+      logger.warn(`Failed attempt to read data feed. Error: ${goError.error}`, logOptionsDapiServerAddress),
   });
   if (!goDataFeed.success) {
-    logger.log(`Unable to read data feed. Error: ${goDataFeed.error}`);
+    logger.warn(`Unable to read data feed. Error: ${goDataFeed.error}`, logOptionsDapiServerAddress);
     return null;
   }
 

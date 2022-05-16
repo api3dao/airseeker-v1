@@ -32,7 +32,7 @@ describe('checkUpdateCondition', () => {
       ethers.utils.solidityPack(['address', 'bytes32'], [airnodeWallet.address, templateIdETH])
     );
 
-    onChainValue = (await readOnChainBeaconData(voidSigner, dapiServer, beaconId, {}))!;
+    onChainValue = (await readOnChainBeaconData(voidSigner, dapiServer, beaconId, {}, {}))!;
   });
 
   it('returns true for increase above the deviationThreshold', async () => {
