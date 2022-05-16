@@ -18,7 +18,7 @@ provider:
 
 functions:
   airseeker:
-    handler: src/main.main
+    handler: src/main.serverlessHandler
     timeout: 900
     memorySize: 512
     events:

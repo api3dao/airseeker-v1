@@ -25,7 +25,14 @@ export async function main() {
 
   initiateFetchingBeaconData();
   initiateBeaconUpdates();
+}
 
-  // This is required to make the process block because loop promises are not returned/not hierarchical.
+/**
+ * This function is required to make the process block because loop promises are not returned/not hierarchical.
+ * We need a separate function from main to keep Jest happy (without having a dedicated Jest check).
+ */
+export async function serverlessHandler() {
+  await main();
+
   await new Promise((_resolve) => {});
 }
