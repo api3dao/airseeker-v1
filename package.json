@@ -26,7 +26,7 @@
     "dev:testing-services:start": "pm2 start testing-services.config.js",
     "dev:testing-services:stop": "pm2 delete testing-services.config.js",
     "docker:build": "docker build -t api3/airseeker:latest -f docker/Dockerfile .",
-    "docker:run": "docker run --rm --volume \"$(pwd)/config:/app/config\" --env-file $(pwd)/config/secrets-docker.env api3/airseeker:latest",
+    "docker:run": "docker run --rm --volume \"$(pwd)/config:/app/config\" --env-file $(pwd)/config/secrets.env api3/airseeker:latest",
     "format": "yarn prettier",
     "format:fix": "yarn prettier:fix",
     "lint": "yarn format && yarn eslint && yarn terraform:fmt:check",
