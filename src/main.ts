@@ -3,7 +3,6 @@ import { logger } from './logging';
 import { loadConfig } from './config';
 import { initiateFetchingBeaconData } from './fetch-beacon-data';
 import { initiateBeaconUpdates } from './update-beacons';
-import { initiateFetchingBlockData } from './gas-oracle';
 import { initializeProviders } from './providers';
 import { initializeState, updateState } from './state';
 
@@ -20,7 +19,6 @@ export async function main() {
 
   initializeProviders();
 
-  initiateFetchingBlockData();
   initiateFetchingBeaconData();
   initiateBeaconUpdates();
 

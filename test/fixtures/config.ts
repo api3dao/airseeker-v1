@@ -40,6 +40,7 @@ export const buildAirseekerConfig = () => ({
         sampleBlockCount: 20,
         percentile: 60,
         updateInterval: 8,
+        backupGasPriceGwei: 10,
       },
     },
   },

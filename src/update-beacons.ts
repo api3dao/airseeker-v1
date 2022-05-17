@@ -6,7 +6,7 @@ import { isEmpty } from 'lodash';
 import { getCurrentBlockNumber } from './block-number';
 import { checkOnchainDataFreshness, checkSignedDataFreshness, checkUpdateCondition } from './check-condition';
 import { INT224_MAX, INT224_MIN, NO_BEACONS_EXIT_CODE, PROTOCOL_ID } from './constants';
-import { getChainProviderGasPrice } from './gas-oracle';
+import { getGasPrice } from './gas-oracle';
 import { logger, LogOptionsOverride } from './logging';
 import { getState, Provider } from './state';
 import { getTransactionCount } from './transaction-count';
@@ -186,7 +186,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
     }
 
     // Get gas price from oracle
-    const gasPrice = getChainProviderGasPrice(chainId, providerName);
+    const gasPrice = getGasPrice(provider, config.chains[chainId].gasOracle);
 
     // Update beacon
     const tx = await go(

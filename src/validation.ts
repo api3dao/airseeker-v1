@@ -211,6 +211,7 @@ export type Beacon = z.infer<typeof beaconSchema>;
 export type Beacons = z.infer<typeof beaconsSchema>;
 export type Chain = z.infer<typeof chainSchema>;
 export type Chains = z.infer<typeof chainsSchema>;
+export type GasOracleConfig = z.infer<typeof gasOracleSchema>;
 export type Gateway = z.infer<typeof gatewaySchema>;
 export type Gateways = z.infer<typeof gatewaysSchema>;
 export type Template = z.infer<typeof templateSchema>;

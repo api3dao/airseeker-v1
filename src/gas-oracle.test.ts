@@ -2,7 +2,7 @@ import { ethers } from 'ethers';
 import { Config } from './validation';
 import * as api from './gas-oracle';
 import * as state from './state';
-import { DEFAULT_BACK_UP_GAS_PRICE_GWEI } from './constants';
+import { BACK_UP_GAS_PRICE_GWEI } from './constants';
 
 const config: Config = {
   airseekerWalletMnemonic: 'achieve climb couple wait accident symbol spy blouse reduce foil echo label',
@@ -230,66 +230,55 @@ describe('Gas oracle', () => {
     expect(percentileGasPrice).toEqual(ethers.BigNumber.from(70));
   });
 
-  it('starts fetching data for all providers', () => {
-    jest
-      .spyOn(ethers.providers, 'StaticJsonRpcProvider')
-      .mockImplementation(() => 'providerUrl' as unknown as ethers.providers.StaticJsonRpcProvider);
-    const providerStateMock = {
-      '1': [
-        {
-          providerName: 'selfHostedMainnet',
-          rpcProvider: new ethers.providers.StaticJsonRpcProvider('providerUrl'),
-          chainId: '1',
-        },
-        {
-          providerName: 'infuraMainnet',
-          rpcProvider: new ethers.providers.StaticJsonRpcProvider('providerUrl'),
-          chainId: '1',
-        },
-      ],
-      '3': [
-        {
-          providerName: 'infuraRopsten',
-          rpcProvider: new ethers.providers.StaticJsonRpcProvider('providerUrl'),
-          chainId: '3',
-        },
-      ],
-    };
+  it('returns gas price for a provider', async () => {
+    const getBlockWithTransactionsSpy = jest.spyOn(
+      ethers.providers.StaticJsonRpcProvider.prototype,
+      'getBlockWithTransactions'
+    );
+    const blockDataMock = [
+      { number: 6, transactions: [{ gasPrice: ethers.BigNumber.from(60) }] },
+      { number: 5, transactions: [{ gasPrice: ethers.BigNumber.from(50) }] },
+      { number: 4, transactions: [{ gasPrice: ethers.BigNumber.from(40) }] },
+      { number: 3, transactions: [{ gasPrice: ethers.BigNumber.from(30) }] },
+      { number: 2, transactions: [{ gasPrice: ethers.BigNumber.from(20) }] },
+      { number: 1, transactions: [{ gasPrice: ethers.BigNumber.from(10) }] },
+    ];
+    blockDataMock.forEach((block) => getBlockWithTransactionsSpy.mockImplementationOnce(async () => block as any));
 
-    state.updateState((state) => ({
-      ...state,
-      providers: providerStateMock,
-    }));
+    const updateBlockDataSpy = jest.spyOn(api, 'updateBlockData');
 
-    const calledProviders: state.Provider[] = [];
-    const fetchBlockDataInLoopSpy = jest.spyOn(api, 'fetchBlockDataInLoop');
-    fetchBlockDataInLoopSpy.mockImplementation(async (chainProvider) => {
-      calledProviders.push(chainProvider.provider);
-    });
+    const gasPrice = await api.getGasPrice(stateProvider, chainOptions);
 
-    api.initiateFetchingBlockData();
+    expect(getBlockWithTransactionsSpy).toHaveBeenCalledTimes(chainOptions.sampleBlockCount);
+    expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(1, 'latest');
+    expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(2, 5);
+    expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(3, 4);
+    expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(4, 3);
+    expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(5, 2);
+    expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(6, 1);
 
-    expect(calledProviders).toEqual([
-      { chainId: '1', providerName: 'selfHostedMainnet', rpcProvider: {} },
-      { chainId: '1', providerName: 'infuraMainnet', rpcProvider: {} },
-      { chainId: '3', providerName: 'infuraRopsten', rpcProvider: {} },
-    ]);
-  });
-
-  it('exits if there are no providers to be fetched data for', () => {
-    jest.spyOn(state, 'getState').mockReturnValue({ ...state.getState(), providers: {} });
-    jest.spyOn(process, 'exit').mockImplementationOnce(() => undefined as never);
-
-    const calledProviders: state.Provider[] = [];
-    const fetchBlockDataInLoopSpy = jest.spyOn(api, 'fetchBlockDataInLoop');
-    fetchBlockDataInLoopSpy.mockImplementation(async (chainProvider) => {
-      calledProviders.push(chainProvider.provider);
-    });
-
-    api.initiateFetchingBlockData();
-
-    expect(calledProviders).toHaveLength(0);
-    expect(process.exit).toBeCalledWith(3);
+    const newBlockDataMock = [
+      { blockNumber: 6, gasPrices: [ethers.BigNumber.from(60)] },
+      { blockNumber: 5, gasPrices: [ethers.BigNumber.from(50)] },
+      { blockNumber: 4, gasPrices: [ethers.BigNumber.from(40)] },
+      { blockNumber: 3, gasPrices: [ethers.BigNumber.from(30)] },
+      { blockNumber: 2, gasPrices: [ethers.BigNumber.from(20)] },
+      { blockNumber: 1, gasPrices: [ethers.BigNumber.from(10)] },
+    ];
+    expect(updateBlockDataSpy).toHaveBeenCalledWith(
+      newBlockDataMock,
+      [],
+      chainId,
+      providerName,
+      chainOptions.sampleBlockCount,
+      chainOptions.percentile
+    );
+    expect(gasPrice).toEqual(
+      api.getPercentile(
+        chainOptions.percentile,
+        newBlockDataMock.flatMap((b) => b.gasPrices)
+      )
+    );
   });
 
   it('fetches the correct number of blocks', async () => {
@@ -344,7 +333,7 @@ describe('Gas oracle', () => {
     expect(getBlockWithTransactionsSpy).toHaveBeenCalledTimes(3);
     expect(state.getState().gasOracles[chainId][providerName].percentileGasPrice).toBeUndefined();
     expect(state.getState().gasOracles[chainId][providerName].backupGasPrice).toEqual(
-      ethers.utils.parseUnits(DEFAULT_BACK_UP_GAS_PRICE_GWEI.toString(), 'gwei')
+      ethers.utils.parseUnits(BACK_UP_GAS_PRICE_GWEI.toString(), 'gwei')
     );
   });
 
@@ -389,37 +378,5 @@ describe('Gas oracle', () => {
     expect(state.getState().gasOracles[chainId][providerName].percentileGasPrice).toEqual(
       chainProviderPercentileGasPrice
     );
-  });
-
-  it('calls fetchUpdateBlockData in a loop', async () => {
-    let requestCount = 0;
-    jest.spyOn(api, 'fetchUpdateBlockData').mockImplementation(async () => {
-      requestCount++;
-    });
-    jest.spyOn(state, 'getState').mockImplementation(() => {
-      if (requestCount === 2) {
-        return {
-          config,
-          stopSignalReceived: true,
-          beaconValues: {},
-          providers: {},
-          gasOracles: {},
-          logOptions: { ...config.log, meta: {} },
-        };
-      } else {
-        return {
-          config,
-          stopSignalReceived: false,
-          beaconValues: {},
-          providers: {},
-          gasOracles: {},
-          logOptions: { ...config.log, meta: {} },
-        };
-      }
-    });
-
-    await api.fetchBlockDataInLoop({ provider: stateProvider, chainOptions });
-
-    expect(api.fetchUpdateBlockData).toHaveBeenCalledTimes(2);
   });
 });

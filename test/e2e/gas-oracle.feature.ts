@@ -1,10 +1,8 @@
-import { mockReadFileSync } from '../mock-utils';
 import * as hre from 'hardhat';
 import '@nomiclabs/hardhat-ethers';
-import { main, handleStopSignal } from '../../src/main';
 import * as gasOracle from '../../src/gas-oracle';
 import * as state from '../../src/state';
-import { sleep } from '../../src/utils';
+import * as providersApi from '../../src/providers';
 import { buildAirseekerConfig, buildLocalSecrets } from '../fixtures/config';
 import { executeTransactions } from '../setup/transactions';
 
@@ -14,6 +12,7 @@ jest.setTimeout(60_000);
 
 const chainId = '31337';
 const providerName = 'local';
+const providerUrl = 'http://127.0.0.1:8545/';
 const airseekerConfig = buildAirseekerConfig();
 const secretsConfig = buildLocalSecrets();
 const gasOracleConfig = airseekerConfig.chains[chainId].gasOracle;
@@ -49,81 +48,23 @@ describe('Gas oracle', () => {
         await hre.network.provider.send('evm_setAutomine', [true]);
       });
 
-      it('starts gas oracle', async () => {
-        mockReadFileSync('airseeker.json', JSON.stringify(airseekerConfig));
+      it('gets gas price for provider', async () => {
+        state.initializeState(airseekerConfig as any);
+        const provider = providersApi.initializeProvider(chainId, providerUrl);
+        const gasOracleConfig = airseekerConfig.chains[chainId].gasOracle;
 
-        await main().then(async () => {
-          // Wait for Airseeker cycles to finish
-          await sleep(8_000);
-          // Stop Airseeker
-          handleStopSignal('stop');
-          // Wait for last cycle to finish
-          await sleep(8_000);
-        });
+        const gasPrice = await gasOracle.getGasPrice({ ...provider, providerName }, gasOracleConfig);
 
         const { gasOracles } = state.getState();
         const stateChainProviderGasOracle = gasOracles[chainId][providerName];
-
         const processedBlockData = processBlockData(blocksWithGasPrices);
 
         expect(stateChainProviderGasOracle.blockData.length).toEqual(gasOracleConfig.sampleBlockCount);
+        expect(gasPrice).toEqual(gasOracle.getPercentile(gasOracleConfig.percentile, processedBlockData));
         expect(stateChainProviderGasOracle.percentileGasPrice).toEqual(
           gasOracle.getPercentile(gasOracleConfig.percentile, processedBlockData)
         );
       });
-    });
-  });
-
-  txTypes.forEach((_txType) => {
-    it('does not run gas oracle for invalid chains', async () => {
-      const invalidChainId = '123456789';
-      mockReadFileSync(
-        'airseeker.json',
-        JSON.stringify({
-          ...airseekerConfig,
-          chains: {
-            ...airseekerConfig.chains,
-            [invalidChainId]: {
-              contracts: {
-                DapiServer: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
-              },
-              providers: {
-                invalidProvider: {
-                  url: '${CP_LOCAL_URL}',
-                },
-              },
-              options: {
-                txType: 'eip1559',
-                priorityFee: {
-                  value: 3.12,
-                  unit: 'gwei',
-                },
-                baseFeeMultiplier: 2,
-                fulfillmentGasLimit: 500_000,
-              },
-              gasOracle: {
-                sampleBlockCount: 20,
-                percentile: 60,
-                updateInterval: 20,
-              },
-            },
-          },
-        })
-      );
-
-      await main().then(async () => {
-        // Wait for Airseeker cycles to finish
-        await sleep(8_000);
-        // Stop Airseeker
-        handleStopSignal('stop');
-        // Wait for last cycle to finish
-        await sleep(8_000);
-      });
-
-      const { gasOracles } = state.getState();
-      const stateChainProviderGasOracle = gasOracles[invalidChainId];
-
-      expect(stateChainProviderGasOracle).toBeUndefined();
     });
   });
 });

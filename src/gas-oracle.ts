@@ -1,16 +1,15 @@
-import { isEmpty } from 'lodash';
 import { ethers } from 'ethers';
 import { go } from '@api3/promise-utils';
 import { logger } from './logging';
 import { Provider, getState, updateState } from './state';
-import { prepareGoOptions, sleep } from './utils';
+import { prepareGoOptions } from './utils';
 import {
-  DEFAULT_GAS_ORACLE_UPDATE_INTERVAL,
-  DEFAULT_GAS_PRICE_PERCENTILE,
-  DEFAULT_SAMPLE_BLOCK_COUNT,
-  DEFAULT_BACK_UP_GAS_PRICE_GWEI,
-  NO_ORACLE_EXIT_CODE,
+  GAS_ORACLE_UPDATE_INTERVAL,
+  GAS_PRICE_PERCENTILE,
+  SAMPLE_BLOCK_COUNT,
+  BACK_UP_GAS_PRICE_GWEI,
 } from './constants';
+import { GasOracleConfig } from './validation';
 
 interface ChainOptions {
   updateInterval: number;
@@ -48,10 +47,7 @@ export const getChainProviderGasPrice = (chainId: string, providerName: string) 
   }
 
   const gasPrice = gasOracles[chainId][providerName].percentileGasPrice!;
-  logger.info(
-    `No percentileGasPrice found. Using back up gas price ${ethers.utils.formatUnits(gasPrice, 'gwei')}.`,
-    logOptionsChainId
-  );
+  logger.info(`Percentile gas price set to ${ethers.utils.formatUnits(gasPrice, 'gwei')}.`, logOptionsChainId);
   return gasOracles[chainId][providerName].percentileGasPrice!;
 };
 
@@ -234,41 +230,23 @@ export const fetchUpdateBlockData = async (provider: Provider, chainOptions: Cha
   updateBlockData(newBlockData, stateBlockData, chainId, providerName, sampleBlockCount, percentile);
 };
 
-export const fetchBlockDataInLoop = async (chainProvider: { provider: Provider; chainOptions: ChainOptions }) => {
-  const { provider, chainOptions } = chainProvider;
-  while (!getState().stopSignalReceived) {
-    const startTimestamp = Date.now();
+export const getChainProviderConfig = (gasOracleConfig?: GasOracleConfig) => {
+  const updateInterval = gasOracleConfig?.updateInterval || GAS_ORACLE_UPDATE_INTERVAL;
+  const sampleBlockCount = gasOracleConfig?.sampleBlockCount || SAMPLE_BLOCK_COUNT;
+  const percentile = gasOracleConfig?.percentile || GAS_PRICE_PERCENTILE;
+  const backupGasPriceGwei = gasOracleConfig?.backupGasPriceGwei || BACK_UP_GAS_PRICE_GWEI;
 
-    await fetchUpdateBlockData(provider, chainOptions);
-
-    const duration = Date.now() - startTimestamp;
-    const waitTime = Math.max(0, chainOptions.updateInterval * 1_000 - duration);
-    await sleep(waitTime);
-  }
+  return { updateInterval, sampleBlockCount, percentile, backupGasPriceGwei };
 };
 
-export const initiateFetchingBlockData = () => {
-  logger.debug(`Initiating gas oracles`);
-  const { providers: stateProviders, config } = getState();
+// Fetch new block data on call and return the updated gas price
+export const getGasPrice = async (provider: Provider, gasOracleConfig?: GasOracleConfig) => {
+  // Get gas oracle config for provider
+  const chainOptions = getChainProviderConfig(gasOracleConfig);
 
-  if (isEmpty(stateProviders)) {
-    logger.error('No providers for oracles found. Stopping.');
-    process.exit(NO_ORACLE_EXIT_CODE);
-  }
+  // Fetch and process block data
+  await fetchUpdateBlockData(provider, chainOptions);
+  const gasPrice = getChainProviderGasPrice(provider.chainId, provider.providerName);
 
-  // Start loops for each chain and provider
-  const providers = Object.values(stateProviders)
-    .flatMap((provider) => provider)
-    .map((provider) => {
-      const gasOracleConfig = config.chains[provider.chainId].gasOracle;
-
-      const updateInterval = gasOracleConfig?.updateInterval || DEFAULT_GAS_ORACLE_UPDATE_INTERVAL;
-      const sampleBlockCount = gasOracleConfig?.sampleBlockCount || DEFAULT_SAMPLE_BLOCK_COUNT;
-      const percentile = gasOracleConfig?.percentile || DEFAULT_GAS_PRICE_PERCENTILE;
-      const backupGasPriceGwei = gasOracleConfig?.backupGasPriceGwei || DEFAULT_BACK_UP_GAS_PRICE_GWEI;
-
-      return { provider, chainOptions: { updateInterval, sampleBlockCount, percentile, backupGasPriceGwei } };
-    });
-
-  providers.forEach(fetchBlockDataInLoop);
+  return gasPrice;
 };
