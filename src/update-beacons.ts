@@ -201,6 +201,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
             newBeaconResponse.signature,
             {
               gasLimit: ethers.BigNumber.from(config.chains[chainId].options.fulfillmentGasLimit),
+              type: config.chains[chainId].options.txType,
               gasPrice,
               nonce,
             }

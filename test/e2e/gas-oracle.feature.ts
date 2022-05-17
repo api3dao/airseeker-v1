@@ -27,7 +27,7 @@ const processBlockData = (blocksWithGasPrices: gasOracle.BlockData[]) => {
 };
 
 describe('Gas oracle', () => {
-  const txTypes: ('eip1559' | 'legacy')[] = ['eip1559', 'legacy'];
+  const txTypes: (0 | 2)[] = [0, 2];
 
   txTypes.forEach((txType) => {
     describe(`${txType} network`, () => {

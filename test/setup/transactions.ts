@@ -10,7 +10,7 @@ const provider = new hre.ethers.providers.JsonRpcProvider(providerUrl);
 // is calculated from the right number of blocks.
 const transactionCount = 22;
 
-export const executeTransactions = async (txType: 'legacy' | 'eip1559') => {
+export const executeTransactions = async (txType: 0 | 2) => {
   // Get Hardhat accounts to use for transactions
   const wallets = await hre.ethers.getSigners();
   wallets.splice(10);
@@ -24,19 +24,21 @@ export const executeTransactions = async (txType: 'legacy' | 'eip1559') => {
     // Send transactions in parallel for wallets
     const walletPromises = wallets.map(async (wallet) => {
       const gasTarget =
-        txType === 'eip1559'
+        txType === 2
           ? {
               // Set maxPriorityFeePerGas to a random number between 1-10
               maxPriorityFeePerGas: hre.ethers.utils.parseUnits(Math.floor(Math.random() * 10 + 1).toString(), 'gwei'),
               // Set maxFeePerGas to a random number between 1-100 + 11 to ensure that it is larger than maxPriorityFeePerGas
               maxFeePerGas: hre.ethers.utils.parseUnits((Math.floor(Math.random() * 100 + 1) + 11).toString(), 'gwei'),
+              type: txType,
             }
           : {
               // Set gasPrice randomly between 1-100
               gasPrice: hre.ethers.utils.parseUnits(Math.floor(Math.random() * 100 + 1).toString(), 'gwei'),
+              type: txType,
             };
 
-      if (txType === 'eip1559') {
+      if (txType === 2) {
         gasPrices.push(gasTarget.maxPriorityFeePerGas!);
       } else {
         gasPrices.push(gasTarget.gasPrice!);
@@ -54,7 +56,7 @@ export const executeTransactions = async (txType: 'legacy' | 'eip1559') => {
     // Mine block for current loop iteration
     await hre.network.provider.send('hardhat_mine');
 
-    if (txType === 'eip1559') {
+    if (txType === 2) {
       const { baseFeePerGas } = await provider.getBlockWithTransactions('latest');
       blocksWithGasPrices.push({
         blockNumber: i + 1,

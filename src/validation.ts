@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import { SuperRefinement, z } from 'zod';
-import { chainOptionsSchema, providerSchema } from '@api3/airnode-validator';
+import { providerSchema, priorityFeeSchema } from '@api3/airnode-validator';
 import isNil from 'lodash/isNil';
 
 export const logFormatSchema = z.union([z.literal('json'), z.literal('plain')]);
@@ -51,6 +51,15 @@ export const gasOracleSchema = z
     backupGasPriceGwei: z.number().positive().optional(),
   })
   .optional();
+
+//TODO: this can be removed and imported from airnode-validator once the same is applied there
+export const chainOptionsSchema = z.object({
+  txType: z.union([z.literal(0), z.literal(2)]),
+  gasPriceMultiplier: z.number().optional(),
+  baseFeeMultiplier: z.number().int().optional(),
+  priorityFee: priorityFeeSchema.optional(),
+  fulfillmentGasLimit: z.number().int(),
+});
 
 export const chainSchema = z
   .object({

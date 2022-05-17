@@ -49,7 +49,7 @@ const config: Config = {
         },
       },
       options: {
-        txType: 'eip1559',
+        txType: 0,
         priorityFee: {
           value: 3.12,
           unit: 'gwei',
@@ -68,7 +68,7 @@ const config: Config = {
         },
       },
       options: {
-        txType: 'eip1559',
+        txType: 0,
         priorityFee: {
           value: 3.12,
           unit: 'gwei',
