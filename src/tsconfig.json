@@ -1,0 +1,9 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    // The sources should be build in the "dist" folder in the root
+    "outDir": "../dist"
+  },
+  "exclude": ["**/*.test.ts"]
+}
