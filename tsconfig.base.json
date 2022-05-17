@@ -10,6 +10,19 @@
     "strict": true,
     "target": "es5",
     "skipLibCheck": true,
-    "composite": true
+    "composite": true,
+    "noFallthroughCasesInSwitch": true,
+
+    // Disabled because they are too restrictive
+    "exactOptionalPropertyTypes": false,
+    "noUncheckedIndexedAccess": false,
+    "noImplicitReturns": false,
+
+    // Disabled because they are covered by Eslint rules
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+
+    // Disabled because prefer the property syntax
+    "noPropertyAccessFromIndexSignature": false
   }
 }
