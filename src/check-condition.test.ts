@@ -9,9 +9,11 @@ import {
 import { State, updateState } from './state';
 import { getUnixTimestamp, validSignedData } from '../test/fixtures';
 
-updateState((_state) => ({ logOptions: {} } as unknown as State));
-
 describe('calculateUpdateInPercentage', () => {
+  beforeEach(() => {
+    updateState(() => ({ logOptions: {} } as unknown as State));
+  });
+
   it('calculates zero change', () => {
     const updateInPercentage = calculateUpdateInPercentage(ethers.BigNumber.from(10), ethers.BigNumber.from(10));
     expect(updateInPercentage).toEqual(ethers.BigNumber.from(0 * HUNDRED_PERCENT));

@@ -3,6 +3,7 @@ import { PriorityFee } from '@api3/airnode-node';
 import * as state from './state';
 import * as gasPrices from './gas-prices';
 import { BASE_FEE_MULTIPLIER, PRIORITY_FEE_IN_WEI } from './constants';
+import { Config } from './validation';
 
 const setupMocks = () => {
   jest.spyOn(ethers.providers, 'JsonRpcProvider').mockImplementation(
@@ -22,51 +23,50 @@ const createProvider = (chainId: string) => ({
 });
 
 const createMockState = () =>
-  ({
-    config: {
-      chains: {
-        '31337': {
-          options: {
-            txType: 'legacy',
-          },
+  state.getInitialState({
+    log: { format: 'plain', level: 'DEBUG' },
+    chains: {
+      '31337': {
+        options: {
+          txType: 'legacy',
         },
-        '31331': {
-          options: {
-            txType: 'eip1559',
-            baseFeeMultiplier: BASE_FEE_MULTIPLIER,
-            priorityFee: {
-              value: 3.12,
-              unit: 'gwei',
-            },
-          },
-        },
-        '31332': {
-          options: {
-            txType: 'eip1559',
-            baseFeeMultiplier: undefined,
-            priorityFee: {
-              value: 3.12,
-              unit: 'gwei',
-            },
-          },
-        },
-        '31333': {
-          options: {
-            txType: 'eip1559',
-            baseFeeMultiplier: BASE_FEE_MULTIPLIER,
-            priorityFee: undefined,
-          },
-        },
-        '31334': {
-          options: {
-            txType: 'eip1559',
-            baseFeeMultiplier: undefined,
-            priorityFee: undefined,
+      },
+      '31331': {
+        options: {
+          txType: 'eip1559',
+          baseFeeMultiplier: BASE_FEE_MULTIPLIER,
+          priorityFee: {
+            value: 3.12,
+            unit: 'gwei',
           },
         },
       },
+      '31332': {
+        options: {
+          txType: 'eip1559',
+          baseFeeMultiplier: undefined,
+          priorityFee: {
+            value: 3.12,
+            unit: 'gwei',
+          },
+        },
+      },
+      '31333': {
+        options: {
+          txType: 'eip1559',
+          baseFeeMultiplier: BASE_FEE_MULTIPLIER,
+          priorityFee: undefined,
+        },
+      },
+      '31334': {
+        options: {
+          txType: 'eip1559',
+          baseFeeMultiplier: undefined,
+          priorityFee: undefined,
+        },
+      },
     },
-  } as unknown as state.State);
+  } as unknown as Config);
 
 const legacyChainId = '31337';
 const eip1559ChainIds = ['31331', '31332', '31333', '31334'];
