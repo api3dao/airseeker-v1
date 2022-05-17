@@ -43,7 +43,7 @@
     "start": "ts-node -T scripts/run-locally.ts ts-node src/index.ts",
     "terraform:fmt:check": "ts-node scripts/terraform-fmt check",
     "terraform:fmt:write": "ts-node scripts/terraform-fmt write",
-    "test": "jest --selectProjects unit",
+    "test": "SILENCE_LOGGER=true jest --selectProjects unit",
     "test:e2e": "SILENCE_LOGGER=true jest --selectProjects e2e --runInBand"
   },
   "dependencies": {
