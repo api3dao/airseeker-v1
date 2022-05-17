@@ -6,12 +6,12 @@ import {
   checkUpdateCondition,
   HUNDRED_PERCENT,
 } from './check-condition';
-import { initializeState } from './state';
+import { State, updateState } from './state';
 import { getUnixTimestamp, validSignedData } from '../test/fixtures';
 
 describe('calculateUpdateInPercentage', () => {
   beforeEach(() => {
-    initializeState(null as any); // We do not need a valid config
+    updateState(() => ({ logOptions: {} } as unknown as State));
   });
 
   it('calculates zero change', () => {

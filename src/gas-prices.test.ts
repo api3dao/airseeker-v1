@@ -24,6 +24,7 @@ const createProvider = (chainId: string) => ({
 
 const createMockState = () =>
   state.getInitialState({
+    log: { format: 'plain', level: 'DEBUG' },
     chains: {
       '31337': {
         options: {
