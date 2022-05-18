@@ -10,7 +10,7 @@ package:
 provider:
   name: aws
   region: us-east-1
-  stage: prod
+  stage: '2205181317'
   runtime: nodejs14.x
   architecture: arm64
   logRetentionInDays: 14
@@ -18,8 +18,9 @@ provider:
 
 functions:
   airseeker:
-    handler: src/main.serverlessHandler
+    handler: src/serverless.handler
+    maximumRetryAttempts: 0
     timeout: 900
     memorySize: 512
     events:
-      - schedule: rate(13 minutes)
+      - schedule: rate(14 minutes)

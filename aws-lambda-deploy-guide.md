@@ -16,7 +16,7 @@ The app won't immediately start (due to the scheduler). You can jumpstart the ap
 yarn sls invoke --function airseeker &
 
 # Store the PID of the previous command in a variable called `pid`
-pid=$$
+pid=$!
 
 # Wait a bit
 sleep 10;
