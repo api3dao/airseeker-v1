@@ -14,7 +14,7 @@ const envVariables = {
 };
 
 describe('interpolateSecrets', () => {
-  it('interplolates variables', () => {
+  it('interpolates variables', () => {
     const interpolatedString = 'Lorem ipsum dolor sit amet';
     const stringWithVariables = 'Lorem ipsum dolor ${VAR1} ${VAR2}';
     const envVars = {
