@@ -30,3 +30,7 @@ logs
 .terraform*
 terraform.tfstate*
 *.tfvars
+
+# Ignore Serverless directories
+.serverless
+.build

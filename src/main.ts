@@ -17,11 +17,12 @@ export async function main() {
   const config = loadConfig(path.join(__dirname, '..', 'config', 'airseeker.json'), process.env);
   initializeState(config);
 
+  // We do it after initializeState because logger facilities aren't available before initializeState
+  process.on('SIGINT', handleStopSignal);
+  process.on('SIGTERM', handleStopSignal);
+
   initializeProviders();
 
   initiateFetchingBeaconData();
   initiateBeaconUpdates();
-
-  process.on('SIGINT', handleStopSignal);
-  process.on('SIGTERM', handleStopSignal);
 }

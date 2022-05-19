@@ -20,3 +20,7 @@ secrets.env
 
 # Scripts
 /scripts
+
+# Ignore Serverless directories
+.serverless
+.build
