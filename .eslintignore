@@ -2,7 +2,8 @@
 
 # Package directories & files
 /node_modules
-/dist
+# Ignore dist folder in every (sub)folder
+dist
 *.tgz
 
 # IDE specific files
@@ -20,5 +21,6 @@ secrets.env
 # Scripts
 /scripts
 
+# Ignore Serverless directories
 .serverless
 .build

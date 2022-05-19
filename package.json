@@ -19,8 +19,8 @@
   ],
   "scripts": {
     "build": "yarn clean && yarn compile",
-    "clean": "rimraf -rf ./dist *.tgz",
-    "compile": "tsc -p tsconfig.json",
+    "clean": "rimraf -rf *.tsbuildinfo ./dist *.tgz",
+    "compile": "tsc --build tsconfig.json",
     "dev:api": "ts-node test/server/server.ts",
     "dev:eth-node": "hardhat node",
     "dev:testing-services:start": "pm2 start testing-services.config.js",
