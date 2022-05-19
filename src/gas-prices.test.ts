@@ -27,12 +27,12 @@ const createMockState = () =>
       chains: {
         '31337': {
           options: {
-            txType: 0,
+            txType: 'legacy',
           },
         },
         '31331': {
           options: {
-            txType: 2,
+            txType: 'eip1559',
             baseFeeMultiplier: BASE_FEE_MULTIPLIER,
             priorityFee: {
               value: 3.12,
@@ -42,7 +42,7 @@ const createMockState = () =>
         },
         '31332': {
           options: {
-            txType: 2,
+            txType: 'eip1559',
             baseFeeMultiplier: undefined,
             priorityFee: {
               value: 3.12,
@@ -52,14 +52,14 @@ const createMockState = () =>
         },
         '31333': {
           options: {
-            txType: 2,
+            txType: 'eip1559',
             baseFeeMultiplier: BASE_FEE_MULTIPLIER,
             priorityFee: undefined,
           },
         },
         '31334': {
           options: {
-            txType: 2,
+            txType: 'eip1559',
             baseFeeMultiplier: undefined,
             priorityFee: undefined,
           },

@@ -13,35 +13,24 @@ interface BaseGasTarget {
 }
 
 export interface LegacyGasTarget extends BaseGasTarget {
-  type: 0;
+  txType: 'legacy';
   gasPrice: BigNumber;
 }
 
 export interface EIP1559GasTarget extends BaseGasTarget {
-  type: 2;
+  txType: 'eip1559';
   maxPriorityFeePerGas: BigNumber;
   maxFeePerGas: BigNumber;
 }
 
 export type GasTarget = LegacyGasTarget | EIP1559GasTarget;
 
-export interface PriorityFee {
-  readonly value: number;
-  readonly unit?: 'wei' | 'kwei' | 'mwei' | 'gwei' | 'szabo' | 'finney' | 'ether';
-}
-export interface ChainOptions {
-  readonly txType: 0 | 2;
-  readonly baseFeeMultiplier?: number;
-  readonly priorityFee?: PriorityFee;
-  readonly fulfillmentGasLimit: number;
-}
-
 export const parsePriorityFee = ({ value, unit }: node.PriorityFee) =>
   ethers.utils.parseUnits(value.toString(), unit ?? 'wei');
 
 export const getLegacyGasPrice = async (
   provider: Provider,
-  chainOptions: ChainOptions,
+  chainOptions: node.ChainOptions,
   goOptions: GoAsyncOptions
 ): Promise<LegacyGasTarget | null> => {
   const { chainId, rpcProvider, providerName } = provider;
@@ -58,7 +47,7 @@ export const getLegacyGasPrice = async (
   }
 
   return {
-    type: 0,
+    txType: 'legacy',
     gasPrice: goGasPrice.data,
     ...nodeUtils.getGasLimit(chainOptions.fulfillmentGasLimit),
   };
@@ -66,7 +55,7 @@ export const getLegacyGasPrice = async (
 
 export const getEip1559GasPricing = async (
   provider: Provider,
-  chainOptions: ChainOptions,
+  chainOptions: node.ChainOptions,
   goOptions: GoAsyncOptions
 ): Promise<EIP1559GasTarget | null> => {
   const { chainId, rpcProvider, providerName } = provider;
@@ -94,7 +83,7 @@ export const getEip1559GasPricing = async (
   const maxFeePerGas = block.baseFeePerGas!.mul(BigNumber.from(baseFeeMultiplier)).add(maxPriorityFeePerGas!);
 
   return {
-    type: 2,
+    txType: 'eip1559',
     maxPriorityFeePerGas,
     maxFeePerGas,
     ...nodeUtils.getGasLimit(chainOptions.fulfillmentGasLimit),
@@ -108,10 +97,10 @@ export const getGasPrice = async (provider: Provider, goOptions: GoAsyncOptions)
   const chainOptions = getState().config.chains[chainId].options;
   let gasTarget: GasTarget | null;
   switch (chainOptions.txType) {
-    case 0:
+    case 'legacy':
       gasTarget = await getLegacyGasPrice(provider, chainOptions, goOptions);
       break;
-    case 2:
+    case 'eip1559':
       gasTarget = await getEip1559GasPricing(provider, chainOptions, goOptions);
       break;
   }
@@ -119,7 +108,7 @@ export const getGasPrice = async (provider: Provider, goOptions: GoAsyncOptions)
   if (!gasTarget) return gasTarget;
 
   let gasTargetMessage;
-  if (gasTarget.type === 2) {
+  if (gasTarget.txType === 'eip1559') {
     const gweiMaxFee = node.evm.weiToGwei(gasTarget.maxFeePerGas!);
     const gweiPriorityFee = node.evm.weiToGwei(gasTarget.maxPriorityFeePerGas!);
     gasTargetMessage = `Gas price (EIP-1559) set to a Max Fee of ${gweiMaxFee} Gwei and a Priority Fee of ${gweiPriorityFee} Gwei`;

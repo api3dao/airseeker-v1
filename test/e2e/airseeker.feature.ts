@@ -267,7 +267,7 @@ describe('Airseeker', () => {
               },
             },
             options: {
-              txType: 0,
+              txType: 'eip1559',
               priorityFee: {
                 value: 3.12,
                 unit: 'gwei',
