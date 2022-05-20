@@ -6,7 +6,7 @@ import { isEmpty } from 'lodash';
 import { getCurrentBlockNumber } from './block-number';
 import { checkOnchainDataFreshness, checkSignedDataFreshness, checkUpdateCondition } from './check-condition';
 import { INT224_MAX, INT224_MIN, NO_BEACONS_EXIT_CODE, PROTOCOL_ID } from './constants';
-import { getGasPrice } from './gas-oracle';
+import { getOracleGasPrice } from './gas-oracle';
 import { logger, LogOptionsOverride } from './logging';
 import { getState, Provider } from './state';
 import { getTransactionCount } from './transaction-count';
@@ -167,11 +167,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
       );
     } else {
       // Check beacon condition
-      const shouldUpdate = await checkUpdateCondition(
-        onChainData.value,
-        beaconUpdateData.deviationThreshold,
-        newBeaconValue
-      );
+      const shouldUpdate = checkUpdateCondition(onChainData.value, beaconUpdateData.deviationThreshold, newBeaconValue);
       if (shouldUpdate === null) {
         logger.warn(`Unable to fetch current beacon value`, logOptionsBeaconId);
         // This can happen only if we reach the total timeout so it makes no sense to continue with the rest of the beacons
@@ -186,7 +182,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
     }
 
     // Get gas price from oracle
-    const gasPrice = getGasPrice(provider, config.chains[chainId].gasOracle);
+    const gasPrice = await getOracleGasPrice(provider, config.chains[chainId].gasOracle);
 
     // Update beacon
     const tx = await go(
@@ -201,6 +197,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
             newBeaconResponse.signature,
             {
               gasLimit: ethers.BigNumber.from(config.chains[chainId].options.fulfillmentGasLimit),
+              type: config.chains[chainId].options.txType === 'eip1559' ? 2 : 0,
               gasPrice,
               nonce,
             }

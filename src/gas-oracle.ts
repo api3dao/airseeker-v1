@@ -1,99 +1,26 @@
 import { ethers } from 'ethers';
 import { go } from '@api3/promise-utils';
 import { logger } from './logging';
-import { Provider, getState, updateState } from './state';
+import { Provider } from './state';
+import { getGasPrice } from './gas-prices';
 import { prepareGoOptions } from './utils';
+import { checkUpdateCondition } from './check-condition';
 import {
-  GAS_ORACLE_UPDATE_INTERVAL,
+  GAS_ORACLE_MAX_TIMEOUT,
   GAS_PRICE_PERCENTILE,
-  SAMPLE_BLOCK_COUNT,
+  GAS_PRICE_DEVIATION_THRESHOLD,
   BACK_UP_GAS_PRICE_GWEI,
+  MIN_BLOCK_TRANSACTIONS,
 } from './constants';
 import { GasOracleConfig } from './validation';
 
 interface ChainOptions {
-  updateInterval: number;
-  sampleBlockCount: number;
+  maxTimeout: number;
   percentile: number;
   backupGasPriceGwei: number;
+  minBlockTransactions: number;
+  gasPriceDeviationThreshold: number;
 }
-
-export type GasOracles = Record<string, ChainBlockData>;
-
-type ChainBlockData = Record<string, ProviderBlockData>;
-
-interface ProviderBlockData {
-  blockData: BlockData[];
-  percentileGasPrice?: ethers.BigNumber;
-  backupGasPrice?: ethers.BigNumber;
-}
-
-export interface BlockData {
-  blockNumber: number;
-  gasPrices: ethers.BigNumber[];
-}
-
-export const getChainProviderGasPrice = (chainId: string, providerName: string) => {
-  const logOptionsChainId = { meta: { chainId, providerName } };
-  const { gasOracles } = getState();
-
-  if (!gasOracles[chainId][providerName].percentileGasPrice) {
-    const gasPrice = gasOracles[chainId][providerName].backupGasPrice!;
-    logger.info(
-      `No percentileGasPrice found. Using back up gas price ${ethers.utils.formatUnits(gasPrice, 'gwei')}.`,
-      logOptionsChainId
-    );
-    return gasPrice;
-  }
-
-  const gasPrice = gasOracles[chainId][providerName].percentileGasPrice!;
-  logger.info(`Percentile gas price set to ${ethers.utils.formatUnits(gasPrice, 'gwei')}.`, logOptionsChainId);
-  return gasOracles[chainId][providerName].percentileGasPrice!;
-};
-
-export const updateBlockData = (
-  newBlockData: BlockData[],
-  stateBlockData: BlockData[],
-  chainId: string,
-  providerName: string,
-  sampleBlockCount: number,
-  percentile: number
-) => {
-  const logOptionsChainId = { meta: { chainId, providerName } };
-
-  // Add new block data to the top of the array
-  const blockData = newBlockData.concat(stateBlockData);
-
-  // Drop old blocks if exceeding the sampleBlockCount
-  if (blockData.length > sampleBlockCount) {
-    blockData.splice(sampleBlockCount);
-  }
-
-  // Sort blocks in descending order by blockNumber to ensure they are saved in order in state
-  blockData.sort((a, b) => (b.blockNumber > a.blockNumber ? 1 : -1));
-
-  // Recalculate percentileGasPrice with new blockData
-  const flattenedBlockData = blockData.flatMap((b) => b.gasPrices);
-  const percentileGasPrice = getPercentile(percentile, flattenedBlockData);
-
-  if (percentileGasPrice) {
-    logger.info(
-      `Calculated the percentileGasPrice to be ${ethers.utils.formatUnits(percentileGasPrice, 'gwei')} gwei`,
-      logOptionsChainId
-    );
-  }
-
-  updateState((state) => ({
-    ...state,
-    gasOracles: {
-      ...state.gasOracles,
-      [chainId]: {
-        ...state.gasOracles[chainId],
-        [providerName]: { blockData, percentileGasPrice },
-      },
-    },
-  }));
-};
 
 export const getPercentile = (percentile: number, array: ethers.BigNumber[]) => {
   if (!array.length) return;
@@ -103,150 +30,118 @@ export const getPercentile = (percentile: number, array: ethers.BigNumber[]) => 
   return array[index];
 };
 
-export const updateBackupGasPrice = (chainId: string, providerName: string, backupGasPrice: ethers.BigNumber) => {
-  updateState((state) => ({
-    ...state,
-    gasOracles: {
-      ...state.gasOracles,
-      [chainId]: {
-        ...state.gasOracles[chainId],
-        [providerName]: {
-          ...(state.gasOracles[chainId] && state.gasOracles[chainId][providerName]
-            ? state.gasOracles[chainId][providerName]
-            : { blockData: [] }),
-          backupGasPrice,
-        },
-      },
-    },
-  }));
-};
-
-export const fetchUpdateBlockData = async (provider: Provider, chainOptions: ChainOptions) => {
+export const fetchBlockData = async (provider: Provider, chainOptions: ChainOptions) => {
   const { rpcProvider, chainId, providerName } = provider;
-  const { updateInterval, sampleBlockCount, percentile, backupGasPriceGwei } = chainOptions;
+  const { maxTimeout, percentile, backupGasPriceGwei, minBlockTransactions, gasPriceDeviationThreshold } = chainOptions;
   const logOptionsChainId = { meta: { chainId, providerName } };
   logger.info(`Fetching block data`, logOptionsChainId);
 
-  const state = getState();
-  const startTime = Date.now();
-  const totalTimeout = updateInterval * 1_000;
+  // Define block tags to fetch
+  const blockTagsToFetch = [
+    'latest',
+    -20, // Fetch latest block number - 20
+  ];
 
-  // Get latest block
-  const goRes = await go(() => rpcProvider.getBlockWithTransactions('latest'), {
-    ...prepareGoOptions(startTime, totalTimeout),
-    onAttemptError: (goError) => logger.warn(`Failed attempt to get block. Error: ${goError.error}`, logOptionsChainId),
-  });
-  if (!goRes.success) {
-    logger.warn(`Unable to fetch latest block. Error: ${goRes.error}. Fetching backup feeData.`, logOptionsChainId);
+  const blockStartTime = Date.now();
+  const totalTimeout = maxTimeout * 1_000;
 
-    // Attempt to get gas price from provider if fetching the latest block fails
-    const feeDataRes = await go(() => rpcProvider.getFeeData(), {
-      // TODO: check retry options
-      ...prepareGoOptions(startTime, totalTimeout),
-      onAttemptError: (goError) =>
-        logger.warn(`Failed attempt to get fee data. Error: ${goError.error}`, logOptionsChainId),
-    });
+  // Fetch blocks in parallel
+  const blockPromises = blockTagsToFetch.map(
+    async (blockTag) =>
+      await go(() => rpcProvider.getBlockWithTransactions(blockTag), {
+        ...prepareGoOptions(blockStartTime, totalTimeout),
+        onAttemptError: (goError) =>
+          logger.warn(`Failed attempt to get block. Error: ${goError.error}`, logOptionsChainId),
+      })
+  );
 
-    if (!feeDataRes.success) {
-      logger.warn(`Unable to fetch gas price. Error: ${feeDataRes.error}`, logOptionsChainId);
+  // Reject as soon as possible if fetching a block fails for speed
+  const resolvedGoBlocks = await Promise.all(blockPromises);
 
-      // Use the hardcoded back if back up gasTarget cannot be fetched and there are no gas values in state
-      if (
-        !state.gasOracles[chainId] ||
-        !state.gasOracles[chainId][providerName] ||
-        !state.gasOracles[chainId][providerName].percentileGasPrice ||
-        !state.gasOracles[chainId][providerName].backupGasPrice
-      ) {
-        updateBackupGasPrice(chainId, providerName, ethers.utils.parseUnits(backupGasPriceGwei.toString(), 'gwei'));
-      }
-      return;
-    }
+  const blockPercentileGasPrices = resolvedGoBlocks.reduce(
+    (acc: { blockNumber: number; percentileGasPrice: ethers.BigNumber }[], block) => {
+      // Stop processing if fetching the block was not succesful
+      // or if the block does not have enough transactions
+      if (!block.success || block.data.transactions.length < minBlockTransactions) return acc;
 
-    // Add back up gasTarget to state
-    const { gasPrice, maxFeePerGas } = feeDataRes.data;
-    updateBackupGasPrice(chainId, providerName, (gasPrice || maxFeePerGas)!);
-    return;
+      // Calculate the percentileGasPrice
+      const percentileGasPrice = getPercentile(
+        percentile,
+        block.data.transactions.map((tx) => (tx.gasPrice || block.data.baseFeePerGas!.add(tx.maxPriorityFeePerGas!))!)
+      );
+
+      // Note: percentileGasPrice should never be undefined as only arrays with items
+      // should have been passed in at this point
+      if (!percentileGasPrice) return acc;
+
+      return [...acc, { percentileGasPrice, blockNumber: block.data.number }];
+    },
+    []
+  );
+
+  // Check percentileGasPrices only if we have the result from at least two blocks
+  if (blockPercentileGasPrices.length > 1) {
+    // Sort by blockNumber to know which one is the latest block
+    const sortedBlockPercentileGasPrices = blockPercentileGasPrices.sort((a, b) => b.blockNumber - a.blockNumber);
+
+    // Check that the percentileGasPrices are within the gasPriceDeviationThreshold to
+    // protect against gas price spikes
+    const exceedsGasPriceDeviationThreshold = checkUpdateCondition(
+      sortedBlockPercentileGasPrices[1].percentileGasPrice,
+      gasPriceDeviationThreshold,
+      sortedBlockPercentileGasPrices[0].percentileGasPrice
+    );
+
+    // checkUpdateCondition returns true if the percentage difference between two BigNumbers is greater than the deviation threshold so this condition is fulfilled if the returned value is false (i.e. not exceeding the threshold)
+    // Use the percentileGasPrice from the latest block
+    if (!exceedsGasPriceDeviationThreshold) return sortedBlockPercentileGasPrices[0].percentileGasPrice;
+
+    // Continue to fallback gas prices if the threshold is exceeded
+    logger.warn(
+      `percentileGasPrice exceeds the gasPriceDeviationThreshold set to (${gasPriceDeviationThreshold}%). Fetching backup gas price.`,
+      logOptionsChainId
+    );
+  } else {
+    logger.warn(
+      `Unable to get enough blocks to calculate percentileGasPrice. Fetching backup gas price.`,
+      logOptionsChainId
+    );
   }
 
-  const { data: latestBlock } = goRes;
+  // Attempt to get gasTarget as fallback
+  const gasStartTime = Date.now();
+  const gasTarget = await getGasPrice(provider, prepareGoOptions(gasStartTime, totalTimeout));
 
-  // Calculate how many blocks to fetch since the last update
-  const stateBlockData = state.gasOracles[chainId]?.[providerName]?.blockData || [];
-  const latestBlockNumberInState = stateBlockData[0]?.blockNumber || 0;
-  // Check if the latest block is already in state
-  const latestBlockInStateMatch = stateBlockData.find((stateBlock) => stateBlock.blockNumber === latestBlock.number);
-
-  // Skip processing if the latest block is already in state
-  if (latestBlockInStateMatch) {
-    logger.log(`Latest block already in state. Skipping.`, logOptionsChainId);
-    return;
+  if (!gasTarget) {
+    // Use the hardcoded back if back up if gasTarget cannot be fetched
+    logger.warn(
+      `Unable to get fallback gasPrice. Using backupGasPriceGwei set to ${backupGasPriceGwei} gwei.`,
+      logOptionsChainId
+    );
+    return ethers.utils.parseUnits(backupGasPriceGwei.toString(), 'gwei');
   }
 
-  // Calculate how many blocks to fetch with a maximum of sampleBlockCount
-  const blockCountToFetch =
-    latestBlock.number - latestBlockNumberInState <= sampleBlockCount
-      ? latestBlock.number - latestBlockNumberInState
-      : sampleBlockCount;
-
-  const newBlockData: BlockData[] = [];
-  // Add the latest block if it has transactions and skip otherwise
-  if (latestBlock.transactions.length) {
-    newBlockData.push({
-      blockNumber: latestBlock.number,
-      gasPrices: latestBlock.transactions.map(
-        (tx) => (tx.gasPrice || latestBlock.baseFeePerGas!.add(tx.maxPriorityFeePerGas!))!
-      ),
-    });
-  }
-
-  // Fetch additional blocks up to a limit of blockCountToFetch
-  for (let i = 1; newBlockData.length < blockCountToFetch; i++) {
-    const blockNumberToFetch = latestBlock.number - i;
-    const goRes = await go(() => rpcProvider.getBlockWithTransactions(blockNumberToFetch), {
-      ...prepareGoOptions(startTime, totalTimeout),
-      onAttemptError: (goError) => logger.log(`Failed attempt to get block. Error: ${goError.error}`),
-    });
-    if (!goRes.success) {
-      logger.warn(`Unable to fetch block with number ${blockNumberToFetch}. Error: ${goRes.error}`, logOptionsChainId);
-      return;
-    }
-
-    const { data: block } = goRes;
-
-    // Skip empty blocks
-    if (block.transactions.length) {
-      newBlockData.push({
-        blockNumber: block.number,
-        gasPrices: block.transactions.map((tx) => (tx.gasPrice || block.baseFeePerGas?.add(tx.maxPriorityFeePerGas!))!),
-      });
-    }
-
-    // Stop processing if the next block is already in state
-    if (latestBlockNumberInState === block.number - 1) {
-      break;
-    }
-  }
-
-  updateBlockData(newBlockData, stateBlockData, chainId, providerName, sampleBlockCount, percentile);
+  if (gasTarget.txType === 'legacy') return gasTarget.gasPrice;
+  return gasTarget.maxFeePerGas;
 };
 
 export const getChainProviderConfig = (gasOracleConfig?: GasOracleConfig) => {
-  const updateInterval = gasOracleConfig?.updateInterval || GAS_ORACLE_UPDATE_INTERVAL;
-  const sampleBlockCount = gasOracleConfig?.sampleBlockCount || SAMPLE_BLOCK_COUNT;
+  const maxTimeout = gasOracleConfig?.maxTimeout || GAS_ORACLE_MAX_TIMEOUT;
   const percentile = gasOracleConfig?.percentile || GAS_PRICE_PERCENTILE;
   const backupGasPriceGwei = gasOracleConfig?.backupGasPriceGwei || BACK_UP_GAS_PRICE_GWEI;
+  const minBlockTransactions = gasOracleConfig?.minBlockTransactions || MIN_BLOCK_TRANSACTIONS;
+  const gasPriceDeviationThreshold = gasOracleConfig?.gasPriceDeviationThreshold || GAS_PRICE_DEVIATION_THRESHOLD;
 
-  return { updateInterval, sampleBlockCount, percentile, backupGasPriceGwei };
+  return { maxTimeout, percentile, backupGasPriceGwei, minBlockTransactions, gasPriceDeviationThreshold };
 };
 
 // Fetch new block data on call and return the updated gas price
-export const getGasPrice = async (provider: Provider, gasOracleConfig?: GasOracleConfig) => {
+export const getOracleGasPrice = async (provider: Provider, gasOracleConfig?: GasOracleConfig) => {
   // Get gas oracle config for provider
   const chainOptions = getChainProviderConfig(gasOracleConfig);
 
   // Fetch and process block data
-  await fetchUpdateBlockData(provider, chainOptions);
-  const gasPrice = getChainProviderGasPrice(provider.chainId, provider.providerName);
+  const gasPrice = await fetchBlockData(provider, chainOptions);
 
   return gasPrice;
 };

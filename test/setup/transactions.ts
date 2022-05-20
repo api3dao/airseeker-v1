@@ -6,9 +6,9 @@ const providerUrl = 'http://127.0.0.1:8545/';
 const provider = new hre.ethers.providers.JsonRpcProvider(providerUrl);
 
 // Number of transactions to execute per wallet. This will also be the number of blocks mined.
-// The default sampleBlockCount is 20 so we mine more to make sure that the percentile
-// is calculated from the right number of blocks.
-const transactionCount = 22;
+// By default we will be fetching the latest block and (latest block - 20) so we need to mine
+// a minimum of 21 blocks with transactions.
+const transactionCount = 21;
 
 export const executeTransactions = async (txType: 'legacy' | 'eip1559') => {
   // Get Hardhat accounts to use for transactions

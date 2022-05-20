@@ -61,26 +61,26 @@ describe('calculateUpdateInPercentage', () => {
 describe('checkUpdateCondition', () => {
   const onChainValue = ethers.BigNumber.from(500);
 
-  it('reads dapiserver value and checks the threshold condition to be true for increase', async () => {
-    const shouldUpdate = await checkUpdateCondition(onChainValue, 10, ethers.BigNumber.from(560));
+  it('reads dapiserver value and checks the threshold condition to be true for increase', () => {
+    const shouldUpdate = checkUpdateCondition(onChainValue, 10, ethers.BigNumber.from(560));
 
     expect(shouldUpdate).toEqual(true);
   });
 
-  it('reads dapiserver value and checks the threshold condition to be true for decrease', async () => {
-    const shouldUpdate = await checkUpdateCondition(onChainValue, 10, ethers.BigNumber.from(440));
+  it('reads dapiserver value and checks the threshold condition to be true for decrease', () => {
+    const shouldUpdate = checkUpdateCondition(onChainValue, 10, ethers.BigNumber.from(440));
 
     expect(shouldUpdate).toEqual(true);
   });
 
-  it('reads dapiserver value and checks the threshold condition to be false', async () => {
-    const shouldUpdate = await checkUpdateCondition(onChainValue, 10, ethers.BigNumber.from(480));
+  it('reads dapiserver value and checks the threshold condition to be false', () => {
+    const shouldUpdate = checkUpdateCondition(onChainValue, 10, ethers.BigNumber.from(480));
 
     expect(shouldUpdate).toEqual(false);
   });
 
-  it('handles correctly bad JS math', async () => {
-    await expect(checkUpdateCondition(onChainValue, 0.14, ethers.BigNumber.from(560))).resolves.not.toThrow();
+  it('handles correctly bad JS math', () => {
+    expect(() => checkUpdateCondition(onChainValue, 0.14, ethers.BigNumber.from(560))).not.toThrow();
   });
 });
 

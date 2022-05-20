@@ -22,6 +22,17 @@ read from the environment variables. When running locally, either just with `yar
 are automatically loaded from `config/secrets.env` file. Take a look at `config/secrets.example.env` for an example
 secrets file.
 
+### Gas oracle options
+
+- percentile: The percentile of gas prices to return from a block.
+- maxTimeout: The maximum timeout (in seconds) for fetching a block or fallback gas price.
+- minBlockTransactions: The minimum amount of transactions required in a block to use for calculating a percentile gas
+  price.
+- backupGasPriceGwei: The gas price (in gwei) to use for beacon update transactions if fetching blocks and fallback gas
+  prices fails.
+- gasPriceDeviationThreshold: The maximum deviation percentage value to check that latest block gas prices are not too
+  large compared to (latest - 20) blocks. Used to protect against large gas price spikes.
+
 ## Usage
 
 ```sh

@@ -2,7 +2,13 @@ import { ethers } from 'ethers';
 import { Config } from './validation';
 import * as api from './gas-oracle';
 import * as state from './state';
-import { BACK_UP_GAS_PRICE_GWEI } from './constants';
+import {
+  GAS_ORACLE_MAX_TIMEOUT,
+  GAS_PRICE_PERCENTILE,
+  GAS_PRICE_DEVIATION_THRESHOLD,
+  BACK_UP_GAS_PRICE_GWEI,
+  MIN_BLOCK_TRANSACTIONS,
+} from './constants';
 
 const config: Config = {
   airseekerWalletMnemonic: 'achieve climb couple wait accident symbol spy blouse reduce foil echo label',
@@ -48,7 +54,7 @@ const config: Config = {
         },
       },
       options: {
-        txType: 'eip1559',
+        txType: 'legacy',
         priorityFee: {
           value: 3.12,
           unit: 'gwei',
@@ -57,9 +63,9 @@ const config: Config = {
         fulfillmentGasLimit: 500_000,
       },
       gasOracle: {
-        sampleBlockCount: 6,
         percentile: 60,
-        updateInterval: 1,
+        maxTimeout: 1,
+        minBlockTransactions: 20,
       },
     },
     '1': {
@@ -75,7 +81,7 @@ const config: Config = {
         },
       },
       options: {
-        txType: 'eip1559',
+        txType: 'legacy',
         priorityFee: {
           value: 3.12,
           unit: 'gwei',
@@ -84,9 +90,8 @@ const config: Config = {
         fulfillmentGasLimit: 500_000,
       },
       gasOracle: {
-        sampleBlockCount: 6,
         percentile: 60,
-        updateInterval: 1,
+        maxTimeout: 1,
       },
     },
     '3': {
@@ -99,7 +104,7 @@ const config: Config = {
         },
       },
       options: {
-        txType: 'eip1559',
+        txType: 'legacy',
         priorityFee: {
           value: 3.12,
           unit: 'gwei',
@@ -108,9 +113,9 @@ const config: Config = {
         fulfillmentGasLimit: 500_000,
       },
       gasOracle: {
-        sampleBlockCount: 6,
         percentile: 60,
-        updateInterval: 1,
+        maxTimeout: 1,
+        minBlockTransactions: 20,
       },
     },
   },
@@ -206,7 +211,13 @@ describe('Gas oracle', () => {
     chainId,
     providerName,
   };
-  const chainOptions = { sampleBlockCount: 6, percentile: 60, updateInterval: 1, backupGasPriceGwei: 10 };
+  const chainOptions = {
+    percentile: 60,
+    maxTimeout: 1,
+    backupGasPriceGwei: 10,
+    minBlockTransactions: 3,
+    gasPriceDeviationThreshold: 20,
+  };
   const gasPriceArray = [
     ethers.BigNumber.from(10),
     ethers.BigNumber.from(20),
@@ -225,158 +236,193 @@ describe('Gas oracle', () => {
     state.initializeState(config);
   });
 
-  it('calculates percentileGasPrice', () => {
-    const percentileGasPrice = api.getPercentile(70, gasPriceArray);
-    expect(percentileGasPrice).toEqual(ethers.BigNumber.from(70));
-  });
-
-  it('returns gas price for a provider', async () => {
-    const getBlockWithTransactionsSpy = jest.spyOn(
-      ethers.providers.StaticJsonRpcProvider.prototype,
-      'getBlockWithTransactions'
-    );
-    const blockDataMock = [
-      { number: 6, transactions: [{ gasPrice: ethers.BigNumber.from(60) }] },
-      { number: 5, transactions: [{ gasPrice: ethers.BigNumber.from(50) }] },
-      { number: 4, transactions: [{ gasPrice: ethers.BigNumber.from(40) }] },
-      { number: 3, transactions: [{ gasPrice: ethers.BigNumber.from(30) }] },
-      { number: 2, transactions: [{ gasPrice: ethers.BigNumber.from(20) }] },
-      { number: 1, transactions: [{ gasPrice: ethers.BigNumber.from(10) }] },
-    ];
-    blockDataMock.forEach((block) => getBlockWithTransactionsSpy.mockImplementationOnce(async () => block as any));
-
-    const updateBlockDataSpy = jest.spyOn(api, 'updateBlockData');
-
-    const gasPrice = await api.getGasPrice(stateProvider, chainOptions);
-
-    expect(getBlockWithTransactionsSpy).toHaveBeenCalledTimes(chainOptions.sampleBlockCount);
-    expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(1, 'latest');
-    expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(2, 5);
-    expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(3, 4);
-    expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(4, 3);
-    expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(5, 2);
-    expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(6, 1);
-
-    const newBlockDataMock = [
-      { blockNumber: 6, gasPrices: [ethers.BigNumber.from(60)] },
-      { blockNumber: 5, gasPrices: [ethers.BigNumber.from(50)] },
-      { blockNumber: 4, gasPrices: [ethers.BigNumber.from(40)] },
-      { blockNumber: 3, gasPrices: [ethers.BigNumber.from(30)] },
-      { blockNumber: 2, gasPrices: [ethers.BigNumber.from(20)] },
-      { blockNumber: 1, gasPrices: [ethers.BigNumber.from(10)] },
-    ];
-    expect(updateBlockDataSpy).toHaveBeenCalledWith(
-      newBlockDataMock,
-      [],
-      chainId,
-      providerName,
-      chainOptions.sampleBlockCount,
-      chainOptions.percentile
-    );
-    expect(gasPrice).toEqual(
-      api.getPercentile(
-        chainOptions.percentile,
-        newBlockDataMock.flatMap((b) => b.gasPrices)
-      )
-    );
-  });
-
-  it('fetches the correct number of blocks', async () => {
-    const percentile = 60;
-    const sampleBlockCount = 2;
-    const getBlockWithTransactionsSpy = jest.spyOn(
-      ethers.providers.StaticJsonRpcProvider.prototype,
-      'getBlockWithTransactions'
-    );
-    const blockDataMock = [
-      { number: 3, transactions: [{ gasPrice: ethers.BigNumber.from(30) }] },
-      { number: 2, transactions: [{ gasPrice: ethers.BigNumber.from(20) }] },
-      { number: 1, transactions: [{ gasPrice: ethers.BigNumber.from(10) }] },
-    ];
-    blockDataMock.forEach((block) => getBlockWithTransactionsSpy.mockImplementationOnce(async () => block as any));
-
-    const updateBlockDataSpy = jest.spyOn(api, 'updateBlockData');
-
-    await api.fetchUpdateBlockData(stateProvider, { ...chainOptions, sampleBlockCount });
-
-    expect(getBlockWithTransactionsSpy).toHaveBeenCalledTimes(sampleBlockCount);
-    expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(1, 'latest');
-    expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(2, 2);
-
-    const newBlockDataMock = [
-      { blockNumber: 3, gasPrices: [ethers.BigNumber.from(30)] },
-      { blockNumber: 2, gasPrices: [ethers.BigNumber.from(20)] },
-    ];
-    expect(updateBlockDataSpy).toHaveBeenCalledWith(
-      newBlockDataMock,
-      [],
-      chainId,
-      providerName,
-      sampleBlockCount,
-      percentile
-    );
-  });
-
-  it('retries provider getBlockWithTransactions', async () => {
-    const getBlockWithTransactionsSpy = jest.spyOn(
-      ethers.providers.StaticJsonRpcProvider.prototype,
-      'getBlockWithTransactions'
-    );
-    getBlockWithTransactionsSpy.mockImplementation(async () => {
-      throw new Error('some error');
-    });
-    // Mock random backoff time for prepareGoOptions
-    jest.spyOn(global.Math, 'random').mockImplementation(() => 0.15);
-
-    await api.fetchUpdateBlockData(stateProvider, chainOptions);
-
-    expect(getBlockWithTransactionsSpy).toHaveBeenCalledTimes(3);
-    expect(state.getState().gasOracles[chainId][providerName].percentileGasPrice).toBeUndefined();
-    expect(state.getState().gasOracles[chainId][providerName].backupGasPrice).toEqual(
-      ethers.utils.parseUnits(BACK_UP_GAS_PRICE_GWEI.toString(), 'gwei')
-    );
-  });
-
-  it('updates state with the blockData and percentileGasPrice', () => {
-    const newBlockData = [{ blockNumber: 1, gasPrices: gasPriceArray }];
-
-    api.updateBlockData(newBlockData, [], chainId, providerName, 20, 70);
-
-    const percentileGasPrice = api.getPercentile(70, gasPriceArray);
-    expect(state.getState().gasOracles[chainId][providerName]).toEqual({
-      percentileGasPrice,
-      blockData: newBlockData,
+  describe('getPercentile', () => {
+    it('calculates percentileGasPrice', () => {
+      const percentileGasPrice = api.getPercentile(70, gasPriceArray);
+      expect(percentileGasPrice).toEqual(ethers.BigNumber.from(70));
     });
   });
 
-  it('applies sampleBlockCount correctly', () => {
-    const sampleBlockCount = 11;
-    const newSortedBlockData = Array.from(Array(15), (_, i) => ({ blockNumber: i + 1, gasPrices: gasPriceArray })).sort(
-      (a, b) => (b.blockNumber > a.blockNumber ? 1 : -1)
-    );
+  describe('getChainProviderConfig', () => {
+    it('returns config settings', () => {
+      const gasOracleConfig = api.getChainProviderConfig({
+        percentile: 60,
+        maxTimeout: 1,
+        backupGasPriceGwei: 10,
+        minBlockTransactions: 3,
+        gasPriceDeviationThreshold: 20,
+      });
+      expect(gasOracleConfig).toEqual({
+        percentile: 60,
+        maxTimeout: 1,
+        backupGasPriceGwei: 10,
+        minBlockTransactions: 3,
+        gasPriceDeviationThreshold: 20,
+      });
+    });
 
-    api.updateBlockData(newSortedBlockData, [], chainId, providerName, sampleBlockCount, 70);
-
-    newSortedBlockData.splice(sampleBlockCount);
-
-    const percentileGasPrice = api.getPercentile(70, gasPriceArray);
-    expect(state.getState().gasOracles[chainId][providerName].blockData.length).toEqual(sampleBlockCount);
-    expect(state.getState().gasOracles[chainId][providerName]).toEqual({
-      percentileGasPrice,
-      blockData: newSortedBlockData,
+    it('returns default settings', () => {
+      const gasOracleConfig = api.getChainProviderConfig();
+      expect(gasOracleConfig).toEqual({
+        percentile: GAS_PRICE_PERCENTILE,
+        maxTimeout: GAS_ORACLE_MAX_TIMEOUT,
+        backupGasPriceGwei: BACK_UP_GAS_PRICE_GWEI,
+        minBlockTransactions: MIN_BLOCK_TRANSACTIONS,
+        gasPriceDeviationThreshold: GAS_PRICE_DEVIATION_THRESHOLD,
+      });
     });
   });
 
-  it('returns chainProviderGasPrice for chain-provider pair', () => {
-    const newBlockData = [{ blockNumber: 1, gasPrices: gasPriceArray }];
+  describe('getOracleGasPrice', () => {
+    it('returns gas price', async () => {
+      const getBlockWithTransactionsSpy = jest.spyOn(
+        ethers.providers.StaticJsonRpcProvider.prototype,
+        'getBlockWithTransactions'
+      );
+      const blockDataMock = [
+        {
+          number: 23,
+          transactions: [
+            { gasPrice: ethers.BigNumber.from(22) },
+            { gasPrice: ethers.BigNumber.from(22) },
+            { gasPrice: ethers.BigNumber.from(22) },
+          ],
+        },
+        {
+          number: 3,
+          transactions: [
+            { gasPrice: ethers.BigNumber.from(20) },
+            { gasPrice: ethers.BigNumber.from(20) },
+            { gasPrice: ethers.BigNumber.from(20) },
+          ],
+        },
+      ];
+      blockDataMock.forEach((block) => getBlockWithTransactionsSpy.mockImplementationOnce(async () => block as any));
 
-    api.updateBlockData(newBlockData, [], chainId, providerName, 20, 70);
+      const gasPrice = await api.getOracleGasPrice(stateProvider, chainOptions);
 
-    const percentileGasPrice = api.getPercentile(70, gasPriceArray);
-    const chainProviderPercentileGasPrice = api.getChainProviderGasPrice(chainId, providerName);
-    expect(percentileGasPrice).toEqual(chainProviderPercentileGasPrice);
-    expect(state.getState().gasOracles[chainId][providerName].percentileGasPrice).toEqual(
-      chainProviderPercentileGasPrice
-    );
+      expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(1, 'latest');
+      expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(2, -20);
+
+      expect(gasPrice).toEqual(ethers.BigNumber.from(22));
+    });
+
+    it('returns getGasPrice as fallback if not enough blocks', async () => {
+      const getBlockWithTransactionsSpy = jest.spyOn(
+        ethers.providers.StaticJsonRpcProvider.prototype,
+        'getBlockWithTransactions'
+      );
+
+      const blockDataMock = [
+        {
+          number: 23,
+          transactions: [{ gasPrice: ethers.BigNumber.from(22) }, { gasPrice: ethers.BigNumber.from(22) }],
+        },
+        {
+          number: 3,
+          transactions: [{ gasPrice: ethers.BigNumber.from(20) }, { gasPrice: ethers.BigNumber.from(20) }],
+        },
+      ];
+      blockDataMock.forEach((block) => getBlockWithTransactionsSpy.mockImplementationOnce(async () => block as any));
+      const getGasPriceSpy = jest.spyOn(ethers.providers.StaticJsonRpcProvider.prototype, 'getGasPrice');
+      const getGasPriceMock = ethers.BigNumber.from(11);
+      getGasPriceSpy.mockImplementationOnce(async () => getGasPriceMock);
+
+      const gasPrice = await api.getOracleGasPrice(stateProvider, chainOptions);
+
+      expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(1, 'latest');
+      expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(2, -20);
+
+      expect(gasPrice).toEqual(ethers.BigNumber.from(getGasPriceMock));
+    });
+
+    it('returns config backupGasPriceGwei gas if not enough blocks and fallback fails', async () => {
+      const getBlockWithTransactionsSpy = jest.spyOn(
+        ethers.providers.StaticJsonRpcProvider.prototype,
+        'getBlockWithTransactions'
+      );
+      const blockDataMock = [
+        {
+          number: 23,
+          transactions: [{ gasPrice: ethers.BigNumber.from(22) }, { gasPrice: ethers.BigNumber.from(22) }],
+        },
+        {
+          number: 3,
+          transactions: [{ gasPrice: ethers.BigNumber.from(20) }, { gasPrice: ethers.BigNumber.from(20) }],
+        },
+      ];
+      blockDataMock.forEach((block) => getBlockWithTransactionsSpy.mockImplementationOnce(async () => block as any));
+      const getGasPriceSpy = jest.spyOn(ethers.providers.StaticJsonRpcProvider.prototype, 'getGasPrice');
+      getGasPriceSpy.mockImplementationOnce(async () => {
+        throw new Error('some error');
+      });
+
+      const gasPrice = await api.getOracleGasPrice(stateProvider, chainOptions);
+
+      expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(1, 'latest');
+      expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(2, -20);
+
+      expect(gasPrice).toEqual(ethers.utils.parseUnits(chainOptions.backupGasPriceGwei.toString(), 'gwei'));
+    });
+
+    it('returns config backupGasPriceGwei gas if failing to fetch both blocks and fallback', async () => {
+      const getBlockWithTransactionsSpy = jest.spyOn(
+        ethers.providers.StaticJsonRpcProvider.prototype,
+        'getBlockWithTransactions'
+      );
+      getBlockWithTransactionsSpy.mockImplementation(async () => {
+        throw new Error('some error');
+      });
+      const getGasPriceSpy = jest.spyOn(ethers.providers.StaticJsonRpcProvider.prototype, 'getGasPrice');
+      getGasPriceSpy.mockImplementation(async () => {
+        throw new Error('some error');
+      });
+
+      const gasPrice = await api.getOracleGasPrice(stateProvider, chainOptions);
+
+      expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(1, 'latest');
+      expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(2, -20);
+
+      expect(gasPrice).toEqual(ethers.utils.parseUnits(chainOptions.backupGasPriceGwei.toString(), 'gwei'));
+    });
+
+    it('retries provider getBlockWithTransactions', async () => {
+      const getBlockWithTransactionsSpy = jest.spyOn(
+        ethers.providers.StaticJsonRpcProvider.prototype,
+        'getBlockWithTransactions'
+      );
+      getBlockWithTransactionsSpy.mockImplementation(async () => {
+        throw new Error('some error');
+      });
+      // Mock random backoff time for prepareGoOptions
+      jest.spyOn(global.Math, 'random').mockImplementation(() => 0.3);
+
+      const gasPrice = await api.fetchBlockData(stateProvider, chainOptions);
+
+      expect(getBlockWithTransactionsSpy).toHaveBeenCalledTimes(4);
+      expect(gasPrice).toEqual(ethers.utils.parseUnits(BACK_UP_GAS_PRICE_GWEI.toString(), 'gwei'));
+    });
+
+    it('retries provider getGasPrice', async () => {
+      const getBlockWithTransactionsSpy = jest.spyOn(
+        ethers.providers.StaticJsonRpcProvider.prototype,
+        'getBlockWithTransactions'
+      );
+      getBlockWithTransactionsSpy.mockImplementation(async () => {
+        throw new Error('some error');
+      });
+      const getGasPriceSpy = jest.spyOn(ethers.providers.StaticJsonRpcProvider.prototype, 'getGasPrice');
+      getGasPriceSpy.mockImplementationOnce(async () => {
+        throw new Error('some error');
+      });
+      // Mock random backoff time for prepareGoOptions
+      jest.spyOn(global.Math, 'random').mockImplementation(() => 0.3);
+
+      const gasPrice = await api.fetchBlockData(stateProvider, chainOptions);
+
+      expect(getBlockWithTransactionsSpy).toHaveBeenCalledTimes(4);
+      expect(getBlockWithTransactionsSpy).toHaveBeenCalledTimes(4);
+      expect(gasPrice).toEqual(ethers.utils.parseUnits(BACK_UP_GAS_PRICE_GWEI.toString(), 'gwei'));
+    });
   });
 });

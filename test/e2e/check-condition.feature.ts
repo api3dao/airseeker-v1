@@ -35,8 +35,8 @@ describe('checkUpdateCondition', () => {
     onChainValue = (await readOnChainBeaconData(voidSigner, dapiServer, beaconId, {}, {}))!;
   });
 
-  it('returns true for increase above the deviationThreshold', async () => {
-    const checkResult = await checkUpdateCondition(
+  it('returns true for increase above the deviationThreshold', () => {
+    const checkResult = checkUpdateCondition(
       onChainValue.value,
       deviationThreshold,
       ethers.BigNumber.from(Math.floor(apiValue * (1 + 0.3 / 100) * _times))
@@ -45,8 +45,8 @@ describe('checkUpdateCondition', () => {
     expect(checkResult).toEqual(true);
   });
 
-  it('returns false for increase below the deviationThreshold', async () => {
-    const checkResult = await checkUpdateCondition(
+  it('returns false for increase below the deviationThreshold', () => {
+    const checkResult = checkUpdateCondition(
       onChainValue.value,
       deviationThreshold,
       ethers.BigNumber.from(Math.floor(apiValue * (1 + 0.1 / 100) * _times))
@@ -55,8 +55,8 @@ describe('checkUpdateCondition', () => {
     expect(checkResult).toEqual(false);
   });
 
-  it('returns true for decrease above the deviationThreshold', async () => {
-    const checkResult = await checkUpdateCondition(
+  it('returns true for decrease above the deviationThreshold', () => {
+    const checkResult = checkUpdateCondition(
       onChainValue.value,
       deviationThreshold,
       ethers.BigNumber.from(Math.floor(apiValue * (1 - 0.3 / 100) * _times))
@@ -65,8 +65,8 @@ describe('checkUpdateCondition', () => {
     expect(checkResult).toEqual(true);
   });
 
-  it('returns false for decrease below the deviationThreshold', async () => {
-    const checkResult = await checkUpdateCondition(
+  it('returns false for decrease below the deviationThreshold', () => {
+    const checkResult = checkUpdateCondition(
       onChainValue.value,
       deviationThreshold,
       ethers.BigNumber.from(Math.floor(apiValue * (1 - 0.1 / 100) * _times))
@@ -75,8 +75,8 @@ describe('checkUpdateCondition', () => {
     expect(checkResult).toEqual(false);
   });
 
-  it('returns false for no change', async () => {
-    const checkResult = await checkUpdateCondition(
+  it('returns false for no change', () => {
+    const checkResult = checkUpdateCondition(
       onChainValue.value,
       deviationThreshold,
       ethers.BigNumber.from(apiValue * _times)

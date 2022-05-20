@@ -1,7 +1,6 @@
 import { buildBaseOptions, LogOptions, randomHexString } from '@api3/airnode-utilities';
 import { ethers } from 'ethers';
 import { BeaconId, Config, SignedData } from './validation';
-import { GasOracles } from './gas-oracle';
 
 export type Id<T> = T & {
   id: string;
@@ -21,7 +20,6 @@ export interface State {
   stopSignalReceived: boolean;
   beaconValues: BeaconValueStorage;
   providers: Providers;
-  gasOracles: GasOracles;
   logOptions: LogOptions;
 }
 
@@ -34,7 +32,6 @@ export const initializeState = (config: Config) => {
     stopSignalReceived: false,
     beaconValues: {},
     providers: {},
-    gasOracles: {},
     logOptions: buildBaseOptions(
       { nodeSettings: { logFormat: config.log.format, logLevel: config.log.level } },
       { coordinatorId: randomHexString(16) }

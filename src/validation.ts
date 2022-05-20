@@ -45,10 +45,11 @@ export const beaconSetsSchema = emptyObjectSchema;
 
 export const gasOracleSchema = z
   .object({
-    sampleBlockCount: z.number().int().positive().optional(),
     percentile: z.number().int().positive().optional(),
-    updateInterval: z.number().int().positive().optional(),
+    maxTimeout: z.number().int().positive().optional(),
     backupGasPriceGwei: z.number().positive().optional(),
+    minBlockTransactions: z.number().positive().optional(),
+    gasPriceDeviationThreshold: z.number().positive().optional(),
   })
   .optional();
 

@@ -35,9 +35,11 @@
         "fulfillmentGasLimit": 500000
       },
       "gasOracle": {
-        "sampleBlockCount": 20,
         "percentile": 60,
-        "updateInterval": 20
+        "maxTimeout": 5,
+        "minBlockTransactions": 20,
+        "backupGasPriceGwei": 10,
+        "gasPriceDeviationThreshold": 50
       }
     },
     "3": {
@@ -50,7 +52,7 @@
         }
       },
       "options": {
-        "txType": "eip1559",
+        "txType": "legacy",
         "priorityFee": {
           "value": 3.12,
           "unit": "gwei"

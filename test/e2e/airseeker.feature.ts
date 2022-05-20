@@ -248,62 +248,6 @@ describe('Airseeker', () => {
     expect(beaconValueBTCNew).toEqual(hre.ethers.BigNumber.from(43_000 * 1_000_000));
   });
 
-  it('updates the beacons successfully with one invalid provider present', async () => {
-    mockReadFileSync(
-      'airseeker.json',
-      JSON.stringify({
-        ...airseekerConfig,
-        chains: {
-          '31337': {
-            contracts: {
-              DapiServer: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
-            },
-            providers: {
-              invalidProvider: {
-                url: 'http://invalid',
-              },
-              local: {
-                url: '${CP_LOCAL_URL}',
-              },
-            },
-            options: {
-              txType: 'eip1559',
-              priorityFee: {
-                value: 3.12,
-                unit: 'gwei',
-              },
-              baseFeeMultiplier: 2,
-              fulfillmentGasLimit: 500_000,
-            },
-          },
-        },
-      })
-    );
-
-    await main().then(async () => {
-      // Wait for Airseeker cycles to finish
-      await sleep(8_000);
-      // Stop Airseeker
-      handleStopSignal('stop');
-      // Wait for last cycle to finish
-      await sleep(8_000);
-    });
-
-    const beaconValueETHNew = await readBeaconValue(
-      '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
-      deployment.templateIdETH,
-      deployment.dapiServer
-    );
-    const beaconValueBTCNew = await readBeaconValue(
-      '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
-      deployment.templateIdBTC,
-      deployment.dapiServer
-    );
-
-    expect(beaconValueETHNew).toEqual(hre.ethers.BigNumber.from(800 * 1_000_000));
-    expect(beaconValueBTCNew).toEqual(hre.ethers.BigNumber.from(43_000 * 1_000_000));
-  });
-
   it('throws on invalid airseeker config', async () => {
     mockReadFileSync(
       'airseeker.json',
