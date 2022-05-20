@@ -141,6 +141,35 @@ describe('getGasPrice', () => {
     expect(getBlock).toHaveBeenCalledTimes(0);
   });
 
+  it('applies gasPriceMultiplier to non-EIP-1559 provider', async () => {
+    const gasPriceMultiplier = 1.75;
+    const stateSpy = jest.spyOn(state, 'getState');
+    stateSpy.mockImplementation(
+      () =>
+        ({
+          config: {
+            chains: {
+              '31337': {
+                options: {
+                  txType: 'legacy',
+                  gasPriceMultiplier,
+                },
+              },
+            },
+          },
+        } as unknown as state.State)
+    );
+    const provider = createProvider(legacyChainId);
+
+    const getGasPrice = provider.rpcProvider.getGasPrice as jest.Mock;
+    getGasPrice.mockResolvedValueOnce(testGasPrice);
+
+    const gasPrice = (await gasPrices.getGasPrice(provider, goOptions)) as gasPrices.LegacyGasTarget;
+    const multipliedTestGasPrice = gasPrices.multiplyGasPrice(testGasPrice, gasPriceMultiplier);
+
+    expect(gasPrice.gasPrice).toEqual(multipliedTestGasPrice);
+  });
+
   eip1559ChainIds.forEach((chainId) => {
     it(`returns null if gas price from an EIP-1559 provider cannot be retrieved - chainId: ${chainId}`, async () => {
       const provider = createProvider(chainId);
