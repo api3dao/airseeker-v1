@@ -1,8 +1,5 @@
 service: airseeker
 
-plugins:
-  - serverless-plugin-typescript
-
 package:
   patterns:
     - ./config/airseeker.json
@@ -18,7 +15,7 @@ provider:
 
 functions:
   airseeker:
-    handler: src/serverless.handler
+    handler: dist/serverless.handler
     maximumRetryAttempts: 0
     timeout: 900
     memorySize: 512
