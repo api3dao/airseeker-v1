@@ -8,18 +8,20 @@ Export AWS credentials in your terminal or ensure your local aws installation is
 yarn build
 ```
 
-### Airseeker Deployment Strategies
+### General Airseeker Deployment Notes
 
 The deployed Airseeker function won't immediately start (due to the scheduler).
 
-There are two main strategies for dealing with this:
+There are three main strategies for dealing with this:
 
-1. Deploy this Airseeker using a different service name in `serverless.yaml`, so that both Airseekers can run
-   concurrently. Wait for the new Airseeker to start. Once it does, ensure that you're satisfied that it is functioning
-   correctly (by referring to the target chains and/or CloudWatch logs). You may then revert the name of the service
-   stack to the old Airseeker and remove it or alternatively delete it using the AWS CloudFormation console.
+1. If an Airseeker is already deployed, deploy the new Airseeker using a different service name in `serverless.yaml`, so
+   that both Airseekers can run concurrently. Wait for the new Airseeker to start. Once it does, ensure that you're
+   satisfied that it is functioning correctly (by referring to the target chains and/or CloudWatch logs). You may then
+   revert the name of the service stack to the old Airseeker and remove it or alternatively delete it using the AWS
+   CloudFormation console.
 2. Deploy Airseeker using the default service name and start the new Airseeker immediately using the invoke commands
    below.
+3. Deploy Airseeker using the default service name and wait up to 14 minutes for the deployed Airseeker to start.
 
 **Deploy Airseeker:**
 
@@ -50,6 +52,8 @@ to remove run:
 ```shell
 yarn sls remove
 ```
+
+### Caveats
 
 Sometimes a stack fails to be removed automatically. In these cases navigate to "Cloud Formation" in the AWS console and
 check the resources tab of the stack in question to see errors. Manually remove those resources.

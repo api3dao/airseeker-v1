@@ -3,6 +3,9 @@ service: airseeker
 package:
   patterns:
     - ./config/airseeker.json
+    - '!terraform'
+    - '!src'
+    - '!.*'
 
 provider:
   name: aws
@@ -12,11 +15,13 @@ provider:
   architecture: arm64
   logRetentionInDays: 14
   environment: ${file(load-secrets-env.js)}
+  deploymentMethod: direct
 
 functions:
   airseeker:
     handler: dist/serverless.handler
     maximumRetryAttempts: 0
+    maximumEventAge: 60
     timeout: 900
     memorySize: 512
     events:
