@@ -32,14 +32,21 @@
           "unit": "gwei"
         },
         "baseFeeMultiplier": 2,
-        "fulfillmentGasLimit": 500000
-      },
-      "gasOracle": {
-        "percentile": 60,
-        "maxTimeout": 5,
-        "minBlockTransactions": 20,
-        "backupGasPriceGwei": 10,
-        "gasPriceDeviationThreshold": 50
+        "fulfillmentGasLimit": 500000,
+        "gasOracle": {
+          "maxTimeout": 3,
+          "fallbackGasPrice": {
+            "value": 10,
+            "unit": "gwei"
+          },
+          "recommendedGasPriceMultiplier": 1.2,
+          "latestGasPriceOptions": {
+            "percentile": 60,
+            "minTransactionCount": 10,
+            "pastToCompareInBlocks": 20,
+            "maxDeviationMultiplier": 2
+          }
+        }
       }
     },
     "3": {
@@ -58,7 +65,21 @@
           "unit": "gwei"
         },
         "baseFeeMultiplier": 2,
-        "fulfillmentGasLimit": 500000
+        "fulfillmentGasLimit": 500000,
+        "gasOracle": {
+          "maxTimeout": 3,
+          "fallbackGasPrice": {
+            "value": 10,
+            "unit": "gwei"
+          },
+          "recommendedGasPriceMultiplier": 1.2,
+          "latestGasPriceOptions": {
+            "percentile": 60,
+            "minTransactionCount": 10,
+            "pastToCompareInBlocks": 20,
+            "maxDeviationMultiplier": 2
+          }
+        }
       }
     }
   },

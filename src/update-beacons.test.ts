@@ -58,6 +58,20 @@ const config: Config = {
         },
         baseFeeMultiplier: 2,
         fulfillmentGasLimit: 500_000,
+        gasOracle: {
+          maxTimeout: 1,
+          fallbackGasPrice: {
+            value: 10,
+            unit: 'gwei',
+          },
+          recommendedGasPriceMultiplier: 1.2,
+          latestGasPriceOptions: {
+            percentile: 60,
+            minTransactionCount: 10,
+            pastToCompareInBlocks: 20,
+            maxDeviationMultiplier: 2,
+          },
+        },
       },
     },
     '3': {
@@ -77,6 +91,20 @@ const config: Config = {
         },
         baseFeeMultiplier: 2,
         fulfillmentGasLimit: 500_000,
+        gasOracle: {
+          maxTimeout: 1,
+          fallbackGasPrice: {
+            value: 10,
+            unit: 'gwei',
+          },
+          recommendedGasPriceMultiplier: 1.2,
+          latestGasPriceOptions: {
+            percentile: 60,
+            minTransactionCount: 10,
+            pastToCompareInBlocks: 20,
+            maxDeviationMultiplier: 2,
+          },
+        },
       },
     },
   },
@@ -223,7 +251,6 @@ describe('updateBeaconsInLoop', () => {
           stopSignalReceived: true,
           beaconValues: {},
           providers: {},
-          gasOracles: {},
           logOptions: { ...config.log, meta: {} },
         };
       } else {
@@ -232,7 +259,6 @@ describe('updateBeaconsInLoop', () => {
           stopSignalReceived: false,
           beaconValues: {},
           providers: {},
-          gasOracles: {},
           logOptions: { ...config.log, meta: {} },
         };
       }

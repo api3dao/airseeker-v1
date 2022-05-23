@@ -15,11 +15,10 @@ export const INT224_MIN = ethers.BigNumber.from(2).pow(ethers.BigNumber.from(223
 export const INT224_MAX = ethers.BigNumber.from(2).pow(ethers.BigNumber.from(223)).sub(ethers.BigNumber.from(1));
 export const NO_BEACONS_EXIT_CODE = 1;
 export const NO_FETCH_EXIT_CODE = 2;
-export const GAS_ORACLE_MAX_TIMEOUT = 3;
-// Percentage value to check that latest block gas prices are not too large compared to (latest - 20) block
-export const GAS_PRICE_DEVIATION_THRESHOLD = 50;
+export const GAS_ORACLE_MAX_TIMEOUT_S = 3;
+// Percentage value to check that latest block gas prices are not too large compared to (latest - pastToCompareInBlocks) block
+export const GAS_PRICE_MAX_DEVIATION_MULTIPLIER = 2;
 export const GAS_PRICE_PERCENTILE = 60;
-// The minimum number of transactions in a block before falling back to getGasPrice
-export const MIN_BLOCK_TRANSACTIONS = 20;
-// The gas price to use if the gas oracle fails to fetch any values from the provider and no value is specified in airseeker.json
-export const BACK_UP_GAS_PRICE_GWEI = 10;
+// The minimum number of transactions required in a block before falling back to getGasPrice
+export const MIN_TRANSACTION_COUNT = 10;
+export const PAST_TO_COMPARE_IN_BLOCKS = 20;

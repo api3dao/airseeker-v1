@@ -1,26 +1,31 @@
 import { ethers } from 'ethers';
 import { go } from '@api3/promise-utils';
+import { PriorityFee } from '@api3/airnode-node';
+import { parsePriorityFee } from '@api3/airnode-utilities';
 import { logger } from './logging';
 import { Provider } from './state';
-import { getGasPrice } from './gas-prices';
 import { prepareGoOptions } from './utils';
-import { checkUpdateCondition } from './check-condition';
 import {
-  GAS_ORACLE_MAX_TIMEOUT,
+  GAS_ORACLE_MAX_TIMEOUT_S,
+  GAS_PRICE_MAX_DEVIATION_MULTIPLIER,
   GAS_PRICE_PERCENTILE,
-  GAS_PRICE_DEVIATION_THRESHOLD,
-  BACK_UP_GAS_PRICE_GWEI,
-  MIN_BLOCK_TRANSACTIONS,
+  MIN_TRANSACTION_COUNT,
+  PAST_TO_COMPARE_IN_BLOCKS,
 } from './constants';
 import { GasOracleConfig } from './validation';
 
-interface ChainOptions {
+interface GasOracleOptions {
   maxTimeout: number;
   percentile: number;
-  backupGasPriceGwei: number;
-  minBlockTransactions: number;
-  gasPriceDeviationThreshold: number;
+  fallbackGasPrice: PriorityFee;
+  recommendedGasPriceMultiplier?: number;
+  minTransactionCount: number;
+  maxDeviationMultiplier: number;
+  pastToCompareInBlocks: number;
 }
+
+export const multiplyGasPrice = (gasPrice: ethers.BigNumber, gasPriceMultiplier: number) =>
+  gasPrice.mul(ethers.BigNumber.from(Math.round(gasPriceMultiplier * 100))).div(ethers.BigNumber.from(100));
 
 export const getPercentile = (percentile: number, array: ethers.BigNumber[]) => {
   if (!array.length) return;
@@ -30,22 +35,45 @@ export const getPercentile = (percentile: number, array: ethers.BigNumber[]) => 
   return array[index];
 };
 
-export const fetchBlockData = async (provider: Provider, chainOptions: ChainOptions) => {
+// Check whether a value's change exceeds the maxDeviationMultipiler limit
+// and returns false if it does and true otherwise.
+export const checkMaxDeviationLimit = (
+  value: ethers.BigNumber,
+  referenceValue: ethers.BigNumber,
+  maxDeviationMultiplier: number
+) => {
+  // Handle maximum two decimals for maxDeviationMultiplier
+  const maxDeviationMultiplierBN = ethers.BigNumber.from(Math.round(maxDeviationMultiplier * 100));
+
+  return (
+    // Check that the current value is not higher than the maxDeviationMultiplier allows
+    referenceValue.gt(value.mul(ethers.BigNumber.from(100)).div(maxDeviationMultiplierBN)) &&
+    // Check that the current value is not lower than the maxDeviationMultiplier allows
+    referenceValue.lt(value.mul(maxDeviationMultiplierBN).div(ethers.BigNumber.from(100)))
+  );
+};
+
+export const fetchBlockData = async (provider: Provider, gasOracleOptions: GasOracleOptions) => {
   const { rpcProvider, chainId, providerName } = provider;
-  const { maxTimeout, percentile, backupGasPriceGwei, minBlockTransactions, gasPriceDeviationThreshold } = chainOptions;
+  const {
+    maxTimeout,
+    percentile,
+    fallbackGasPrice,
+    recommendedGasPriceMultiplier,
+    minTransactionCount,
+    maxDeviationMultiplier,
+    pastToCompareInBlocks,
+  } = gasOracleOptions;
   const logOptionsChainId = { meta: { chainId, providerName } };
   logger.info(`Fetching block data`, logOptionsChainId);
 
   // Define block tags to fetch
-  const blockTagsToFetch = [
-    'latest',
-    -20, // Fetch latest block number - 20
-  ];
+  const blockTagsToFetch = ['latest', -pastToCompareInBlocks];
 
-  const blockStartTime = Date.now();
   const totalTimeout = maxTimeout * 1_000;
 
   // Fetch blocks in parallel
+  const blockStartTime = Date.now();
   const blockPromises = blockTagsToFetch.map(
     async (blockTag) =>
       await go(() => rpcProvider.getBlockWithTransactions(blockTag), {
@@ -58,13 +86,13 @@ export const fetchBlockData = async (provider: Provider, chainOptions: ChainOpti
   // Reject as soon as possible if fetching a block fails for speed
   const resolvedGoBlocks = await Promise.all(blockPromises);
 
+  // Calculate gas price percentiles for each block
   const blockPercentileGasPrices = resolvedGoBlocks.reduce(
     (acc: { blockNumber: number; percentileGasPrice: ethers.BigNumber }[], block) => {
       // Stop processing if fetching the block was not succesful
       // or if the block does not have enough transactions
-      if (!block.success || block.data.transactions.length < minBlockTransactions) return acc;
+      if (!block.success || block.data.transactions.length < minTransactionCount) return acc;
 
-      // Calculate the percentileGasPrice
       const percentileGasPrice = getPercentile(
         percentile,
         block.data.transactions.map((tx) => (tx.gasPrice || block.data.baseFeePerGas!.add(tx.maxPriorityFeePerGas!))!)
@@ -81,24 +109,32 @@ export const fetchBlockData = async (provider: Provider, chainOptions: ChainOpti
 
   // Check percentileGasPrices only if we have the result from at least two blocks
   if (blockPercentileGasPrices.length > 1) {
-    // Sort by blockNumber to know which one is the latest block
+    // Sort by blockNumber
     const sortedBlockPercentileGasPrices = blockPercentileGasPrices.sort((a, b) => b.blockNumber - a.blockNumber);
 
-    // Check that the percentileGasPrices are within the gasPriceDeviationThreshold to
-    // protect against gas price spikes
-    const exceedsGasPriceDeviationThreshold = checkUpdateCondition(
+    // Check that the latest block percentileGasPrice does not exceed the maxDeviationMultiplier compared to
+    // the reference block to protect against gas price spikes
+    const isWithinDeviationLimit = checkMaxDeviationLimit(
       sortedBlockPercentileGasPrices[1].percentileGasPrice,
-      gasPriceDeviationThreshold,
-      sortedBlockPercentileGasPrices[0].percentileGasPrice
+      sortedBlockPercentileGasPrices[0].percentileGasPrice,
+      maxDeviationMultiplier
     );
 
-    // checkUpdateCondition returns true if the percentage difference between two BigNumbers is greater than the deviation threshold so this condition is fulfilled if the returned value is false (i.e. not exceeding the threshold)
-    // Use the percentileGasPrice from the latest block
-    if (!exceedsGasPriceDeviationThreshold) return sortedBlockPercentileGasPrices[0].percentileGasPrice;
+    // Return latest the percentile for the latest block if within the limit
+    if (isWithinDeviationLimit) {
+      logger.info(
+        `Gas price set to ${ethers.utils.formatUnits(
+          sortedBlockPercentileGasPrices[0].percentileGasPrice,
+          'gwei'
+        )} gwei`,
+        logOptionsChainId
+      );
+      return sortedBlockPercentileGasPrices[0].percentileGasPrice;
+    }
 
-    // Continue to fallback gas prices if the threshold is exceeded
+    // Continue to fallback gas prices if the deviation limit is exceeded
     logger.warn(
-      `percentileGasPrice exceeds the gasPriceDeviationThreshold set to (${gasPriceDeviationThreshold}%). Fetching backup gas price.`,
+      `Latest block percentileGasPrice exceeds the max deviation multiplier limit set to (${maxDeviationMultiplier}%). Fetching backup gas price.`,
       logOptionsChainId
     );
   } else {
@@ -108,40 +144,57 @@ export const fetchBlockData = async (provider: Provider, chainOptions: ChainOpti
     );
   }
 
-  // Attempt to get gasTarget as fallback
+  // Attempt to get gasPrice as fallback
   const gasStartTime = Date.now();
-  const gasTarget = await getGasPrice(provider, prepareGoOptions(gasStartTime, totalTimeout));
+  const gasPrice = await go(() => rpcProvider.getGasPrice(), {
+    ...prepareGoOptions(gasStartTime, totalTimeout),
+    onAttemptError: (goError) =>
+      logger.warn(`Failed attempt to get gas price. Error: ${goError.error}`, logOptionsChainId),
+  });
 
-  if (!gasTarget) {
+  if (!gasPrice.success) {
     // Use the hardcoded back if back up if gasTarget cannot be fetched
     logger.warn(
-      `Unable to get fallback gasPrice. Using backupGasPriceGwei set to ${backupGasPriceGwei} gwei.`,
+      `Unable to get fallback gasPrice from provider. Using fallbackGasPrice from config set to ${fallbackGasPrice.value} ${fallbackGasPrice.unit}.`,
       logOptionsChainId
     );
-    return ethers.utils.parseUnits(backupGasPriceGwei.toString(), 'gwei');
+    return parsePriorityFee(fallbackGasPrice);
   }
 
-  if (gasTarget.txType === 'legacy') return gasTarget.gasPrice;
-  return gasTarget.maxFeePerGas;
+  logger.info(`Fallback gas price set to ${ethers.utils.formatUnits(gasPrice.data, 'gwei')} gwei`, logOptionsChainId);
+
+  return recommendedGasPriceMultiplier ? multiplyGasPrice(gasPrice.data, recommendedGasPriceMultiplier) : gasPrice.data;
 };
 
-export const getChainProviderConfig = (gasOracleConfig?: GasOracleConfig) => {
-  const maxTimeout = gasOracleConfig?.maxTimeout || GAS_ORACLE_MAX_TIMEOUT;
-  const percentile = gasOracleConfig?.percentile || GAS_PRICE_PERCENTILE;
-  const backupGasPriceGwei = gasOracleConfig?.backupGasPriceGwei || BACK_UP_GAS_PRICE_GWEI;
-  const minBlockTransactions = gasOracleConfig?.minBlockTransactions || MIN_BLOCK_TRANSACTIONS;
-  const gasPriceDeviationThreshold = gasOracleConfig?.gasPriceDeviationThreshold || GAS_PRICE_DEVIATION_THRESHOLD;
+export const getChainProviderConfig = (gasOracleConfig: GasOracleConfig) => {
+  const fallbackGasPrice = gasOracleConfig.fallbackGasPrice;
+  const maxTimeout = gasOracleConfig.maxTimeout || GAS_ORACLE_MAX_TIMEOUT_S;
+  const recommendedGasPriceMultiplier = gasOracleConfig.recommendedGasPriceMultiplier;
+  const percentile = gasOracleConfig.latestGasPriceOptions?.percentile || GAS_PRICE_PERCENTILE;
+  const minTransactionCount = gasOracleConfig.latestGasPriceOptions?.minTransactionCount || MIN_TRANSACTION_COUNT;
+  const maxDeviationMultiplier =
+    gasOracleConfig.latestGasPriceOptions?.maxDeviationMultiplier || GAS_PRICE_MAX_DEVIATION_MULTIPLIER;
+  const pastToCompareInBlocks =
+    gasOracleConfig.latestGasPriceOptions?.pastToCompareInBlocks || PAST_TO_COMPARE_IN_BLOCKS;
 
-  return { maxTimeout, percentile, backupGasPriceGwei, minBlockTransactions, gasPriceDeviationThreshold };
+  return {
+    maxTimeout,
+    percentile,
+    fallbackGasPrice,
+    recommendedGasPriceMultiplier,
+    minTransactionCount,
+    maxDeviationMultiplier,
+    pastToCompareInBlocks,
+  };
 };
 
 // Fetch new block data on call and return the updated gas price
-export const getOracleGasPrice = async (provider: Provider, gasOracleConfig?: GasOracleConfig) => {
+export const getOracleGasPrice = async (provider: Provider, gasOracleConfig: GasOracleConfig) => {
   // Get gas oracle config for provider
-  const chainOptions = getChainProviderConfig(gasOracleConfig);
+  const gasOracleOptions = getChainProviderConfig(gasOracleConfig);
 
   // Fetch and process block data
-  const gasPrice = await fetchBlockData(provider, chainOptions);
+  const gasPrice = await fetchBlockData(provider, gasOracleOptions);
 
   return gasPrice;
 };

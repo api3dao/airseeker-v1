@@ -35,13 +35,20 @@ export const buildAirseekerConfig = () => ({
         },
         baseFeeMultiplier: 2,
         fulfillmentGasLimit: 500_000,
-      },
-      gasOracle: {
-        percentile: 60,
-        maxTimeout: 3,
-        backupGasPriceGwei: 10,
-        minBlockTransactions: 10,
-        gasPriceDeviationThreshold: 500, // set high to ensure that e2e tests do not use fallback
+        gasOracle: {
+          maxTimeout: 1, // Set low to make tests run faster
+          fallbackGasPrice: {
+            value: 10,
+            unit: 'gwei',
+          },
+          recommendedGasPriceMultiplier: 1,
+          latestGasPriceOptions: {
+            percentile: 60,
+            minTransactionCount: 9,
+            pastToCompareInBlocks: 20,
+            maxDeviationMultiplier: 5, // Set high to ensure that e2e tests do not use fallback
+          },
+        },
       },
     },
   },

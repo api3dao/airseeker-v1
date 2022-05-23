@@ -1,6 +1,10 @@
 import { ethers } from 'ethers';
 import { SuperRefinement, z } from 'zod';
-import { chainOptionsSchema, providerSchema } from '@api3/airnode-validator';
+import {
+  chainOptionsSchema as airnodeChainOptionsSchema,
+  providerSchema,
+  priorityFeeSchema,
+} from '@api3/airnode-validator';
 import isNil from 'lodash/isNil';
 
 export const logFormatSchema = z.union([z.literal('json'), z.literal('plain')]);
@@ -43,15 +47,25 @@ export const beaconsSchema = z.record(evmBeaconIdSchema, beaconSchema).superRefi
 // TODO: Will be refined once we start supporting beacon sets
 export const beaconSetsSchema = emptyObjectSchema;
 
-export const gasOracleSchema = z
+export const latestGasPriceOptionsSchema = z
   .object({
-    percentile: z.number().int().positive().optional(),
-    maxTimeout: z.number().int().positive().optional(),
-    backupGasPriceGwei: z.number().positive().optional(),
-    minBlockTransactions: z.number().positive().optional(),
-    gasPriceDeviationThreshold: z.number().positive().optional(),
+    percentile: z.number().int().optional(),
+    minTransactionCount: z.number().int().optional(),
+    pastToCompareInBlocks: z.number().int().optional(),
+    maxDeviationMultiplier: z.number().optional(),
   })
   .optional();
+
+export const gasOracleSchema = z.object({
+  fallbackGasPrice: priorityFeeSchema,
+  recommendedGasPriceMultiplier: z.number().positive().optional(),
+  latestGasPriceOptions: latestGasPriceOptionsSchema,
+  maxTimeout: z.number().int().optional(),
+});
+
+export const chainOptionsSchema = airnodeChainOptionsSchema.extend({
+  gasOracle: gasOracleSchema,
+});
 
 export const chainSchema = z
   .object({
@@ -60,7 +74,6 @@ export const chainSchema = z
     }, 'DapiServer contract address is missing'),
     providers: z.record(providerSchema),
     options: chainOptionsSchema,
-    gasOracle: gasOracleSchema,
   })
   .strict();
 

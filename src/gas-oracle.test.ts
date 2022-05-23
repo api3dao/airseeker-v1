@@ -1,14 +1,19 @@
 import { ethers } from 'ethers';
-import { Config } from './validation';
+import { Config, GasOracleConfig } from './validation';
 import * as api from './gas-oracle';
+import * as prices from './gas-prices';
 import * as state from './state';
 import {
-  GAS_ORACLE_MAX_TIMEOUT,
+  GAS_ORACLE_MAX_TIMEOUT_S,
+  GAS_PRICE_MAX_DEVIATION_MULTIPLIER,
   GAS_PRICE_PERCENTILE,
-  GAS_PRICE_DEVIATION_THRESHOLD,
-  BACK_UP_GAS_PRICE_GWEI,
-  MIN_BLOCK_TRANSACTIONS,
+  MIN_TRANSACTION_COUNT,
+  PAST_TO_COMPARE_IN_BLOCKS,
 } from './constants';
+
+// Jest version 27 has a bug where jest.setTimeout does not work correctly inside describe or test blocks
+// https://github.com/facebook/jest/issues/11607
+jest.setTimeout(10_000);
 
 const config: Config = {
   airseekerWalletMnemonic: 'achieve climb couple wait accident symbol spy blouse reduce foil echo label',
@@ -61,11 +66,20 @@ const config: Config = {
         },
         baseFeeMultiplier: 2,
         fulfillmentGasLimit: 500_000,
-      },
-      gasOracle: {
-        percentile: 60,
-        maxTimeout: 1,
-        minBlockTransactions: 20,
+        gasOracle: {
+          maxTimeout: 1,
+          fallbackGasPrice: {
+            value: 10,
+            unit: 'gwei',
+          },
+          recommendedGasPriceMultiplier: 1.2,
+          latestGasPriceOptions: {
+            percentile: 60,
+            minTransactionCount: 10,
+            pastToCompareInBlocks: 20,
+            maxDeviationMultiplier: 2,
+          },
+        },
       },
     },
     '1': {
@@ -88,10 +102,20 @@ const config: Config = {
         },
         baseFeeMultiplier: 2,
         fulfillmentGasLimit: 500_000,
-      },
-      gasOracle: {
-        percentile: 60,
-        maxTimeout: 1,
+        gasOracle: {
+          maxTimeout: 1,
+          fallbackGasPrice: {
+            value: 10,
+            unit: 'gwei',
+          },
+          recommendedGasPriceMultiplier: 1.2,
+          latestGasPriceOptions: {
+            percentile: 60,
+            minTransactionCount: 10,
+            pastToCompareInBlocks: 20,
+            maxDeviationMultiplier: 2,
+          },
+        },
       },
     },
     '3': {
@@ -111,11 +135,20 @@ const config: Config = {
         },
         baseFeeMultiplier: 2,
         fulfillmentGasLimit: 500_000,
-      },
-      gasOracle: {
-        percentile: 60,
-        maxTimeout: 1,
-        minBlockTransactions: 20,
+        gasOracle: {
+          maxTimeout: 1,
+          fallbackGasPrice: {
+            value: 10,
+            unit: 'gwei',
+          },
+          recommendedGasPriceMultiplier: 1.2,
+          latestGasPriceOptions: {
+            percentile: 60,
+            minTransactionCount: 10,
+            pastToCompareInBlocks: 20,
+            maxDeviationMultiplier: 2,
+          },
+        },
       },
     },
   },
@@ -211,13 +244,28 @@ describe('Gas oracle', () => {
     chainId,
     providerName,
   };
-  const chainOptions = {
-    percentile: 60,
-    maxTimeout: 1,
-    backupGasPriceGwei: 10,
-    minBlockTransactions: 3,
-    gasPriceDeviationThreshold: 20,
+  const defaultGasOracleConfig = {
+    fallbackGasPrice: {
+      value: 10,
+      unit: 'gwei',
+    },
+    recommendedGasPriceMultiplier: 1.2,
+    latestGasPriceOptions: {
+      percentile: 60,
+      minTransactionCount: 10,
+      pastToCompareInBlocks: 20,
+      maxDeviationMultiplier: 2,
+    },
+  } as GasOracleConfig;
+  const defaultGasOracleOptions = {
+    fallbackGasPrice: defaultGasOracleConfig.fallbackGasPrice,
+    maxTimeout: 1, // Set low to make tests run faster
+    percentile: GAS_PRICE_PERCENTILE,
+    minTransactionCount: MIN_TRANSACTION_COUNT,
+    maxDeviationMultiplier: GAS_PRICE_MAX_DEVIATION_MULTIPLIER,
+    pastToCompareInBlocks: PAST_TO_COMPARE_IN_BLOCKS,
   };
+
   const gasPriceArray = [
     ethers.BigNumber.from(10),
     ethers.BigNumber.from(20),
@@ -243,32 +291,85 @@ describe('Gas oracle', () => {
     });
   });
 
+  describe('checkMaxDeviationLimit', () => {
+    it('returns false if increase is exceeding maxDeviationMultiplier', () => {
+      const isWithinDeviationLimit = api.checkMaxDeviationLimit(
+        ethers.BigNumber.from(50),
+        ethers.BigNumber.from(10),
+        2
+      );
+      expect(isWithinDeviationLimit).toEqual(false);
+    });
+
+    it('returns false if decrease is exceeding maxDeviationMultiplier', () => {
+      const isWithinDeviationLimit = api.checkMaxDeviationLimit(
+        ethers.BigNumber.from(10),
+        ethers.BigNumber.from(50),
+        2
+      );
+      expect(isWithinDeviationLimit).toEqual(false);
+    });
+
+    it('returns true if increase is within the maxDeviationMultiplier limit', () => {
+      const isWithinDeviationLimit = api.checkMaxDeviationLimit(
+        ethers.BigNumber.from(15),
+        ethers.BigNumber.from(10),
+        2
+      );
+      expect(isWithinDeviationLimit).toEqual(true);
+    });
+
+    it('returns true if decrease is within the maxDeviationMultiplier limit', () => {
+      const isWithinDeviationLimit = api.checkMaxDeviationLimit(
+        ethers.BigNumber.from(10),
+        ethers.BigNumber.from(15),
+        2
+      );
+      expect(isWithinDeviationLimit).toEqual(true);
+    });
+  });
+
   describe('getChainProviderConfig', () => {
     it('returns config settings', () => {
       const gasOracleConfig = api.getChainProviderConfig({
-        percentile: 60,
-        maxTimeout: 1,
-        backupGasPriceGwei: 10,
-        minBlockTransactions: 3,
-        gasPriceDeviationThreshold: 20,
+        maxTimeout: 3,
+        fallbackGasPrice: {
+          value: 10,
+          unit: 'gwei',
+        },
+        recommendedGasPriceMultiplier: 1.5,
+        latestGasPriceOptions: {
+          percentile: 70,
+          minTransactionCount: 15,
+          pastToCompareInBlocks: 25,
+          maxDeviationMultiplier: 1.5,
+        },
       });
       expect(gasOracleConfig).toEqual({
-        percentile: 60,
-        maxTimeout: 1,
-        backupGasPriceGwei: 10,
-        minBlockTransactions: 3,
-        gasPriceDeviationThreshold: 20,
+        fallbackGasPrice: {
+          value: 10,
+          unit: 'gwei',
+        },
+        maxTimeout: 3,
+        recommendedGasPriceMultiplier: 1.5,
+        percentile: 70,
+        minTransactionCount: 15,
+        maxDeviationMultiplier: 1.5,
+        pastToCompareInBlocks: 25,
       });
     });
 
     it('returns default settings', () => {
-      const gasOracleConfig = api.getChainProviderConfig();
+      const gasOracleConfig = api.getChainProviderConfig({
+        fallbackGasPrice: {
+          value: 10,
+          unit: 'gwei',
+        },
+      });
       expect(gasOracleConfig).toEqual({
-        percentile: GAS_PRICE_PERCENTILE,
-        maxTimeout: GAS_ORACLE_MAX_TIMEOUT,
-        backupGasPriceGwei: BACK_UP_GAS_PRICE_GWEI,
-        minBlockTransactions: MIN_BLOCK_TRANSACTIONS,
-        gasPriceDeviationThreshold: GAS_PRICE_DEVIATION_THRESHOLD,
+        ...defaultGasOracleOptions,
+        maxTimeout: GAS_ORACLE_MAX_TIMEOUT_S,
+        recommendedGasPriceMultiplier: undefined,
       });
     });
   });
@@ -299,7 +400,13 @@ describe('Gas oracle', () => {
       ];
       blockDataMock.forEach((block) => getBlockWithTransactionsSpy.mockImplementationOnce(async () => block as any));
 
-      const gasPrice = await api.getOracleGasPrice(stateProvider, chainOptions);
+      const gasPrice = await api.getOracleGasPrice(stateProvider, {
+        ...defaultGasOracleConfig,
+        latestGasPriceOptions: {
+          ...defaultGasOracleConfig.latestGasPriceOptions,
+          minTransactionCount: 3,
+        },
+      });
 
       expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(1, 'latest');
       expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(2, -20);
@@ -328,7 +435,7 @@ describe('Gas oracle', () => {
       const getGasPriceMock = ethers.BigNumber.from(11);
       getGasPriceSpy.mockImplementationOnce(async () => getGasPriceMock);
 
-      const gasPrice = await api.getOracleGasPrice(stateProvider, chainOptions);
+      const gasPrice = await api.getOracleGasPrice(stateProvider, defaultGasOracleOptions);
 
       expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(1, 'latest');
       expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(2, -20);
@@ -336,7 +443,7 @@ describe('Gas oracle', () => {
       expect(gasPrice).toEqual(ethers.BigNumber.from(getGasPriceMock));
     });
 
-    it('returns config backupGasPriceGwei gas if not enough blocks and fallback fails', async () => {
+    it('returns config fallbackGasPrice gas if not enough blocks and fallback fails', async () => {
       const getBlockWithTransactionsSpy = jest.spyOn(
         ethers.providers.StaticJsonRpcProvider.prototype,
         'getBlockWithTransactions'
@@ -357,12 +464,12 @@ describe('Gas oracle', () => {
         throw new Error('some error');
       });
 
-      const gasPrice = await api.getOracleGasPrice(stateProvider, chainOptions);
+      const gasPrice = await api.getOracleGasPrice(stateProvider, defaultGasOracleConfig);
 
       expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(1, 'latest');
       expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(2, -20);
 
-      expect(gasPrice).toEqual(ethers.utils.parseUnits(chainOptions.backupGasPriceGwei.toString(), 'gwei'));
+      expect(gasPrice).toEqual(prices.parsePriorityFee(defaultGasOracleConfig.fallbackGasPrice));
     });
 
     it('returns config backupGasPriceGwei gas if failing to fetch both blocks and fallback', async () => {
@@ -378,12 +485,12 @@ describe('Gas oracle', () => {
         throw new Error('some error');
       });
 
-      const gasPrice = await api.getOracleGasPrice(stateProvider, chainOptions);
+      const gasPrice = await api.getOracleGasPrice(stateProvider, defaultGasOracleConfig);
 
       expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(1, 'latest');
       expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(2, -20);
 
-      expect(gasPrice).toEqual(ethers.utils.parseUnits(chainOptions.backupGasPriceGwei.toString(), 'gwei'));
+      expect(gasPrice).toEqual(prices.parsePriorityFee(defaultGasOracleConfig.fallbackGasPrice));
     });
 
     it('retries provider getBlockWithTransactions', async () => {
@@ -397,10 +504,10 @@ describe('Gas oracle', () => {
       // Mock random backoff time for prepareGoOptions
       jest.spyOn(global.Math, 'random').mockImplementation(() => 0.3);
 
-      const gasPrice = await api.fetchBlockData(stateProvider, chainOptions);
+      const gasPrice = await api.fetchBlockData(stateProvider, defaultGasOracleOptions);
 
       expect(getBlockWithTransactionsSpy).toHaveBeenCalledTimes(4);
-      expect(gasPrice).toEqual(ethers.utils.parseUnits(BACK_UP_GAS_PRICE_GWEI.toString(), 'gwei'));
+      expect(gasPrice).toEqual(prices.parsePriorityFee(defaultGasOracleConfig.fallbackGasPrice));
     });
 
     it('retries provider getGasPrice', async () => {
@@ -418,11 +525,11 @@ describe('Gas oracle', () => {
       // Mock random backoff time for prepareGoOptions
       jest.spyOn(global.Math, 'random').mockImplementation(() => 0.3);
 
-      const gasPrice = await api.fetchBlockData(stateProvider, chainOptions);
+      const gasPrice = await api.fetchBlockData(stateProvider, defaultGasOracleOptions);
 
       expect(getBlockWithTransactionsSpy).toHaveBeenCalledTimes(4);
       expect(getBlockWithTransactionsSpy).toHaveBeenCalledTimes(4);
-      expect(gasPrice).toEqual(ethers.utils.parseUnits(BACK_UP_GAS_PRICE_GWEI.toString(), 'gwei'));
+      expect(gasPrice).toEqual(prices.parsePriorityFee(defaultGasOracleConfig.fallbackGasPrice));
     });
   });
 });

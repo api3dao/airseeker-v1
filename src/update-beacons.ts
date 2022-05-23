@@ -182,7 +182,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
     }
 
     // Get gas price from oracle
-    const gasPrice = await getOracleGasPrice(provider, config.chains[chainId].gasOracle);
+    const gasPrice = await getOracleGasPrice(provider, config.chains[chainId].options.gasOracle);
 
     // Update beacon
     const tx = await go(

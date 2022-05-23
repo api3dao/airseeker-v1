@@ -34,14 +34,6 @@ describe('updateBeacons', () => {
     }
     state.initializeState(config.data);
     initializeProviders();
-    state.updateState((state) => ({
-      ...state,
-      gasOracles: {
-        '31337': {
-          local: { percentileGasPrice: ethers.utils.parseUnits('50', 'gwei'), blockData: [] },
-        },
-      },
-    }));
   });
 
   beforeEach(() => {

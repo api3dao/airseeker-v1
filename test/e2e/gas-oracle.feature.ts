@@ -1,12 +1,14 @@
 import * as hre from 'hardhat';
 import { BigNumber } from 'ethers';
 import '@nomiclabs/hardhat-ethers';
+import * as node from '@api3/airnode-node';
 import * as gasOracle from '../../src/gas-oracle';
+import * as gasPrices from '../../src/gas-prices';
 import * as state from '../../src/state';
 import * as providersApi from '../../src/providers';
-import * as checkConditions from '../../src/check-condition';
 import { buildAirseekerConfig, buildLocalSecrets } from '../fixtures/config';
 import { executeTransactions } from '../setup/transactions';
+import { GasOracleConfig } from '../../src/validation';
 
 // Jest version 27 has a bug where jest.setTimeout does not work correctly inside describe or test blocks
 // https://github.com/facebook/jest/issues/11607
@@ -18,20 +20,20 @@ const providerUrl = 'http://127.0.0.1:8545/';
 const provider = new hre.ethers.providers.StaticJsonRpcProvider(providerUrl);
 const airseekerConfig = buildAirseekerConfig();
 const secretsConfig = buildLocalSecrets();
-const gasOracleConfig = airseekerConfig.chains[chainId].gasOracle;
+const gasOracleConfig = airseekerConfig.chains[chainId].options.gasOracle;
 process.env = Object.assign(process.env, secretsConfig);
 
 const processBlockData = async (
   blocksWithGasPrices: { blockNumber: number; gasPrices: BigNumber[] }[],
   percentile: number,
-  gasPriceDeviationThreshold: number,
-  backupGasPriceGwei: number
+  maxDeviationMultiplier: number,
+  fallbackGasPrice: node.PriorityFee
 ) => {
   const latestBlock = blocksWithGasPrices[0];
   const referenceBlock = blocksWithGasPrices[20];
 
   const latestBlockPercentileGasPrice = gasOracle.getPercentile(
-    gasOracleConfig.percentile,
+    gasOracleConfig.latestGasPriceOptions.percentile,
     latestBlock.gasPrices.map((p) => p)
   );
   const referenceBlockPercentileGasPrice = gasOracle.getPercentile(
@@ -39,18 +41,18 @@ const processBlockData = async (
     referenceBlock.gasPrices.map((p) => p)
   );
 
-  const exceedsGasPriceDeviationThreshold = checkConditions.checkUpdateCondition(
+  const isWithinDeviationLimit = gasOracle.checkMaxDeviationLimit(
+    latestBlockPercentileGasPrice!,
     referenceBlockPercentileGasPrice!,
-    gasPriceDeviationThreshold,
-    latestBlockPercentileGasPrice!
+    maxDeviationMultiplier
   );
 
-  if (!exceedsGasPriceDeviationThreshold) return latestBlockPercentileGasPrice;
+  if (isWithinDeviationLimit) return latestBlockPercentileGasPrice;
 
   try {
     return await provider.getGasPrice();
   } catch (_e) {
-    return hre.ethers.utils.parseUnits(backupGasPriceGwei.toString(), 'gwei');
+    return gasPrices.parsePriorityFee(fallbackGasPrice);
   }
 };
 
@@ -79,30 +81,40 @@ describe('Gas oracle', () => {
       it('gets gas price for provider', async () => {
         state.initializeState(airseekerConfig as any);
         const provider = providersApi.initializeProvider(chainId, providerUrl);
-        const gasOracleConfig = airseekerConfig.chains[chainId].gasOracle;
+        const gasOracleConfig = airseekerConfig.chains[chainId].options.gasOracle;
 
-        const gasPrice = await gasOracle.getOracleGasPrice({ ...provider, providerName }, gasOracleConfig);
+        const gasPrice = await gasOracle.getOracleGasPrice(
+          { ...provider, providerName },
+          gasOracleConfig as GasOracleConfig
+        );
 
         const processedPercentileGasPrice = await processBlockData(
           blocksWithGasPrices,
-          gasOracleConfig.percentile,
-          gasOracleConfig.gasPriceDeviationThreshold,
-          gasOracleConfig.backupGasPriceGwei
+          gasOracleConfig.latestGasPriceOptions.percentile,
+          gasOracleConfig.latestGasPriceOptions.maxDeviationMultiplier,
+          gasOracleConfig.fallbackGasPrice as node.PriorityFee
         );
 
         expect(gasPrice).toEqual(processedPercentileGasPrice);
       });
 
-      it('uses fallback getGasPrice when gasPriceDeviationThreshold is exceeded', async () => {
+      it('uses fallback getGasPrice when maxDeviationMultiplier is exceeded', async () => {
         state.initializeState(airseekerConfig as any);
         const provider = providersApi.initializeProvider(chainId, providerUrl);
         const gasOracleConfig = {
-          ...airseekerConfig.chains[chainId].gasOracle,
-          // Set a low gasPriceDeviationThreshold to test getGasPrice fallback
-          gasPriceDeviationThreshold: 1,
+          ...airseekerConfig.chains[chainId].options.gasOracle,
+          latestGasPriceOptions: {
+            ...airseekerConfig.chains[chainId].options.gasOracle.latestGasPriceOptions,
+            maxDeviationMultiplier: 0.01, // Set a low maxDeviationMultiplier to test getGasPrice fallback
+          },
         };
 
-        const gasPrice = await gasOracle.getOracleGasPrice({ ...provider, providerName }, gasOracleConfig);
+        gasOracleConfig;
+
+        const gasPrice = await gasOracle.getOracleGasPrice(
+          { ...provider, providerName },
+          gasOracleConfig as GasOracleConfig
+        );
         const fallbackGasPrice = await provider.rpcProvider.getGasPrice();
 
         expect(gasPrice).toEqual(fallbackGasPrice);
@@ -111,7 +123,7 @@ describe('Gas oracle', () => {
       it('uses fallback getGasPrice when getBlockWithTransactions provider calls fail', async () => {
         state.initializeState(airseekerConfig as any);
         const provider = providersApi.initializeProvider(chainId, providerUrl);
-        const gasOracleConfig = airseekerConfig.chains[chainId].gasOracle;
+        const gasOracleConfig = airseekerConfig.chains[chainId].options.gasOracle;
 
         const getBlockWithTransactionsSpy = jest.spyOn(
           hre.ethers.providers.StaticJsonRpcProvider.prototype,
@@ -121,7 +133,10 @@ describe('Gas oracle', () => {
           throw new Error('some error');
         });
 
-        const gasPrice = await gasOracle.getOracleGasPrice({ ...provider, providerName }, gasOracleConfig);
+        const gasPrice = await gasOracle.getOracleGasPrice(
+          { ...provider, providerName },
+          gasOracleConfig as GasOracleConfig
+        );
         const fallbackGasPrice = await provider.rpcProvider.getGasPrice();
 
         expect(gasPrice).toEqual(fallbackGasPrice);
@@ -130,7 +145,7 @@ describe('Gas oracle', () => {
       it('uses fallback backupGasPriceGwei when getBlockWithTransactions and getGasPrice provider calls fail', async () => {
         state.initializeState(airseekerConfig as any);
         const provider = providersApi.initializeProvider(chainId, providerUrl);
-        const gasOracleConfig = airseekerConfig.chains[chainId].gasOracle;
+        const gasOracleConfig = airseekerConfig.chains[chainId].options.gasOracle;
 
         const getBlockWithTransactionsSpy = jest.spyOn(
           hre.ethers.providers.StaticJsonRpcProvider.prototype,
@@ -144,8 +159,11 @@ describe('Gas oracle', () => {
           throw new Error('some error');
         });
 
-        const gasPrice = await gasOracle.getOracleGasPrice({ ...provider, providerName }, gasOracleConfig);
-        const fallbackGasPrice = hre.ethers.utils.parseUnits(gasOracleConfig.backupGasPriceGwei.toString(), 'gwei');
+        const gasPrice = await gasOracle.getOracleGasPrice(
+          { ...provider, providerName },
+          gasOracleConfig as GasOracleConfig
+        );
+        const fallbackGasPrice = gasPrices.parsePriorityFee(gasOracleConfig.fallbackGasPrice as node.PriorityFee);
 
         expect(gasPrice).toEqual(fallbackGasPrice);
       });
