@@ -29,7 +29,7 @@ secrets file.
 - `maxTimeout`: (optional) - The maximum timeout (in seconds) for fetching a block or fallback gas price (defaults to
   `3`).
 - `recommendedGasPriceMultiplier`: (optional) - The multiplier to apply to the fallback gas price reported by the
-  provider.
+  provider. The multiplier will not be applied to the config `fallbackGasPrice`.
 
 - `latestGasPriceOptions`: (optional) - An object containing the following configuration options for calculating a gas
   price:

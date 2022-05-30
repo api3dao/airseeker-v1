@@ -8,7 +8,6 @@ export const shortenAddress = (address: string) => address.replace(address.subst
 export const calculateTimeout = (startTime: number, totalTimeout: number) => totalTimeout - (Date.now() - startTime);
 
 // We retry all chain operations with a random back-off infinitely until the next updates cycle
-// TODO: Errors are not displayed with this approach. Problem?
 export const prepareGoOptions = (startTime: number, totalTimeout: number): GoAsyncOptions => ({
   attemptTimeoutMs: PROVIDER_TIMEOUT_MS,
   totalTimeoutMs: calculateTimeout(startTime, totalTimeout),

@@ -30,6 +30,12 @@ const createMockState = () =>
             txType: 'legacy',
           },
         },
+        '31338': {
+          options: {
+            txType: 'legacy',
+            gasPriceMultiplier: 1.75,
+          },
+        },
         '31331': {
           options: {
             txType: 'eip1559',
@@ -69,6 +75,7 @@ const createMockState = () =>
   } as unknown as state.State);
 
 const legacyChainId = '31337';
+const legacyChainIdWithGasPriceMultiplier = '31338';
 const eip1559ChainIds = ['31331', '31332', '31333', '31334'];
 const goOptions = {};
 
@@ -143,23 +150,7 @@ describe('getGasPrice', () => {
 
   it('applies gasPriceMultiplier to non-EIP-1559 provider', async () => {
     const gasPriceMultiplier = 1.75;
-    const stateSpy = jest.spyOn(state, 'getState');
-    stateSpy.mockImplementation(
-      () =>
-        ({
-          config: {
-            chains: {
-              '31337': {
-                options: {
-                  txType: 'legacy',
-                  gasPriceMultiplier,
-                },
-              },
-            },
-          },
-        } as unknown as state.State)
-    );
-    const provider = createProvider(legacyChainId);
+    const provider = createProvider(legacyChainIdWithGasPriceMultiplier);
 
     const getGasPrice = provider.rpcProvider.getGasPrice as jest.Mock;
     getGasPrice.mockResolvedValueOnce(testGasPrice);

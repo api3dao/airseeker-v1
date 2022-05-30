@@ -108,28 +108,26 @@ export const fetchBlockData = async (provider: Provider, gasOracleOptions: GasOr
   );
 
   // Check percentileGasPrices only if we have the result from at least two blocks
-  if (blockPercentileGasPrices.length > 1) {
+  if (blockPercentileGasPrices.length === 2) {
     // Sort by blockNumber
     const sortedBlockPercentileGasPrices = blockPercentileGasPrices.sort((a, b) => b.blockNumber - a.blockNumber);
+    const [latestPercentileGasPrice, referencePercentileGasPrice] = sortedBlockPercentileGasPrices;
 
     // Check that the latest block percentileGasPrice does not exceed the maxDeviationMultiplier compared to
     // the reference block to protect against gas price spikes
     const isWithinDeviationLimit = checkMaxDeviationLimit(
-      sortedBlockPercentileGasPrices[1].percentileGasPrice,
-      sortedBlockPercentileGasPrices[0].percentileGasPrice,
+      latestPercentileGasPrice.percentileGasPrice,
+      referencePercentileGasPrice.percentileGasPrice,
       maxDeviationMultiplier
     );
 
-    // Return latest the percentile for the latest block if within the limit
+    // Return the percentile for the latest block if within the limit
     if (isWithinDeviationLimit) {
       logger.info(
-        `Gas price set to ${ethers.utils.formatUnits(
-          sortedBlockPercentileGasPrices[0].percentileGasPrice,
-          'gwei'
-        )} gwei`,
+        `Gas price set to ${ethers.utils.formatUnits(latestPercentileGasPrice.percentileGasPrice, 'gwei')} gwei`,
         logOptionsChainId
       );
-      return sortedBlockPercentileGasPrices[0].percentileGasPrice;
+      return latestPercentileGasPrice.percentileGasPrice;
     }
 
     // Continue to fallback gas prices if the deviation limit is exceeded
@@ -152,18 +150,21 @@ export const fetchBlockData = async (provider: Provider, gasOracleOptions: GasOr
       logger.warn(`Failed attempt to get gas price. Error: ${goError.error}`, logOptionsChainId),
   });
 
-  if (!gasPrice.success) {
-    // Use the hardcoded back if back up if gasTarget cannot be fetched
-    logger.warn(
-      `Unable to get fallback gasPrice from provider. Using fallbackGasPrice from config set to ${fallbackGasPrice.value} ${fallbackGasPrice.unit}.`,
-      logOptionsChainId
-    );
-    return parsePriorityFee(fallbackGasPrice);
+  if (gasPrice.success) {
+    logger.info(`Fallback gas price set to ${ethers.utils.formatUnits(gasPrice.data, 'gwei')} gwei`, logOptionsChainId);
+
+    return recommendedGasPriceMultiplier
+      ? multiplyGasPrice(gasPrice.data, recommendedGasPriceMultiplier)
+      : gasPrice.data;
   }
 
-  logger.info(`Fallback gas price set to ${ethers.utils.formatUnits(gasPrice.data, 'gwei')} gwei`, logOptionsChainId);
+  // Use the hardcoded fallback gas price if the gas price cannot be fetched
+  logger.warn(
+    `Unable to get fallback gasPrice from provider. Using fallbackGasPrice from config set to ${fallbackGasPrice.value} ${fallbackGasPrice.unit}.`,
+    logOptionsChainId
+  );
 
-  return recommendedGasPriceMultiplier ? multiplyGasPrice(gasPrice.data, recommendedGasPriceMultiplier) : gasPrice.data;
+  return parsePriorityFee(fallbackGasPrice);
 };
 
 export const getChainProviderConfig = (gasOracleConfig: GasOracleConfig) => {
