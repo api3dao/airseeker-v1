@@ -19,9 +19,9 @@
     "@jridgewell/trace-mapping" "^0.3.9"
 
 "@api3/airnode-abi@^0.6.2":
-  version "0.6.2"
-  resolved "https://registry.yarnpkg.com/@api3/airnode-abi/-/airnode-abi-0.6.2.tgz#408ef731bb6609e5933a11fcdc0688c8b98c6d4d"
-  integrity sha512-ia7TaiHsHZ0h8ak47ThnuUqBFoRqJTcEIf3+/7RkehUS+t5QUBnoJmCwdDK1BI/W+yedN7p5NVHDHWAGbupHDg==
+  version "0.6.3"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-abi/-/airnode-abi-0.6.3.tgz#7fb1c649a1bc6487300168815c6d1ed463e430cd"
+  integrity sha512-+Ao6GQmmeTwi+G98+Ht3+PEQDOS+XqZURXWD5z5hpxJgOW8C2snuAal7MK2DVMf0YW/AsobFQ4ElP3NQuCD21w==
   dependencies:
     ethers "^5.4.5"
     lodash "^4.17.21"
