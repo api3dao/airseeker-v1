@@ -18,7 +18,7 @@
     "@jridgewell/gen-mapping" "^0.1.0"
     "@jridgewell/trace-mapping" "^0.3.9"
 
-"@api3/airnode-abi@^0.6.2":
+"@api3/airnode-abi@^0.6.2", "@api3/airnode-abi@^0.6.3":
   version "0.6.3"
   resolved "https://registry.yarnpkg.com/@api3/airnode-abi/-/airnode-abi-0.6.3.tgz#7fb1c649a1bc6487300168815c6d1ed463e430cd"
   integrity sha512-+Ao6GQmmeTwi+G98+Ht3+PEQDOS+XqZURXWD5z5hpxJgOW8C2snuAal7MK2DVMf0YW/AsobFQ4ElP3NQuCD21w==
@@ -26,28 +26,28 @@
     ethers "^5.4.5"
     lodash "^4.17.21"
 
-"@api3/airnode-adapter@^0.6.2":
-  version "0.6.2"
-  resolved "https://registry.yarnpkg.com/@api3/airnode-adapter/-/airnode-adapter-0.6.2.tgz#14db387c6405a89a547115895e9c1af7d9d3e98c"
-  integrity sha512-LTV2RnplFRiX+hbaUG089C8IHGDb0RkcRL7psWa/oAUcK4ZFLdnxXey2HeTi++RimkZ3M/3awTBbBOhfj/DXtA==
+"@api3/airnode-adapter@^0.6.3":
+  version "0.6.3"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-adapter/-/airnode-adapter-0.6.3.tgz#b86631849ee61a646656fd2316762a0ba369b6ee"
+  integrity sha512-UJhPJXpkTwqvXBcE5wWrN34+BTflwcViKyh0bhWFDhybrgkRuEdzq9Un5TFkDHvctSA7XiDzbAw7ewahS+B9wg==
   dependencies:
-    "@api3/airnode-ois" "^0.6.2"
+    "@api3/airnode-ois" "^0.6.3"
     axios "^0.26.0"
     bignumber.js "^9.0.0"
     ethers "^5.4.5"
     lodash "^4.17.21"
 
 "@api3/airnode-node@^0.6.2":
-  version "0.6.2"
-  resolved "https://registry.yarnpkg.com/@api3/airnode-node/-/airnode-node-0.6.2.tgz#45b16dc346208e075ff7a1fbc712b525cd76ea3e"
-  integrity sha512-LQ0RUfKD0fBEYJDuplR+xnCzJKIL3+7Ht4qX76k8WurYi7760EgrhX84uCdNI5S+wXpK+kl0g4oBm+89C1WsYw==
+  version "0.6.3"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-node/-/airnode-node-0.6.3.tgz#548c2923bc345320e0e6f93f513005415190d9d4"
+  integrity sha512-vCtCXa9oqPNycZeGtatjGmjapro2bn1c0LwvPyYbNNzCdtO8yxaRl1rGvwwS4OpQMd1Wk5sWhBF1LwQM6/wMjA==
   dependencies:
-    "@api3/airnode-abi" "^0.6.2"
-    "@api3/airnode-adapter" "^0.6.2"
-    "@api3/airnode-ois" "^0.6.2"
-    "@api3/airnode-protocol" "^0.6.2"
-    "@api3/airnode-utilities" "^0.6.2"
-    "@api3/airnode-validator" "^0.6.2"
+    "@api3/airnode-abi" "^0.6.3"
+    "@api3/airnode-adapter" "^0.6.3"
+    "@api3/airnode-ois" "^0.6.3"
+    "@api3/airnode-protocol" "^0.6.3"
+    "@api3/airnode-utilities" "^0.6.3"
+    "@api3/airnode-validator" "^0.6.3"
     aws-sdk "^2.992.0"
     dotenv "^16.0.0"
     ethers "^5.4.5"
@@ -55,27 +55,27 @@
     lodash "^4.17.21"
     yargs "^17.0.1"
 
-"@api3/airnode-ois@^0.6.2":
-  version "0.6.2"
-  resolved "https://registry.yarnpkg.com/@api3/airnode-ois/-/airnode-ois-0.6.2.tgz#1f5a72eb16aad5275c14bd946452b001386d4d00"
-  integrity sha512-ztG2sQ3PG1kklrqHo9k5PkDP/TlaD8+652GSLh9JkzY3dOd1duQ90RDeCkqPOL/dgntrjw+Tx8+1vTGftf9dVA==
+"@api3/airnode-ois@^0.6.3":
+  version "0.6.3"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-ois/-/airnode-ois-0.6.3.tgz#f44cf6ad3dc24b798a7ac6bb75aa75dbdd7a1c35"
+  integrity sha512-7Vse5t50y8lNUk7OQp9s9/gU5oUhkOb8vglefi48k/xIm8+x4w5+gngfMHV/tuQHX3cFVrOW1UMGvNw/hLmDzQ==
   dependencies:
-    "@api3/airnode-validator" "^0.6.2"
+    "@api3/airnode-validator" "^0.6.3"
 
 "@api3/airnode-protocol-v1@^0.5.0":
   version "0.5.1"
   resolved "https://registry.yarnpkg.com/@api3/airnode-protocol-v1/-/airnode-protocol-v1-0.5.1.tgz#a3ac38e95a3c66df6ab3f5cb03195f7be80a1fc3"
   integrity sha512-0UHB3dRlTjL80hAg7bAm+/+UL0PLsv6KdbmMbA0jx7I7GZjmHDvOeoL/wUFFEuFRAVA/tEz4MbJFaFzkDhj8jQ==
 
-"@api3/airnode-protocol@^0.6.2":
-  version "0.6.2"
-  resolved "https://registry.yarnpkg.com/@api3/airnode-protocol/-/airnode-protocol-0.6.2.tgz#13d4d6ce892e9e452d6e2e56f8934ef5b577c23a"
-  integrity sha512-yONhQ80TtbDeIjfJxGFRsxJtv6+qUDgAWBoSal3VlGAJXitW5lGfvm0Q/4fgDltysCNusyAQUMebcCY86ut/Pg==
+"@api3/airnode-protocol@^0.6.3":
+  version "0.6.3"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-protocol/-/airnode-protocol-0.6.3.tgz#5f349307840cd62b9d1eb7ea5d4b3239b3fd11f7"
+  integrity sha512-6oBqtqrP+bIjuVsTR8FlDNrlRq2OrlfzQcBROzl/kkMqicJ9uSaLCsjBErNEB7Dfw1KTwkttB8l80i3ZotkVDw==
   dependencies:
     "@openzeppelin/contracts" "4.4.2"
     ethers "^5.4.5"
 
-"@api3/airnode-utilities@^0.6.2":
+"@api3/airnode-utilities@^0.6.2", "@api3/airnode-utilities@^0.6.3":
   version "0.6.3"
   resolved "https://registry.yarnpkg.com/@api3/airnode-utilities/-/airnode-utilities-0.6.3.tgz#da0146e90d5a18d4845d7a10340e4b32f8750f2e"
   integrity sha512-LgwJh/ii/sOwf0gwJnz6TiQ/lyub5rr34V6D0xTDAVjIC8WkDRP9opm0CIGbHJ8takKu3ZdZHIHk2nzRmanvvg==
@@ -84,12 +84,12 @@
     date-fns "^2.16.1"
     ethers "^5.4.5"
 
-"@api3/airnode-validator@^0.6.2":
-  version "0.6.2"
-  resolved "https://registry.yarnpkg.com/@api3/airnode-validator/-/airnode-validator-0.6.2.tgz#6f0e7b5d8a8547b95703d1dd525c6f7add699849"
-  integrity sha512-jbry7tZAR/d6L7VeNXTpFhmQAfxGt2OCRjcLH9nbx7d6gOb6o0sXUij1AHg80d5k/BTDycsSe8Vc6mjj5NyOIg==
+"@api3/airnode-validator@^0.6.2", "@api3/airnode-validator@^0.6.3":
+  version "0.6.3"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-validator/-/airnode-validator-0.6.3.tgz#e127663f6ce9b65d1a8cfcb46354254793ef3fc1"
+  integrity sha512-ZqpWLCldreiKGAoIUUt217173jqJIZeT62BKnmDFUfAlYDYJ9vPcX5XiEXwYWvyhr+snoDWRUpdh6Kc0Z9JaEg==
   dependencies:
-    "@api3/airnode-utilities" "^0.6.2"
+    "@api3/airnode-utilities" "^0.6.3"
     dotenv "^16.0.0"
     lodash "^4.17.21"
     yargs "^17.0.1"
