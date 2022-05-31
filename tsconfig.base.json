@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "declaration": true,
+    "declarationMap": true,
+    "lib": ["es6"],
+    "module": "commonjs",
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "sourceMap": true,
+    "strict": true,
+    "target": "es5",
+    "skipLibCheck": true,
+    "composite": true,
+    "noFallthroughCasesInSwitch": true,
+
+    // Disabled because they are too restrictive
+    "exactOptionalPropertyTypes": false,
+    "noUncheckedIndexedAccess": false,
+    "noImplicitReturns": false,
+
+    // Disabled because they are covered by Eslint rules
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+
+    // Disabled because prefer the property syntax
+    "noPropertyAccessFromIndexSignature": false
+  }
+}

@@ -1,0 +1,26 @@
+service: airseeker
+
+plugins:
+  - serverless-plugin-typescript
+
+package:
+  patterns:
+    - ./config/airseeker.json
+
+provider:
+  name: aws
+  region: us-east-1
+  stage: '2205181530'
+  runtime: nodejs14.x
+  architecture: arm64
+  logRetentionInDays: 14
+  environment: ${file(load-secrets-env.js)}
+
+functions:
+  airseeker:
+    handler: src/serverless.handler
+    maximumRetryAttempts: 0
+    timeout: 900
+    memorySize: 512
+    events:
+      - schedule: rate(14 minutes)

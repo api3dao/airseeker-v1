@@ -27,7 +27,11 @@ export interface State {
 let state: State;
 
 export const initializeState = (config: Config) => {
-  state = {
+  state = getInitialState(config);
+};
+
+export const getInitialState = (config: Config) => {
+  return {
     config,
     stopSignalReceived: false,
     beaconValues: {},

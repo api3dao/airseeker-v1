@@ -10,7 +10,7 @@ import * as makeRequest from '../../src/make-request';
 
 // Jest version 27 has a bug where jest.setTimeout does not work correctly inside describe or test blocks
 // https://github.com/facebook/jest/issues/11607
-jest.setTimeout(60_000);
+jest.setTimeout(30_000);
 
 const provider = new hre.ethers.providers.JsonRpcProvider('http://127.0.0.1:8545');
 
