@@ -93,10 +93,19 @@ export const fetchBlockData = async (provider: Provider, gasOracleOptions: GasOr
       // or if the block does not have enough transactions
       if (!block.success || block.data.transactions.length < minTransactionCount) return acc;
 
-      const percentileGasPrice = getPercentile(
-        percentile,
-        block.data.transactions.map((tx) => (tx.gasPrice || block.data.baseFeePerGas!.add(tx.maxPriorityFeePerGas!))!)
-      );
+      // Filter for transactions with gas prices
+      const transactionsWithGasPrices = block.data.transactions.reduce((acc: ethers.BigNumber[], tx) => {
+        if (tx.gasPrice) return [...acc, tx.gasPrice];
+        if (block.data.baseFeePerGas && tx.maxPriorityFeePerGas)
+          return [...acc, block.data.baseFeePerGas.add(tx.maxPriorityFeePerGas)];
+
+        return acc;
+      }, []);
+
+      // Stop processing if there are not enough transactions with gas prices
+      if (transactionsWithGasPrices.length < minTransactionCount) return acc;
+
+      const percentileGasPrice = getPercentile(percentile, transactionsWithGasPrices);
 
       // Note: percentileGasPrice should never be undefined as only arrays with items
       // should have been passed in at this point
