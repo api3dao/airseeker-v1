@@ -142,7 +142,7 @@ describe('Gas oracle', () => {
         expect(gasPrice).toEqual(fallbackGasPrice);
       });
 
-      it('uses fallback backupGasPriceGwei when getBlockWithTransactions and getGasPrice provider calls fail', async () => {
+      it('uses config fallback gas price when getBlockWithTransactions and getGasPrice provider calls fail', async () => {
         state.initializeState(airseekerConfig as any);
         const provider = providersApi.initializeProvider(chainId, providerUrl);
         const gasOracleConfig = airseekerConfig.chains[chainId].options.gasOracle;

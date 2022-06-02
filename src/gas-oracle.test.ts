@@ -538,6 +538,7 @@ describe('Gas oracle', () => {
           number: 23,
           transactions: [
             { maxPriorityFeePerGas: ethers.BigNumber.from(2) },
+            {},
             { maxPriorityFeePerGas: ethers.BigNumber.from(2) },
           ],
         },
@@ -600,7 +601,7 @@ describe('Gas oracle', () => {
       expect(gasPrice).toEqual(prices.parsePriorityFee(defaultGasOracleConfig.fallbackGasPrice));
     });
 
-    it('returns config backupGasPriceGwei gas if failing to fetch both blocks and fallback', async () => {
+    it('returns config fallback gas price if failing to fetch both blocks and fallback', async () => {
       const getBlockWithTransactionsSpy = jest.spyOn(
         ethers.providers.StaticJsonRpcProvider.prototype,
         'getBlockWithTransactions'

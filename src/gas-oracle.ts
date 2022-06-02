@@ -116,7 +116,7 @@ export const fetchBlockData = async (provider: Provider, gasOracleOptions: GasOr
     []
   );
 
-  // Check percentileGasPrices only if we have the result from at least two blocks
+  // Check percentileGasPrices only if we have the transactions from two blocks
   if (blockPercentileGasPrices.length === 2) {
     // Sort by blockNumber
     const sortedBlockPercentileGasPrices = blockPercentileGasPrices.sort((a, b) => b.blockNumber - a.blockNumber);
@@ -160,11 +160,16 @@ export const fetchBlockData = async (provider: Provider, gasOracleOptions: GasOr
   });
 
   if (gasPrice.success) {
-    logger.info(`Fallback gas price set to ${ethers.utils.formatUnits(gasPrice.data, 'gwei')} gwei`, logOptionsChainId);
-
-    return recommendedGasPriceMultiplier
+    const multipliedGasPrice = recommendedGasPriceMultiplier
       ? multiplyGasPrice(gasPrice.data, recommendedGasPriceMultiplier)
       : gasPrice.data;
+
+    logger.info(
+      `Fallback gas price set to ${ethers.utils.formatUnits(multipliedGasPrice, 'gwei')} gwei`,
+      logOptionsChainId
+    );
+
+    return multipliedGasPrice;
   }
 
   // Use the hardcoded fallback gas price if the gas price cannot be fetched
