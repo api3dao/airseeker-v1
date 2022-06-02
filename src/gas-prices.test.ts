@@ -31,6 +31,12 @@ const createMockState = () =>
           txType: 'legacy',
         },
       },
+      '31338': {
+        options: {
+          txType: 'legacy',
+          gasPriceMultiplier: 1.75,
+        },
+      },
       '31331': {
         options: {
           txType: 'eip1559',
@@ -69,6 +75,7 @@ const createMockState = () =>
   } as unknown as Config);
 
 const legacyChainId = '31337';
+const legacyChainIdWithGasPriceMultiplier = '31338';
 const eip1559ChainIds = ['31331', '31332', '31333', '31334'];
 const goOptions = {};
 
@@ -139,6 +146,19 @@ describe('getGasPrice', () => {
     expect(gasPrice.gasPrice).toEqual(testGasPrice);
     expect(getGasPrice).toHaveBeenCalledTimes(1);
     expect(getBlock).toHaveBeenCalledTimes(0);
+  });
+
+  it('applies gasPriceMultiplier to non-EIP-1559 provider', async () => {
+    const gasPriceMultiplier = 1.75;
+    const provider = createProvider(legacyChainIdWithGasPriceMultiplier);
+
+    const getGasPrice = provider.rpcProvider.getGasPrice as jest.Mock;
+    getGasPrice.mockResolvedValueOnce(testGasPrice);
+
+    const gasPrice = (await gasPrices.getGasPrice(provider, goOptions)) as gasPrices.LegacyGasTarget;
+    const multipliedTestGasPrice = gasPrices.multiplyGasPrice(testGasPrice, gasPriceMultiplier);
+
+    expect(gasPrice.gasPrice).toEqual(multipliedTestGasPrice);
   });
 
   eip1559ChainIds.forEach((chainId) => {

@@ -22,6 +22,25 @@ read from the environment variables. When running locally, either just with `yar
 are automatically loaded from `config/secrets.env` file. Take a look at `config/secrets.example.env` for an example
 secrets file.
 
+### Gas oracle options
+
+- `fallbackGasPrice`: (required) - The gas price to use for beacon update transactions if fetching both blocks and
+  fallback gas prices fails. Defined as an object, e.g. `{"value": 10, "unit": "gwei"}`.
+- `maxTimeout`: (optional) - The maximum timeout (in seconds) for fetching a block or fallback gas price (defaults to
+  `3`).
+- `recommendedGasPriceMultiplier`: (optional) - The multiplier to apply to the fallback gas price reported by the
+  provider. The multiplier will not be applied to the config `fallbackGasPrice`.
+
+- `latestGasPriceOptions`: (optional) - An object containing the following configuration options for calculating a gas
+  price:
+  - `percentile`: (optional) - The percentile of gas prices to return from a block (defaults to `60`).
+  - `minTransactionCount`: (optional) - The minimum amount of transactions required in a block to use for calculating a
+    gas price percentile (defaults to `10`).
+  - `pastToCompareInBlocks`: (optional) - The number of blocks to look back for the reference block (defaults to `20`).
+  - `maxDeviationMultiplier`: (optional) - The maximum deviation multiplier of the latest block gas price percentile
+    compared to the reference block gas price percentile (defaults to `2`). Used to protect against large gas price
+    spikes.
+
 ## Usage
 
 ```sh
