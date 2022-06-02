@@ -29,11 +29,7 @@ export const buildAirseekerConfig = () => ({
       },
       options: {
         txType: 'legacy',
-        priorityFee: {
-          value: 3.12,
-          unit: 'gwei',
-        },
-        baseFeeMultiplier: 2,
+
         fulfillmentGasLimit: 500_000,
         gasOracle: {
           maxTimeout: 1, // Set low to make tests run faster

@@ -27,11 +27,6 @@
       },
       "options": {
         "txType": "legacy",
-        "priorityFee": {
-          "value": 3.12,
-          "unit": "gwei"
-        },
-        "baseFeeMultiplier": 2,
         "fulfillmentGasLimit": 500000,
         "gasOracle": {
           "maxTimeout": 3,
@@ -60,11 +55,6 @@
       },
       "options": {
         "txType": "legacy",
-        "priorityFee": {
-          "value": 3.12,
-          "unit": "gwei"
-        },
-        "baseFeeMultiplier": 2,
         "fulfillmentGasLimit": 500000,
         "gasOracle": {
           "maxTimeout": 3,
