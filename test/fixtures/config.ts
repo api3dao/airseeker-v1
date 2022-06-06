@@ -28,13 +28,23 @@ export const buildAirseekerConfig = () => ({
         },
       },
       options: {
-        txType: 'eip1559',
-        priorityFee: {
-          value: 3.12,
-          unit: 'gwei',
-        },
-        baseFeeMultiplier: 2,
+        txType: 'legacy',
+
         fulfillmentGasLimit: 500_000,
+        gasOracle: {
+          maxTimeout: 1, // Set low to make tests run faster
+          fallbackGasPrice: {
+            value: 10,
+            unit: 'gwei',
+          },
+          recommendedGasPriceMultiplier: 1,
+          latestGasPriceOptions: {
+            percentile: 60,
+            minTransactionCount: 9,
+            pastToCompareInBlocks: 20,
+            maxDeviationMultiplier: 5, // Set high to ensure that e2e tests do not use fallback
+          },
+        },
       },
     },
   },

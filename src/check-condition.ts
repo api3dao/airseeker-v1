@@ -15,12 +15,12 @@ export const calculateUpdateInPercentage = (initialValue: ethers.BigNumber, upda
   return absoluteDelta.mul(ethers.BigNumber.from(HUNDRED_PERCENT)).div(absoluteInitialValue);
 };
 
-export const checkUpdateCondition = async (
-  onChainVale: ethers.BigNumber,
+export const checkUpdateCondition = (
+  onChainValue: ethers.BigNumber,
   deviationThreshold: number,
   apiValue: ethers.BigNumber
-): Promise<boolean> => {
-  const updateInPercentage = calculateUpdateInPercentage(onChainVale, apiValue);
+) => {
+  const updateInPercentage = calculateUpdateInPercentage(onChainValue, apiValue);
   const threshold = ethers.BigNumber.from(Math.trunc(deviationThreshold * HUNDRED_PERCENT)).div(
     ethers.BigNumber.from(100)
   );

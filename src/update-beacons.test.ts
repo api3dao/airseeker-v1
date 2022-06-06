@@ -4,6 +4,7 @@ import * as state from './state';
 import { BeaconUpdate, Config } from './validation';
 import { initializeProviders } from './providers';
 import * as api from './update-beacons';
+import * as utils from './utils';
 import { getUnixTimestamp } from '../test/fixtures';
 
 const config: Config = {
@@ -57,6 +58,20 @@ const config: Config = {
         },
         baseFeeMultiplier: 2,
         fulfillmentGasLimit: 500_000,
+        gasOracle: {
+          maxTimeout: 1,
+          fallbackGasPrice: {
+            value: 10,
+            unit: 'gwei',
+          },
+          recommendedGasPriceMultiplier: 1.2,
+          latestGasPriceOptions: {
+            percentile: 60,
+            minTransactionCount: 10,
+            pastToCompareInBlocks: 20,
+            maxDeviationMultiplier: 2,
+          },
+        },
       },
     },
     '3': {
@@ -76,6 +91,20 @@ const config: Config = {
         },
         baseFeeMultiplier: 2,
         fulfillmentGasLimit: 500_000,
+        gasOracle: {
+          maxTimeout: 1,
+          fallbackGasPrice: {
+            value: 10,
+            unit: 'gwei',
+          },
+          recommendedGasPriceMultiplier: 1.2,
+          latestGasPriceOptions: {
+            percentile: 60,
+            minTransactionCount: 10,
+            pastToCompareInBlocks: 20,
+            maxDeviationMultiplier: 2,
+          },
+        },
       },
     },
   },
@@ -247,7 +276,7 @@ describe('calculateTimeout', () => {
     const totalTimeout = 3000;
     jest.spyOn(Date, 'now').mockReturnValue(1650548023000);
 
-    expect(api.calculateTimeout(startTime, totalTimeout)).toEqual(2000);
+    expect(utils.calculateTimeout(startTime, totalTimeout)).toEqual(2000);
   });
 });
 
@@ -263,7 +292,7 @@ describe('prepareGoOptions', () => {
       retries: 100_000,
       delay: { type: 'random' as const, minDelayMs: 0, maxDelayMs: 2_500 },
     };
-    expect(api.prepareGoOptions(startTime, totalTimeout)).toEqual(expectedGoOptions);
+    expect(utils.prepareGoOptions(startTime, totalTimeout)).toEqual(expectedGoOptions);
   });
 });
 
