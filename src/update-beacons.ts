@@ -5,21 +5,12 @@ import { ethers } from 'ethers';
 import { isEmpty } from 'lodash';
 import { getCurrentBlockNumber } from './block-number';
 import { checkOnchainDataFreshness, checkSignedDataFreshness, checkUpdateCondition } from './check-condition';
-import {
-  INFINITE_RETRIES,
-  INT224_MAX,
-  INT224_MIN,
-  NO_BEACONS_EXIT_CODE,
-  PROTOCOL_ID,
-  PROVIDER_TIMEOUT_MS,
-  RANDOM_BACKOFF_MAX_MS,
-  RANDOM_BACKOFF_MIN_MS,
-} from './constants';
-import { getGasPrice } from './gas-prices';
+import { INT224_MAX, INT224_MIN, NO_BEACONS_EXIT_CODE, PROTOCOL_ID } from './constants';
+import { getOracleGasPrice } from './gas-oracle';
 import { logger, LogOptionsOverride } from './logging';
 import { getState, Provider } from './state';
 import { getTransactionCount } from './transaction-count';
-import { shortenAddress, sleep } from './utils';
+import { shortenAddress, sleep, prepareGoOptions } from './utils';
 import { BeaconUpdate } from './validation';
 
 type ProviderSponsorBeacons = {
@@ -72,17 +63,6 @@ export const updateBeaconsInLoop = async (providerSponsorBeacons: ProviderSponso
   }
 };
 
-export const calculateTimeout = (startTime: number, totalTimeout: number) => totalTimeout - (Date.now() - startTime);
-
-// We retry all chain operations with a random back-off infinitely until the next updates cycle
-// TODO: Errors are not displayed with this approach. Problem?
-export const prepareGoOptions = (startTime: number, totalTimeout: number): GoAsyncOptions => ({
-  attemptTimeoutMs: PROVIDER_TIMEOUT_MS,
-  totalTimeoutMs: calculateTimeout(startTime, totalTimeout),
-  retries: INFINITE_RETRIES,
-  delay: { type: 'random' as const, minDelayMs: RANDOM_BACKOFF_MIN_MS, maxDelayMs: RANDOM_BACKOFF_MAX_MS },
-});
-
 // We pass return value from `prepareGoOptions` (with calculated timeout) to every `go` call in the function to enforce the update cycle.
 // This solution is not precise but since chain operations are the only ones that actually take some time this should be a good enough solution.
 export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeacons) => {
@@ -109,14 +89,6 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
     logger.warn(`Unable to obtain block number`, logOptionsSponsor);
     return;
   }
-
-  // Get gas price
-  const gasTarget = await getGasPrice(provider, prepareGoOptions(startTime, totalTimeout));
-  if (gasTarget === null) {
-    logger.warn(`Unable to fetch gas price`, logOptionsSponsor);
-    return;
-  }
-  const { txType: _txType, ...gasTargetOverride } = gasTarget;
 
   // Derive sponsor wallet address
   const sponsorWallet = node.evm
@@ -195,11 +167,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
       );
     } else {
       // Check beacon condition
-      const shouldUpdate = await checkUpdateCondition(
-        onChainData.value,
-        beaconUpdateData.deviationThreshold,
-        newBeaconValue
-      );
+      const shouldUpdate = checkUpdateCondition(onChainData.value, beaconUpdateData.deviationThreshold, newBeaconValue);
       if (shouldUpdate === null) {
         logger.warn(`Unable to fetch current beacon value`, logOptionsBeaconId);
         // This can happen only if we reach the total timeout so it makes no sense to continue with the rest of the beacons
@@ -213,6 +181,9 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
       logger.info(`Deviation threshold reached. Updating.`, logOptionsBeaconId);
     }
 
+    // Get gas price from oracle
+    const gasPrice = await getOracleGasPrice(provider, config.chains[chainId].options.gasOracle);
+
     // Update beacon
     const tx = await go(
       () =>
@@ -225,7 +196,9 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
             newBeaconResponse.data.value,
             newBeaconResponse.signature,
             {
-              ...gasTargetOverride,
+              gasLimit: ethers.BigNumber.from(config.chains[chainId].options.fulfillmentGasLimit),
+              type: config.chains[chainId].options.txType === 'eip1559' ? 2 : 0,
+              gasPrice,
               nonce,
             }
           ),

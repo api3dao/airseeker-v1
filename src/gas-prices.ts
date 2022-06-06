@@ -28,9 +28,12 @@ export type GasTarget = LegacyGasTarget | EIP1559GasTarget;
 export const parsePriorityFee = ({ value, unit }: node.PriorityFee) =>
   ethers.utils.parseUnits(value.toString(), unit ?? 'wei');
 
+export const multiplyGasPrice = (gasPrice: BigNumber, gasPriceMultiplier: number) =>
+  gasPrice.mul(BigNumber.from(Math.round(gasPriceMultiplier * 100))).div(BigNumber.from(100));
+
 export const getLegacyGasPrice = async (
   provider: Provider,
-  chainOptions: node.ChainOptions,
+  chainOptions: node.ChainOptions & { gasPriceMultiplier?: number },
   goOptions: GoAsyncOptions
 ): Promise<LegacyGasTarget | null> => {
   const { chainId, rpcProvider, providerName } = provider;
@@ -46,9 +49,13 @@ export const getLegacyGasPrice = async (
     return null;
   }
 
+  const multipliedGasPrice = chainOptions.gasPriceMultiplier
+    ? multiplyGasPrice(goGasPrice.data, chainOptions.gasPriceMultiplier)
+    : goGasPrice.data;
+
   return {
     txType: 'legacy',
-    gasPrice: goGasPrice.data,
+    gasPrice: multipliedGasPrice,
     ...nodeUtils.getGasLimit(chainOptions.fulfillmentGasLimit),
   };
 };
