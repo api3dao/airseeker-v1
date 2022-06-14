@@ -76,9 +76,9 @@
     ethers "^5.4.5"
 
 "@api3/airnode-utilities@^0.6.2", "@api3/airnode-utilities@^0.6.3":
-  version "0.6.3"
-  resolved "https://registry.yarnpkg.com/@api3/airnode-utilities/-/airnode-utilities-0.6.3.tgz#da0146e90d5a18d4845d7a10340e4b32f8750f2e"
-  integrity sha512-LgwJh/ii/sOwf0gwJnz6TiQ/lyub5rr34V6D0xTDAVjIC8WkDRP9opm0CIGbHJ8takKu3ZdZHIHk2nzRmanvvg==
+  version "0.6.5"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-utilities/-/airnode-utilities-0.6.5.tgz#f072d624e5854465fb9a0f7fabbc5b5551ddc78b"
+  integrity sha512-jOTzr8j4xUNZ82NyRtypxVGEhMkC4f3qK+fTku3sRdE1J5nePgwSi8WJETzvmAQDO+/rsvAQIUiw6NjKeKTVeA==
   dependencies:
     "@lifeomic/attempt" "^3.0.0"
     date-fns "^2.16.1"
