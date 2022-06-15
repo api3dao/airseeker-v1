@@ -9,6 +9,7 @@ on:
 
 env:
   TARGET_NODE_VERSION: '14.17.1'
+  DOCKER_BUILDKIT: '1'
 
 jobs:
   documentation:
@@ -85,6 +86,8 @@ jobs:
   docker-build:
     name: Build docker image and push to Docker Hub
     runs-on: ubuntu-latest
+    # Don't run twice for a push within an internal PR
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
     steps:
       - name: Clone Airseeker
         uses: actions/checkout@v2

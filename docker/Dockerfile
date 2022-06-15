@@ -24,7 +24,8 @@ COPY . ${buildDir}
 FROM preparation as sourcegit
 
 ARG branch=main
-ARG repository=https://github.com/api3dao/airseeker.git
+# TODO: Most likely won't work, needs credentials
+ARG repository=https://github.com/API3-CTT/airseeker
 
 RUN git clone --single-branch --branch ${branch} ${repository} ${buildDir}
 
