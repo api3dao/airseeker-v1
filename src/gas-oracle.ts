@@ -1,3 +1,4 @@
+import 'source-map-support/register';
 import { ethers } from 'ethers';
 import { go } from '@api3/promise-utils';
 import { PriorityFee } from '@api3/airnode-node';
@@ -53,17 +54,48 @@ export const checkMaxDeviationLimit = (
   );
 };
 
+export const getFallbackGasPrice = async (
+  provider: Provider,
+  fallbackGasOracleOptions: { fallbackGasPrice: PriorityFee; recommendedGasPriceMultiplier?: number },
+  totalTimeout: number
+) => {
+  const { rpcProvider, chainId, providerName } = provider;
+  const { fallbackGasPrice, recommendedGasPriceMultiplier } = fallbackGasOracleOptions;
+  const logOptionsChainId = { meta: { chainId, providerName } };
+
+  const gasStartTime = Date.now();
+  const gasPrice = await go(() => rpcProvider.getGasPrice(), {
+    ...prepareGoOptions(gasStartTime, totalTimeout),
+    onAttemptError: (goError) =>
+      logger.warn(`Failed attempt to get gas price. Error: ${goError.error}`, logOptionsChainId),
+  });
+
+  if (gasPrice.success) {
+    const multipliedGasPrice = recommendedGasPriceMultiplier
+      ? multiplyGasPrice(gasPrice.data, recommendedGasPriceMultiplier)
+      : gasPrice.data;
+
+    logger.info(
+      `Fallback gas price set to ${ethers.utils.formatUnits(multipliedGasPrice, 'gwei')} gwei`,
+      logOptionsChainId
+    );
+
+    return multipliedGasPrice;
+  }
+
+  // Use the hardcoded fallback gas price if the gas price cannot be fetched
+  logger.warn(
+    `Unable to get fallback gasPrice from provider. Using fallbackGasPrice from config set to ${fallbackGasPrice.value} ${fallbackGasPrice.unit}.`,
+    logOptionsChainId
+  );
+
+  return parsePriorityFee(fallbackGasPrice);
+};
+
 export const fetchBlockData = async (provider: Provider, gasOracleOptions: GasOracleOptions) => {
   const { rpcProvider, chainId, providerName } = provider;
-  const {
-    maxTimeout,
-    percentile,
-    fallbackGasPrice,
-    recommendedGasPriceMultiplier,
-    minTransactionCount,
-    maxDeviationMultiplier,
-    pastToCompareInBlocks,
-  } = gasOracleOptions;
+  const { maxTimeout, percentile, minTransactionCount, maxDeviationMultiplier, pastToCompareInBlocks } =
+    gasOracleOptions;
   const logOptionsChainId = { meta: { chainId, providerName } };
   logger.info(`Fetching block data`, logOptionsChainId);
 
@@ -91,12 +123,7 @@ export const fetchBlockData = async (provider: Provider, gasOracleOptions: GasOr
     (acc: { blockNumber: number; percentileGasPrice: ethers.BigNumber }[], block) => {
       // Stop processing if fetching the block was not succesful, there is no block data,
       // or if the block does not have enough transactions
-      if (
-        !block.success ||
-        !block.data ||
-        !block.data.transactions ||
-        block.data.transactions.length < minTransactionCount
-      )
+      if (!block.success || !block?.data?.transactions || block.data.transactions.length < minTransactionCount)
         return acc;
 
       // Filter for transactions with gas prices
@@ -158,33 +185,9 @@ export const fetchBlockData = async (provider: Provider, gasOracleOptions: GasOr
   }
 
   // Attempt to get gasPrice as fallback
-  const gasStartTime = Date.now();
-  const gasPrice = await go(() => rpcProvider.getGasPrice(), {
-    ...prepareGoOptions(gasStartTime, totalTimeout),
-    onAttemptError: (goError) =>
-      logger.warn(`Failed attempt to get gas price. Error: ${goError.error}`, logOptionsChainId),
-  });
+  const fallbackGasPrice = await getFallbackGasPrice(provider, gasOracleOptions, totalTimeout);
 
-  if (gasPrice.success) {
-    const multipliedGasPrice = recommendedGasPriceMultiplier
-      ? multiplyGasPrice(gasPrice.data, recommendedGasPriceMultiplier)
-      : gasPrice.data;
-
-    logger.info(
-      `Fallback gas price set to ${ethers.utils.formatUnits(multipliedGasPrice, 'gwei')} gwei`,
-      logOptionsChainId
-    );
-
-    return multipliedGasPrice;
-  }
-
-  // Use the hardcoded fallback gas price if the gas price cannot be fetched
-  logger.warn(
-    `Unable to get fallback gasPrice from provider. Using fallbackGasPrice from config set to ${fallbackGasPrice.value} ${fallbackGasPrice.unit}.`,
-    logOptionsChainId
-  );
-
-  return parsePriorityFee(fallbackGasPrice);
+  return fallbackGasPrice;
 };
 
 export const getChainProviderConfig = (gasOracleConfig: GasOracleConfig) => {

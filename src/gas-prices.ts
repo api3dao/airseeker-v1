@@ -1,5 +1,5 @@
 // Taken from @api3/airnode-utils so custom retry & timeout options can be used
-
+import 'source-map-support/register';
 import * as node from '@api3/airnode-node';
 import * as nodeUtils from '@api3/airnode-utilities';
 import { go, GoAsyncOptions } from '@api3/promise-utils';

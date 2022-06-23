@@ -1,3 +1,4 @@
+import 'source-map-support/register';
 import { isEmpty, uniq } from 'lodash';
 import { go } from '@api3/promise-utils';
 import { logger } from './logging';

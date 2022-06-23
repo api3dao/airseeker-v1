@@ -1,12 +1,14 @@
+import 'source-map-support/register';
 import * as node from '@api3/airnode-node';
 import { DapiServer, DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol-v1';
+import { parsePriorityFee } from '@api3/airnode-utilities';
 import { go, GoAsyncOptions } from '@api3/promise-utils';
 import { ethers } from 'ethers';
 import { isEmpty } from 'lodash';
 import { getCurrentBlockNumber } from './block-number';
 import { checkOnchainDataFreshness, checkSignedDataFreshness, checkUpdateCondition } from './check-condition';
-import { INT224_MAX, INT224_MIN, NO_BEACONS_EXIT_CODE, PROTOCOL_ID } from './constants';
-import { getOracleGasPrice } from './gas-oracle';
+import { INT224_MAX, INT224_MIN, NO_BEACONS_EXIT_CODE, PROTOCOL_ID, GAS_ORACLE_MAX_TIMEOUT_S } from './constants';
+import { getOracleGasPrice, getFallbackGasPrice } from './gas-oracle';
 import { logger, LogOptionsOverride } from './logging';
 import { getState, Provider } from './state';
 import { getTransactionCount } from './transaction-count';
@@ -181,8 +183,32 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
       logger.info(`Deviation threshold reached. Updating.`, logOptionsBeaconId);
     }
 
-    // Get gas price from oracle
-    const gasPrice = await getOracleGasPrice(provider, config.chains[chainId].options.gasOracle);
+    // Get gas price from oracle or get fallbacks if it fails
+    let gasPrice: ethers.BigNumber;
+    const goGasPrice = await go(() => getOracleGasPrice(provider, config.chains[chainId].options.gasOracle), {
+      retries: 0,
+    });
+    if (!goGasPrice.success) {
+      const goFallbackGasPrice = await go(
+        () =>
+          getFallbackGasPrice(
+            provider,
+            {
+              fallbackGasPrice: config.chains[chainId].options.gasOracle.fallbackGasPrice,
+              recommendedGasPriceMultiplier: config.chains[chainId].options.gasOracle.recommendedGasPriceMultiplier,
+            },
+            GAS_ORACLE_MAX_TIMEOUT_S * 1_000
+          ),
+        { retries: 0 }
+      );
+      if (!goFallbackGasPrice.success) {
+        gasPrice = parsePriorityFee(config.chains[chainId].options.gasOracle.fallbackGasPrice);
+      } else {
+        gasPrice = goFallbackGasPrice.data;
+      }
+    } else {
+      gasPrice = goGasPrice.data;
+    }
 
     // Update beacon
     const tx = await go(

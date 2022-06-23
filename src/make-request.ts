@@ -1,3 +1,4 @@
+import 'source-map-support/register';
 import { go } from '@api3/promise-utils';
 import axios from 'axios';
 import anyPromise from 'promise.any';

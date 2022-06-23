@@ -1,9 +1,11 @@
 import { ethers } from 'ethers';
 import * as hre from 'hardhat';
 import { DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol-v1';
+import { parsePriorityFee } from '@api3/airnode-utilities';
 import { initiateBeaconUpdates } from '../../src/update-beacons';
 import * as utils from '../../src/utils';
 import * as state from '../../src/state';
+import * as gasOracle from '../../src/gas-oracle';
 import { initializeProviders } from '../../src/providers';
 import { deployAndUpdateSubscriptions } from '../setup/deployment';
 import { buildAirseekerConfig, buildLocalSecrets } from '../fixtures/config';
@@ -56,5 +58,51 @@ describe('updateBeacons', () => {
     expect(beaconData.toString()).toEqual('738149047');
   });
 
+  describe('Gas Oracle', () => {
+    it('updates beacons when the gas-oracle throws an error', async () => {
+      jest.spyOn(gasOracle, 'getOracleGasPrice').mockImplementation(() => {
+        throw new Error('Gas oracle says no');
+      });
+      const updateBeaconWithSignedDataSpy = jest.spyOn(dapiServer, 'updateBeaconWithSignedData');
+      initiateBeaconUpdates();
+      await utils.sleep(3_000);
+      state.updateState((oldState) => ({ ...oldState, stopSignalReceived: true }));
+      await utils.sleep(3_000);
+
+      const beaconData = await dapiServer
+        .connect(voidSigner)
+        .readDataFeedValueWithId('0x924b5d4cb3ec6366ae4302a1ca6aec035594ea3ea48a102d160b50b0c43ebfb5');
+      expect(beaconData.toString()).toEqual('738149047');
+      const fallbackGasPrice = await provider.getGasPrice();
+      expect(updateBeaconWithSignedDataSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ gasPrice: fallbackGasPrice })
+      );
+    });
+
+    it('updates beacons when the gas-oracle and fallback gas price throws an error', async () => {
+      const { config } = state.getState();
+      jest.spyOn(gasOracle, 'getOracleGasPrice').mockImplementation(() => {
+        throw new Error('Gas oracle says no');
+      });
+      jest.spyOn(gasOracle, 'getFallbackGasPrice').mockImplementation(() => {
+        throw new Error('Gas oracle says no');
+      });
+      const updateBeaconWithSignedDataSpy = jest.spyOn(dapiServer, 'updateBeaconWithSignedData');
+      initiateBeaconUpdates();
+      await utils.sleep(3_000);
+      state.updateState((oldState) => ({ ...oldState, stopSignalReceived: true }));
+      await utils.sleep(3_000);
+
+      const beaconData = await dapiServer
+        .connect(voidSigner)
+        .readDataFeedValueWithId('0x924b5d4cb3ec6366ae4302a1ca6aec035594ea3ea48a102d160b50b0c43ebfb5');
+      expect(beaconData.toString()).toEqual('738149047');
+      expect(updateBeaconWithSignedDataSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          gasPrice: parsePriorityFee(config.chains['31137'].options.gasOracle.fallbackGasPrice),
+        })
+      );
+    });
+  });
   // TODO: Add more tests
 });
