@@ -89,9 +89,15 @@ export const fetchBlockData = async (provider: Provider, gasOracleOptions: GasOr
   // Calculate gas price percentiles for each block
   const blockPercentileGasPrices = resolvedGoBlocks.reduce(
     (acc: { blockNumber: number; percentileGasPrice: ethers.BigNumber }[], block) => {
-      // Stop processing if fetching the block was not succesful
+      // Stop processing if fetching the block was not succesful, there is no block data,
       // or if the block does not have enough transactions
-      if (!block.success || block.data.transactions.length < minTransactionCount) return acc;
+      if (
+        !block.success ||
+        !block.data ||
+        !block.data.transactions ||
+        block.data.transactions.length < minTransactionCount
+      )
+        return acc;
 
       // Filter for transactions with gas prices
       const transactionsWithGasPrices = block.data.transactions.reduce((acc: ethers.BigNumber[], tx) => {

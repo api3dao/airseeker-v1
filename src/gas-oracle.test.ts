@@ -572,6 +572,61 @@ describe('Gas oracle', () => {
       expect(gasPrice).toEqual(getGasPriceMock);
     });
 
+    it('returns getGasPrice as fallback if no block data', async () => {
+      const getBlockWithTransactionsSpy = jest.spyOn(
+        ethers.providers.StaticJsonRpcProvider.prototype,
+        'getBlockWithTransactions'
+      );
+
+      const blockDataMock = [
+        {
+          number: 23,
+          transactions: [{ gasPrice: ethers.BigNumber.from(22) }, { gasPrice: ethers.BigNumber.from(22) }],
+        },
+        null,
+      ];
+      blockDataMock.forEach((block) => getBlockWithTransactionsSpy.mockImplementationOnce(async () => block as any));
+      const getGasPriceSpy = jest.spyOn(ethers.providers.StaticJsonRpcProvider.prototype, 'getGasPrice');
+      const getGasPriceMock = ethers.BigNumber.from(11);
+      getGasPriceSpy.mockImplementationOnce(async () => getGasPriceMock);
+
+      const gasPrice = await api.getOracleGasPrice(stateProvider, defaultGasOracleOptions);
+
+      expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(1, 'latest');
+      expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(2, -20);
+
+      expect(gasPrice).toEqual(getGasPriceMock);
+    });
+
+    it('returns getGasPrice as fallback if no block transactions', async () => {
+      const getBlockWithTransactionsSpy = jest.spyOn(
+        ethers.providers.StaticJsonRpcProvider.prototype,
+        'getBlockWithTransactions'
+      );
+
+      const blockDataMock = [
+        {
+          number: 23,
+          transactions: [{ gasPrice: ethers.BigNumber.from(22) }, { gasPrice: ethers.BigNumber.from(22) }],
+        },
+        {
+          number: 3,
+          transactions: null,
+        },
+      ];
+      blockDataMock.forEach((block) => getBlockWithTransactionsSpy.mockImplementationOnce(async () => block as any));
+      const getGasPriceSpy = jest.spyOn(ethers.providers.StaticJsonRpcProvider.prototype, 'getGasPrice');
+      const getGasPriceMock = ethers.BigNumber.from(11);
+      getGasPriceSpy.mockImplementationOnce(async () => getGasPriceMock);
+
+      const gasPrice = await api.getOracleGasPrice(stateProvider, defaultGasOracleOptions);
+
+      expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(1, 'latest');
+      expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(2, -20);
+
+      expect(gasPrice).toEqual(getGasPriceMock);
+    });
+
     it('returns config fallbackGasPrice gas if not enough blocks and fallback fails', async () => {
       const getBlockWithTransactionsSpy = jest.spyOn(
         ethers.providers.StaticJsonRpcProvider.prototype,
