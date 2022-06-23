@@ -1,4 +1,3 @@
-import 'source-map-support/register';
 import * as node from '@api3/airnode-node';
 import { DapiServer, DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol-v1';
 import { parsePriorityFee } from '@api3/airnode-utilities';

@@ -1,4 +1,3 @@
-import 'source-map-support/register';
 import { ethers } from 'ethers';
 import { go } from '@api3/promise-utils';
 import { PriorityFee } from '@api3/airnode-node';
