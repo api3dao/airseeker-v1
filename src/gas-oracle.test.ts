@@ -375,7 +375,7 @@ describe('Gas oracle', () => {
   });
 
   describe('getOracleGasPrice', () => {
-    it('returns gas price', async () => {
+    it('returns oracle gas price', async () => {
       const getBlockWithTransactionsSpy = jest.spyOn(
         ethers.providers.StaticJsonRpcProvider.prototype,
         'getBlockWithTransactions'
@@ -400,13 +400,16 @@ describe('Gas oracle', () => {
       ];
       blockDataMock.forEach((block) => getBlockWithTransactionsSpy.mockImplementationOnce(async () => block as any));
 
-      const gasPrice = await api.getOracleGasPrice(stateProvider, {
-        ...defaultGasOracleConfig,
-        latestGasPriceOptions: {
-          ...defaultGasOracleConfig.latestGasPriceOptions,
-          minTransactionCount: 3,
-        },
-      });
+      const gasPrice = await api.getOracleGasPrice(
+        stateProvider,
+        api.getChainProviderConfig({
+          ...defaultGasOracleConfig,
+          latestGasPriceOptions: {
+            ...defaultGasOracleConfig.latestGasPriceOptions,
+            minTransactionCount: 3,
+          },
+        })
+      );
 
       expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(1, 'latest');
       expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(2, -20);
@@ -441,13 +444,16 @@ describe('Gas oracle', () => {
       ];
       blockDataMock.forEach((block) => getBlockWithTransactionsSpy.mockImplementationOnce(async () => block as any));
 
-      const gasPrice = await api.getOracleGasPrice(stateProvider, {
-        ...defaultGasOracleConfig,
-        latestGasPriceOptions: {
-          ...defaultGasOracleConfig.latestGasPriceOptions,
-          minTransactionCount: 3,
-        },
-      });
+      const gasPrice = await api.getOracleGasPrice(
+        stateProvider,
+        api.getChainProviderConfig({
+          ...defaultGasOracleConfig,
+          latestGasPriceOptions: {
+            ...defaultGasOracleConfig.latestGasPriceOptions,
+            minTransactionCount: 3,
+          },
+        })
+      );
 
       expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(1, 'latest');
       expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(2, -20);
@@ -512,14 +518,17 @@ describe('Gas oracle', () => {
       const getGasPriceMock = ethers.BigNumber.from(11);
       getGasPriceSpy.mockImplementationOnce(async () => getGasPriceMock);
 
-      const gasPrice = await api.getOracleGasPrice(stateProvider, {
-        ...defaultGasOracleConfig,
-        recommendedGasPriceMultiplier: 1,
-        latestGasPriceOptions: {
-          ...defaultGasOracleConfig.latestGasPriceOptions,
-          minTransactionCount: 3,
-        },
-      });
+      const gasPrice = await api.getOracleGasPrice(
+        stateProvider,
+        api.getChainProviderConfig({
+          ...defaultGasOracleConfig,
+          recommendedGasPriceMultiplier: 1,
+          latestGasPriceOptions: {
+            ...defaultGasOracleConfig.latestGasPriceOptions,
+            minTransactionCount: 3,
+          },
+        })
+      );
 
       expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(1, 'latest');
       expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(2, -20);
@@ -557,14 +566,17 @@ describe('Gas oracle', () => {
       const getGasPriceMock = ethers.BigNumber.from(11);
       getGasPriceSpy.mockImplementationOnce(async () => getGasPriceMock);
 
-      const gasPrice = await api.getOracleGasPrice(stateProvider, {
-        ...defaultGasOracleConfig,
-        recommendedGasPriceMultiplier: 1,
-        latestGasPriceOptions: {
-          ...defaultGasOracleConfig.latestGasPriceOptions,
-          minTransactionCount: 3,
-        },
-      });
+      const gasPrice = await api.getOracleGasPrice(
+        stateProvider,
+        api.getChainProviderConfig({
+          ...defaultGasOracleConfig,
+          recommendedGasPriceMultiplier: 1,
+          latestGasPriceOptions: {
+            ...defaultGasOracleConfig.latestGasPriceOptions,
+            minTransactionCount: 3,
+          },
+        })
+      );
 
       expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(1, 'latest');
       expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(2, -20);
@@ -648,7 +660,7 @@ describe('Gas oracle', () => {
         throw new Error('some error');
       });
 
-      const gasPrice = await api.getOracleGasPrice(stateProvider, defaultGasOracleConfig);
+      const gasPrice = await api.getOracleGasPrice(stateProvider, api.getChainProviderConfig(defaultGasOracleConfig));
 
       expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(1, 'latest');
       expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(2, -20);
@@ -669,7 +681,7 @@ describe('Gas oracle', () => {
         throw new Error('some error');
       });
 
-      const gasPrice = await api.getOracleGasPrice(stateProvider, defaultGasOracleConfig);
+      const gasPrice = await api.getOracleGasPrice(stateProvider, api.getChainProviderConfig(defaultGasOracleConfig));
 
       expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(1, 'latest');
       expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(2, -20);
@@ -713,6 +725,75 @@ describe('Gas oracle', () => {
 
       expect(getBlockWithTransactionsSpy).toHaveBeenCalledTimes(4);
       expect(getBlockWithTransactionsSpy).toHaveBeenCalledTimes(4);
+      expect(gasPrice).toEqual(prices.parsePriorityFee(defaultGasOracleConfig.fallbackGasPrice));
+    });
+  });
+
+  describe('getGasPrice', () => {
+    it('returns gas price', async () => {
+      const getBlockWithTransactionsSpy = jest.spyOn(
+        ethers.providers.StaticJsonRpcProvider.prototype,
+        'getBlockWithTransactions'
+      );
+      const blockDataMock = [
+        {
+          number: 23,
+          transactions: [
+            { gasPrice: ethers.BigNumber.from(22) },
+            { gasPrice: ethers.BigNumber.from(22) },
+            { gasPrice: ethers.BigNumber.from(22) },
+          ],
+        },
+        {
+          number: 3,
+          transactions: [
+            { gasPrice: ethers.BigNumber.from(20) },
+            { gasPrice: ethers.BigNumber.from(20) },
+            { gasPrice: ethers.BigNumber.from(20) },
+          ],
+        },
+      ];
+      blockDataMock.forEach((block) => getBlockWithTransactionsSpy.mockImplementationOnce(async () => block as any));
+
+      const gasPrice = await api.getGasPrice(stateProvider, {
+        ...defaultGasOracleConfig,
+        latestGasPriceOptions: {
+          ...defaultGasOracleConfig.latestGasPriceOptions,
+          minTransactionCount: 3,
+        },
+      });
+
+      expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(1, 'latest');
+      expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(2, -20);
+
+      expect(gasPrice).toEqual(ethers.BigNumber.from(22));
+    });
+
+    it('returns provider fallback gas price if getOracleGasPrice throws', async () => {
+      jest.spyOn(api, 'getOracleGasPrice').mockImplementation(() => {
+        throw new Error('Gas oracle says no');
+      });
+      const getGasPriceSpy = jest.spyOn(ethers.providers.StaticJsonRpcProvider.prototype, 'getGasPrice');
+      const getGasPriceMock = ethers.BigNumber.from(11);
+      getGasPriceSpy.mockImplementationOnce(async () => getGasPriceMock);
+
+      const gasPrice = await api.getGasPrice(stateProvider, api.getChainProviderConfig(defaultGasOracleConfig));
+
+      expect(gasPrice).toEqual(
+        api.multiplyGasPrice(getGasPriceMock, defaultGasOracleConfig.recommendedGasPriceMultiplier!)
+      );
+    });
+
+    it('returns config fallback gas price if both getOracleGasPrice and getFallbackGasPrice throw', async () => {
+      jest.spyOn(api, 'getOracleGasPrice').mockImplementation(() => {
+        throw new Error('Gas oracle says no');
+      });
+      jest.spyOn(api, 'getFallbackGasPrice').mockImplementation(() => {
+        throw new Error('Gas oracle says no');
+      });
+
+      const gasPrice = await api.getGasPrice(stateProvider, api.getChainProviderConfig(defaultGasOracleConfig));
+
       expect(gasPrice).toEqual(prices.parsePriorityFee(defaultGasOracleConfig.fallbackGasPrice));
     });
   });

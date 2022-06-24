@@ -53,16 +53,14 @@ export const checkMaxDeviationLimit = (
   );
 };
 
-export const getFallbackGasPrice = async (
-  provider: Provider,
-  fallbackGasOracleOptions: { fallbackGasPrice: PriorityFee; recommendedGasPriceMultiplier?: number },
-  totalTimeout: number
-) => {
+export const getFallbackGasPrice = async (provider: Provider, gasOracleOptions: GasOracleOptions) => {
   const { rpcProvider, chainId, providerName } = provider;
-  const { fallbackGasPrice, recommendedGasPriceMultiplier } = fallbackGasOracleOptions;
+  const { fallbackGasPrice, recommendedGasPriceMultiplier, maxTimeout } = gasOracleOptions;
   const logOptionsChainId = { meta: { chainId, providerName } };
 
   const gasStartTime = Date.now();
+  const totalTimeout = maxTimeout * 1_000;
+
   const gasPrice = await go(() => rpcProvider.getGasPrice(), {
     ...prepareGoOptions(gasStartTime, totalTimeout),
     onAttemptError: (goError) =>
@@ -184,7 +182,7 @@ export const fetchBlockData = async (provider: Provider, gasOracleOptions: GasOr
   }
 
   // Attempt to get gasPrice as fallback
-  const fallbackGasPrice = await getFallbackGasPrice(provider, gasOracleOptions, totalTimeout);
+  const fallbackGasPrice = await getFallbackGasPrice(provider, gasOracleOptions);
 
   return fallbackGasPrice;
 };
@@ -212,12 +210,33 @@ export const getChainProviderConfig = (gasOracleConfig: GasOracleConfig) => {
 };
 
 // Fetch new block data on call and return the updated gas price
-export const getOracleGasPrice = async (provider: Provider, gasOracleConfig: GasOracleConfig) => {
-  // Get gas oracle config for provider
-  const gasOracleOptions = getChainProviderConfig(gasOracleConfig);
-
+export const getOracleGasPrice = async (provider: Provider, gasOracleOptions: GasOracleOptions) => {
   // Fetch and process block data
   const gasPrice = await fetchBlockData(provider, gasOracleOptions);
 
   return gasPrice;
+};
+
+// Get gas price from oracle or get fallbacks if it fails
+export const getGasPrice = async (provider: Provider, gasOracleConfig: GasOracleConfig) => {
+  // Get gas oracle config for provider
+  const gasOracleOptions = getChainProviderConfig(gasOracleConfig);
+
+  const goOracleGasPrice = await go(() => getOracleGasPrice(provider, gasOracleOptions), {
+    retries: 0,
+  });
+
+  // Attempt to get provider fallbacks if fetching the gas oracle price unexpectedly throws
+  if (!goOracleGasPrice.success) {
+    const goFallbackGasPrice = await go(() => getFallbackGasPrice(provider, gasOracleOptions), { retries: 0 });
+
+    // Return config fallback if fetching the fallback gas price from the provider unexpectedly throws
+    if (!goFallbackGasPrice.success) {
+      return parsePriorityFee(gasOracleOptions.fallbackGasPrice);
+    }
+
+    return goFallbackGasPrice.data;
+  }
+
+  return goOracleGasPrice.data;
 };
