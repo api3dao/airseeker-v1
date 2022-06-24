@@ -78,14 +78,14 @@ describe('Gas oracle', () => {
         await hre.network.provider.send('evm_setAutomine', [true]);
       });
 
-      it('gets gas price for provider', async () => {
+      it('gets oracle gas price for provider', async () => {
         state.initializeState(airseekerConfig as any);
         const provider = providersApi.initializeProvider(chainId, providerUrl);
         const gasOracleConfig = airseekerConfig.chains[chainId].options.gasOracle;
 
         const gasPrice = await gasOracle.getOracleGasPrice(
           { ...provider, providerName },
-          gasOracleConfig as GasOracleConfig
+          gasOracle.getChainProviderConfig(gasOracleConfig as GasOracleConfig)
         );
 
         const processedPercentileGasPrice = await processBlockData(
@@ -113,7 +113,7 @@ describe('Gas oracle', () => {
 
         const gasPrice = await gasOracle.getOracleGasPrice(
           { ...provider, providerName },
-          gasOracleConfig as GasOracleConfig
+          gasOracle.getChainProviderConfig(gasOracleConfig as GasOracleConfig)
         );
         const fallbackGasPrice = await provider.rpcProvider.getGasPrice();
 
@@ -135,7 +135,7 @@ describe('Gas oracle', () => {
 
         const gasPrice = await gasOracle.getOracleGasPrice(
           { ...provider, providerName },
-          gasOracleConfig as GasOracleConfig
+          gasOracle.getChainProviderConfig(gasOracleConfig as GasOracleConfig)
         );
         const fallbackGasPrice = await provider.rpcProvider.getGasPrice();
 
@@ -161,8 +161,67 @@ describe('Gas oracle', () => {
 
         const gasPrice = await gasOracle.getOracleGasPrice(
           { ...provider, providerName },
-          gasOracleConfig as GasOracleConfig
+          gasOracle.getChainProviderConfig(gasOracleConfig as GasOracleConfig)
         );
+        const fallbackGasPrice = gasPrices.parsePriorityFee(gasOracleConfig.fallbackGasPrice as node.PriorityFee);
+
+        expect(gasPrice).toEqual(fallbackGasPrice);
+      });
+
+      it('gets gas price for provider', async () => {
+        state.initializeState(airseekerConfig as any);
+        const provider = providersApi.initializeProvider(chainId, providerUrl);
+        const gasOracleConfig = airseekerConfig.chains[chainId].options.gasOracle;
+
+        const gasPrice = await gasOracle.getGasPrice(
+          { ...provider, providerName },
+          gasOracle.getChainProviderConfig(gasOracleConfig as GasOracleConfig)
+        );
+
+        const processedPercentileGasPrice = await processBlockData(
+          blocksWithGasPrices,
+          gasOracleConfig.latestGasPriceOptions.percentile,
+          gasOracleConfig.latestGasPriceOptions.maxDeviationMultiplier,
+          gasOracleConfig.fallbackGasPrice as node.PriorityFee
+        );
+
+        expect(gasPrice).toEqual(processedPercentileGasPrice);
+      });
+
+      it('uses provider fallback gas price if getOracleGasPrice throws', async () => {
+        jest.spyOn(gasOracle, 'getOracleGasPrice').mockImplementation(() => {
+          throw new Error('Gas oracle says no');
+        });
+        state.initializeState(airseekerConfig as any);
+        const provider = providersApi.initializeProvider(chainId, providerUrl);
+        const gasOracleConfig = airseekerConfig.chains[chainId].options.gasOracle;
+
+        const gasPrice = await gasOracle.getGasPrice(
+          { ...provider, providerName },
+          gasOracle.getChainProviderConfig(gasOracleConfig as GasOracleConfig)
+        );
+
+        const fallbackGasPrice = await provider.rpcProvider.getGasPrice();
+
+        expect(gasPrice).toEqual(fallbackGasPrice);
+      });
+
+      it('uses config fallback gas price if both getOracleGasPrice and getFallbackGasPrice throw', async () => {
+        jest.spyOn(gasOracle, 'getOracleGasPrice').mockImplementation(() => {
+          throw new Error('Gas oracle says no');
+        });
+        jest.spyOn(gasOracle, 'getFallbackGasPrice').mockImplementation(() => {
+          throw new Error('Gas oracle says no');
+        });
+        state.initializeState(airseekerConfig as any);
+        const provider = providersApi.initializeProvider(chainId, providerUrl);
+        const gasOracleConfig = airseekerConfig.chains[chainId].options.gasOracle;
+
+        const gasPrice = await gasOracle.getGasPrice(
+          { ...provider, providerName },
+          gasOracle.getChainProviderConfig(gasOracleConfig as GasOracleConfig)
+        );
+
         const fallbackGasPrice = gasPrices.parsePriorityFee(gasOracleConfig.fallbackGasPrice as node.PriorityFee);
 
         expect(gasPrice).toEqual(fallbackGasPrice);
