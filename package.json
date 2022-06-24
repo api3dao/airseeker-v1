@@ -76,7 +76,7 @@
     "eslint-plugin-import": "^2.26.0",
     "eslint-plugin-jest": "^26.1.5",
     "express": "^4.18.1",
-    "hardhat": "^2.9.3",
+    "hardhat": "^2.9.9",
     "husky": "^8.0.1",
     "jest": "^27.5.1",
     "pm2": "^5.2.0",
