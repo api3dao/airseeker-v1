@@ -1661,10 +1661,10 @@
     "@types/mime" "^1"
     "@types/node" "*"
 
-"@types/serverless@^3.12.5":
-  version "3.12.5"
-  resolved "https://registry.yarnpkg.com/@types/serverless/-/serverless-3.12.5.tgz#9aaa2386ee11bb69d75ba507f1dbf66a860adb71"
-  integrity sha512-uZHlo+Kz6g6g+ziJo3CbwfopfUV9B3AK9O54x+NC+Bm+H7CceEUCSzmoqPR27WGv0aczOf/TmFN5K72dbYUtcQ==
+"@types/serverless@^3.12.7":
+  version "3.12.7"
+  resolved "https://registry.yarnpkg.com/@types/serverless/-/serverless-3.12.7.tgz#c6cca8a582c1e199631c6269fc97344984f3e4a9"
+  integrity sha512-WNWTTYIDI31Wtoww0lhiV7x/AB2cvjmxHr/bIYDfsaLJRjJb+yicpafy2NVBMXQ0td8urnk2Eyx1psTmjknU1A==
 
 "@types/stack-utils@^2.0.0":
   version "2.0.1"
@@ -4571,10 +4571,10 @@ gtoken@^5.0.4:
     google-p12-pem "^3.1.3"
     jws "^4.0.0"
 
-hardhat@^2.9.3:
-  version "2.9.7"
-  resolved "https://registry.yarnpkg.com/hardhat/-/hardhat-2.9.7.tgz#b31302b089486ec1c13c5a3dff18fe71f955f33b"
-  integrity sha512-PVSgTlM4Mtc4HNEoISpcM6rRNAK3ngqhxUaTmSw9eCtuVmtxTK86Tqnuq4zNPmlrtcuReXry9k3LGEnk2gJgbA==
+hardhat@^2.9.9:
+  version "2.9.9"
+  resolved "https://registry.yarnpkg.com/hardhat/-/hardhat-2.9.9.tgz#05c1015eb73e0230309534b00deeb080724aace0"
+  integrity sha512-Qv7SXnRc0zq1kGXruNnSKpP3eFccXMR5Qv6GVX9hBIJ5efN0PflKPq92aQ5Cv3jrjJeRevLznWZVz7bttXhVfw==
   dependencies:
     "@ethereumjs/block" "^3.6.2"
     "@ethereumjs/blockchain" "^5.5.2"
@@ -4621,7 +4621,7 @@ hardhat@^2.9.3:
     stacktrace-parser "^0.1.10"
     "true-case-path" "^2.2.1"
     tsort "0.0.1"
-    undici "^4.14.1"
+    undici "^5.4.0"
     uuid "^8.3.2"
     ws "^7.4.6"
 
@@ -8261,10 +8261,10 @@ unbzip2-stream@^1.0.9:
     buffer "^5.2.1"
     through "^2.3.8"
 
-undici@^4.14.1:
-  version "4.16.0"
-  resolved "https://registry.yarnpkg.com/undici/-/undici-4.16.0.tgz#469bb87b3b918818d3d7843d91a1d08da357d5ff"
-  integrity sha512-tkZSECUYi+/T1i4u+4+lwZmQgLXd4BLGlrc7KZPcLIW7Jpq99+Xpc30ONv7nS6F5UNOxp/HBZSSL9MafUrvJbw==
+undici@^5.4.0:
+  version "5.5.1"
+  resolved "https://registry.yarnpkg.com/undici/-/undici-5.5.1.tgz#baaf25844a99eaa0b22e1ef8d205bffe587c8f43"
+  integrity sha512-MEvryPLf18HvlCbLSzCW0U00IMftKGI5udnjrQbC5D4P0Hodwffhv+iGfWuJwg16Y/TK11ZFK8i+BPVW2z/eAw==
 
 uni-global@^1.0.0:
   version "1.0.0"
