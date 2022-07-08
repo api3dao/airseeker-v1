@@ -1,7 +1,7 @@
 {
   "name": "@api3/airseeker",
   "license": "MIT",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "description": "A tool to update beacons with signed responses from remote Airnode gateways",
   "main": "./dist/index.js",
   "types": "./dist/validation",
