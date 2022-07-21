@@ -1,9 +1,6 @@
 import { ethers } from 'ethers';
 import { SuperRefinement, z } from 'zod';
-import { config } from '@api3/airnode-validator';
 import isNil from 'lodash/isNil';
-
-const { amountSchema, providerSchema } = config;
 
 export const logFormatSchema = z.union([z.literal('json'), z.literal('plain')]);
 export const logLevelSchema = z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARN'), z.literal('ERROR')]);
@@ -54,6 +51,21 @@ export const latestGasPriceOptionsSchema = z
   })
   .optional();
 
+export const amountSchema = z
+  .object({
+    value: z.number().lte(9007199254740991), // 2**53 - 1
+    unit: z.union([
+      z.literal('wei'),
+      z.literal('kwei'),
+      z.literal('mwei'),
+      z.literal('gwei'),
+      z.literal('szabo'),
+      z.literal('finney'),
+      z.literal('ether'),
+    ]),
+  })
+  .strict();
+
 export const gasOracleSchema = z.object({
   fallbackGasPrice: amountSchema,
   recommendedGasPriceMultiplier: z.number().positive().optional(),
@@ -100,6 +112,12 @@ export const chainOptionsSchema = z.discriminatedUnion('txType', [
     )
     .strict(),
 ]);
+
+export const providerSchema = z
+  .object({
+    url: z.string().url(),
+  })
+  .strict();
 
 export const chainSchema = z
   .object({
