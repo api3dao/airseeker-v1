@@ -1,7 +1,7 @@
 import * as hre from 'hardhat';
 import { BigNumber } from 'ethers';
 import '@nomiclabs/hardhat-ethers';
-import * as node from '@api3/airnode-node';
+import * as nodeUtils from '@api3/airnode-utilities';
 import * as gasOracle from '../../src/gas-oracle';
 import * as gasPrices from '../../src/gas-prices';
 import * as state from '../../src/state';
@@ -27,7 +27,7 @@ const processBlockData = async (
   blocksWithGasPrices: { blockNumber: number; gasPrices: BigNumber[] }[],
   percentile: number,
   maxDeviationMultiplier: number,
-  fallbackGasPrice: node.PriorityFee
+  fallbackGasPrice: nodeUtils.PriorityFee
 ) => {
   const latestBlock = blocksWithGasPrices[0];
   const referenceBlock = blocksWithGasPrices[20];
@@ -92,7 +92,7 @@ describe('Gas oracle', () => {
           blocksWithGasPrices,
           gasOracleConfig.latestGasPriceOptions.percentile,
           gasOracleConfig.latestGasPriceOptions.maxDeviationMultiplier,
-          gasOracleConfig.fallbackGasPrice as node.PriorityFee
+          gasOracleConfig.fallbackGasPrice as nodeUtils.PriorityFee
         );
 
         expect(gasPrice).toEqual(processedPercentileGasPrice);
@@ -163,7 +163,7 @@ describe('Gas oracle', () => {
           { ...provider, providerName },
           gasOracle.getChainProviderConfig(gasOracleConfig as GasOracleConfig)
         );
-        const fallbackGasPrice = gasPrices.parsePriorityFee(gasOracleConfig.fallbackGasPrice as node.PriorityFee);
+        const fallbackGasPrice = gasPrices.parsePriorityFee(gasOracleConfig.fallbackGasPrice as nodeUtils.PriorityFee);
 
         expect(gasPrice).toEqual(fallbackGasPrice);
       });
@@ -182,7 +182,7 @@ describe('Gas oracle', () => {
           blocksWithGasPrices,
           gasOracleConfig.latestGasPriceOptions.percentile,
           gasOracleConfig.latestGasPriceOptions.maxDeviationMultiplier,
-          gasOracleConfig.fallbackGasPrice as node.PriorityFee
+          gasOracleConfig.fallbackGasPrice as nodeUtils.PriorityFee
         );
 
         expect(gasPrice).toEqual(processedPercentileGasPrice);
@@ -222,7 +222,7 @@ describe('Gas oracle', () => {
           gasOracle.getChainProviderConfig(gasOracleConfig as GasOracleConfig)
         );
 
-        const fallbackGasPrice = gasPrices.parsePriorityFee(gasOracleConfig.fallbackGasPrice as node.PriorityFee);
+        const fallbackGasPrice = gasPrices.parsePriorityFee(gasOracleConfig.fallbackGasPrice as nodeUtils.PriorityFee);
 
         expect(gasPrice).toEqual(fallbackGasPrice);
       });

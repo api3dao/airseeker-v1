@@ -25,7 +25,7 @@ export interface EIP1559GasTarget extends BaseGasTarget {
 
 export type GasTarget = LegacyGasTarget | EIP1559GasTarget;
 
-export const parsePriorityFee = ({ value, unit }: node.PriorityFee) =>
+export const parsePriorityFee = ({ value, unit }: nodeUtils.PriorityFee) =>
   ethers.utils.parseUnits(value.toString(), unit ?? 'wei');
 
 export const multiplyGasPrice = (gasPrice: BigNumber, gasPriceMultiplier: number) =>
@@ -33,7 +33,7 @@ export const multiplyGasPrice = (gasPrice: BigNumber, gasPriceMultiplier: number
 
 export const getLegacyGasPrice = async (
   provider: Provider,
-  chainOptions: node.ChainOptions & { gasPriceMultiplier?: number },
+  chainOptions: node.ChainOptions & { txType: 'legacy' },
   goOptions: GoAsyncOptions
 ): Promise<LegacyGasTarget | null> => {
   const { chainId, rpcProvider, providerName } = provider;
@@ -62,7 +62,7 @@ export const getLegacyGasPrice = async (
 
 export const getEip1559GasPricing = async (
   provider: Provider,
-  chainOptions: node.ChainOptions,
+  chainOptions: node.ChainOptions & { txType: 'eip1559' },
   goOptions: GoAsyncOptions
 ): Promise<EIP1559GasTarget | null> => {
   const { chainId, rpcProvider, providerName } = provider;

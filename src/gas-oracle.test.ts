@@ -59,7 +59,7 @@ const config: Config = {
         },
       },
       options: {
-        txType: 'legacy',
+        txType: 'eip1559',
         priorityFee: {
           value: 3.12,
           unit: 'gwei',
@@ -95,7 +95,7 @@ const config: Config = {
         },
       },
       options: {
-        txType: 'legacy',
+        txType: 'eip1559',
         priorityFee: {
           value: 3.12,
           unit: 'gwei',
@@ -128,7 +128,7 @@ const config: Config = {
         },
       },
       options: {
-        txType: 'legacy',
+        txType: 'eip1559',
         priorityFee: {
           value: 3.12,
           unit: 'gwei',

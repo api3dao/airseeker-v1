@@ -1,7 +1,6 @@
 import { ethers } from 'ethers';
 import { go } from '@api3/promise-utils';
-import { PriorityFee } from '@api3/airnode-node';
-import { parsePriorityFee } from '@api3/airnode-utilities';
+import { parsePriorityFee, PriorityFee } from '@api3/airnode-utilities';
 import { logger } from './logging';
 import { Provider } from './state';
 import { prepareGoOptions } from './utils';
