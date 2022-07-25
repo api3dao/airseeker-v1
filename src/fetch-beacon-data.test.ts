@@ -34,7 +34,13 @@ const config: Config = {
       fetchInterval: 40,
     },
   },
-  beaconSets: {},
+  beaconSets: {
+    '0x41c3d6e0ee82ae3d33356c4dceb84e98d1a0b361db0f51081fc5a2541ae51683': [
+      '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c',
+      '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2',
+      '0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469beabcdabcd',
+    ],
+  },
   chains: {
     '1': {
       contracts: {
@@ -169,7 +175,32 @@ const config: Config = {
         },
       },
     },
-    beaconSetUpdates: {},
+    beaconSetUpdates: {
+      '1': {
+        '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC': {
+          beaconSets: [
+            {
+              beaconSetId: '0x41c3d6e0ee82ae3d33356c4dceb84e98d1a0b361db0f51081fc5a2541ae51683',
+              deviationThreshold: 0.1,
+              heartbeatInterval: 86400,
+            },
+          ],
+          updateInterval: 30,
+        },
+      },
+      '3': {
+        '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC': {
+          beaconSets: [
+            {
+              beaconSetId: '0x41c3d6e0ee82ae3d33356c4dceb84e98d1a0b361db0f51081fc5a2541ae51683',
+              deviationThreshold: 0.2,
+              heartbeatInterval: 86400,
+            },
+          ],
+          updateInterval: 30,
+        },
+      },
+    },
   },
 };
 state.initializeState(config);
@@ -186,6 +217,7 @@ describe('initiateFetchingBeaconData', () => {
     expect(fetchBeaconDataIds).toEqual([
       '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c',
       '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2',
+      '0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469beabcdabcd',
     ]);
   });
 });
