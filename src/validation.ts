@@ -182,28 +182,54 @@ export const templatesSchema = z.record(evmTemplateIdSchema, templateSchema).sup
   });
 });
 
+export const baseBeaconUpdateSchema = z.object({
+  deviationThreshold: z.number(),
+  heartbeatInterval: z.number().int(),
+});
+
 export const beaconUpdateSchema = z
   .object({
     beaconId: evmBeaconIdSchema,
-    deviationThreshold: z.number(),
-    heartbeatInterval: z.number().int(),
   })
+  .merge(baseBeaconUpdateSchema)
   .strict();
+
+export const beaconSetUpdateSchema = z
+  .object({
+    beaconSetId: evmBeaconSetIdSchema,
+  })
+  .merge(baseBeaconUpdateSchema)
+  .strict();
+
+export const baseUpdateSchema = z.object({
+  updateInterval: z.number().int(),
+});
 
 export const beaconUpdatesSchema = z.record(
   z.record(
     evmAddressSchema,
-    z.object({
-      beacons: z.array(beaconUpdateSchema),
-      updateInterval: z.number().int(),
-    })
+    z
+      .object({
+        beacons: z.array(beaconUpdateSchema),
+      })
+      .merge(baseUpdateSchema)
+  )
+);
+
+export const beaconSetUpdatesSchema = z.record(
+  z.record(
+    evmAddressSchema,
+    z
+      .object({
+        beaconSets: z.array(beaconSetUpdateSchema),
+      })
+      .merge(baseUpdateSchema)
   )
 );
 
 export const triggersSchema = z.object({
   beaconUpdates: beaconUpdatesSchema,
-  // TODO: Will be refined once we start supporting beacon sets
-  beaconSetUpdates: emptyObjectSchema,
+  beaconSetUpdates: beaconSetUpdatesSchema,
 });
 
 const validateBeaconsReferences: SuperRefinement<{ beacons: Beacons; gateways: Gateways; templates: Templates }> = (
@@ -283,6 +309,37 @@ const validateBeaconUpdatesReferences: SuperRefinement<{
   });
 };
 
+const validateBeaconSetUpdatesReferences: SuperRefinement<{
+  beaconSets: BeaconSets;
+  chains: Chains;
+  triggers: Triggers;
+}> = (config, ctx) => {
+  Object.entries(config.triggers.beaconSetUpdates).forEach(([chainId, beaconSetUpdatesPerSponsor]) => {
+    // Verify that config.triggers.beaconSetUpdates.<chainId> is
+    // referencing a valid config.chains.<chainId> object
+    if (!config.chains[chainId]) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Chain ID "${chainId}" is not defined in the config.chains object`,
+        path: ['triggers', 'beaconSetUpdates', chainId],
+      });
+    }
+    Object.entries(beaconSetUpdatesPerSponsor).forEach(([sponsorAddress, beaconSetUpdate]) => {
+      beaconSetUpdate.beaconSets.forEach((beaconSet, index) => {
+        // Verify that config.triggers.beaconSetUpdates.<chainId>.<sponsorAddress>.beaconSets.beaconSetId is
+        // referencing a valid config.beaconSets.<beaconSetId> object
+        if (!config.beaconSets[beaconSet.beaconSetId]) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `BeaconSet ID "${beaconSet.beaconSetId}" is not defined in the config.beaconSets object`,
+            path: ['triggers', 'beaconSetUpdates', chainId, sponsorAddress, 'beaconSets', index],
+          });
+        }
+      });
+    });
+  });
+};
+
 export const configSchema = z
   .object({
     airseekerWalletMnemonic: z.string(),
@@ -297,7 +354,8 @@ export const configSchema = z
   .strict()
   .superRefine(validateBeaconsReferences)
   .superRefine(validateBeaconSetsReferences)
-  .superRefine(validateBeaconUpdatesReferences);
+  .superRefine(validateBeaconUpdatesReferences)
+  .superRefine(validateBeaconSetUpdatesReferences);
 export const encodedValueSchema = z.string().regex(/^0x[a-fA-F0-9]{64}$/);
 export const signatureSchema = z.string().regex(/^0x[a-fA-F0-9]{130}$/);
 export const signedDataSchema = z.object({
