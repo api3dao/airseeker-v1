@@ -18,10 +18,18 @@
     "@jridgewell/gen-mapping" "^0.1.0"
     "@jridgewell/trace-mapping" "^0.3.9"
 
-"@api3/airnode-abi@^0.6.2", "@api3/airnode-abi@^0.6.5":
+"@api3/airnode-abi@^0.6.5":
   version "0.6.5"
   resolved "https://registry.yarnpkg.com/@api3/airnode-abi/-/airnode-abi-0.6.5.tgz#6a63d491e14785147a66c86f956ef644509dfdf1"
   integrity sha512-Bzb6GH4fBunYUUQ2Bwd531d1PagU57fcD6GBZyHIZK52R0r9sctpBMv0rTUQNs60/R3XDqgs72WmdBuclpfgEQ==
+  dependencies:
+    ethers "^5.4.5"
+    lodash "^4.17.21"
+
+"@api3/airnode-abi@^0.7.2":
+  version "0.7.2"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-abi/-/airnode-abi-0.7.2.tgz#0779dfb0e45c1d854aaaf6c3252dade7812e5dec"
+  integrity sha512-/J7mf5T9lqf9XIEEYzjwkJ2LPmAQ0ijqwuwVW2uatno1RfBf67SA5EM9lD/wNl9p/Yg4dfJ5y/NlV4Em8lFreg==
   dependencies:
     ethers "^5.4.5"
     lodash "^4.17.21"
