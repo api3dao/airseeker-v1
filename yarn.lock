@@ -75,10 +75,19 @@
     "@openzeppelin/contracts" "4.4.2"
     ethers "^5.4.5"
 
-"@api3/airnode-utilities@^0.6.2", "@api3/airnode-utilities@^0.6.5":
+"@api3/airnode-utilities@^0.6.5":
   version "0.6.5"
   resolved "https://registry.yarnpkg.com/@api3/airnode-utilities/-/airnode-utilities-0.6.5.tgz#f072d624e5854465fb9a0f7fabbc5b5551ddc78b"
   integrity sha512-jOTzr8j4xUNZ82NyRtypxVGEhMkC4f3qK+fTku3sRdE1J5nePgwSi8WJETzvmAQDO+/rsvAQIUiw6NjKeKTVeA==
+  dependencies:
+    "@lifeomic/attempt" "^3.0.0"
+    date-fns "^2.16.1"
+    ethers "^5.4.5"
+
+"@api3/airnode-utilities@^0.7.2":
+  version "0.7.2"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-utilities/-/airnode-utilities-0.7.2.tgz#e29bb14b1670b24a5103a6b6738e9d7f1fa44bd2"
+  integrity sha512-Mn5HVB/sauAoKuyfNiZVJtgbppN5MfdluYf6852Ep5KYauNI2wA1BAiLwzQ4OzpYiendBo3D+1iaaey9SMLC2Q==
   dependencies:
     "@lifeomic/attempt" "^3.0.0"
     date-fns "^2.16.1"
