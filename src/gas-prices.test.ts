@@ -1,5 +1,5 @@
 import { BigNumber, ethers } from 'ethers';
-import { PriorityFee } from '@api3/airnode-node';
+import * as nodeUtils from '@api3/airnode-utilities';
 import * as state from './state';
 import * as gasPrices from './gas-prices';
 import { BASE_FEE_MULTIPLIER, PRIORITY_FEE_IN_WEI } from './constants';
@@ -91,7 +91,7 @@ describe('parsePriorityFee', () => {
     [{ value: 123.4, unit: 'ether' }, BigNumber.from('123400000000000000000')],
   ].forEach(([input, result], index) => {
     it(`returns parsed wei from numbers - ${index}`, () => {
-      const priorityFeeInWei = gasPrices.parsePriorityFee(input as PriorityFee);
+      const priorityFeeInWei = gasPrices.parsePriorityFee(input as nodeUtils.PriorityFee);
       expect(priorityFeeInWei).toEqual(result);
     });
   });
@@ -102,7 +102,7 @@ describe('parsePriorityFee', () => {
     { value: 3.12, unit: 'wei' },
   ].forEach((input, index) => {
     it(`throws an error for an invalid decimal denominated string, number and unit - ${index}`, () => {
-      const throwingFunction = () => gasPrices.parsePriorityFee(input as PriorityFee);
+      const throwingFunction = () => gasPrices.parsePriorityFee(input as nodeUtils.PriorityFee);
       expect(throwingFunction).toThrow();
     });
   });

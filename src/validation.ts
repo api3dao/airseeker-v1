@@ -1,10 +1,5 @@
 import { ethers } from 'ethers';
 import { SuperRefinement, z } from 'zod';
-import {
-  chainOptionsSchema as airnodeChainOptionsSchema,
-  providerSchema,
-  priorityFeeSchema,
-} from '@api3/airnode-validator';
 import isNil from 'lodash/isNil';
 
 export const logFormatSchema = z.union([z.literal('json'), z.literal('plain')]);
@@ -56,16 +51,73 @@ export const latestGasPriceOptionsSchema = z
   })
   .optional();
 
+export const amountSchema = z
+  .object({
+    value: z.number().lte(9007199254740991), // 2**53 - 1
+    unit: z.union([
+      z.literal('wei'),
+      z.literal('kwei'),
+      z.literal('mwei'),
+      z.literal('gwei'),
+      z.literal('szabo'),
+      z.literal('finney'),
+      z.literal('ether'),
+    ]),
+  })
+  .strict();
+
 export const gasOracleSchema = z.object({
-  fallbackGasPrice: priorityFeeSchema,
+  fallbackGasPrice: amountSchema,
   recommendedGasPriceMultiplier: z.number().positive().optional(),
   latestGasPriceOptions: latestGasPriceOptionsSchema,
   maxTimeout: z.number().int().optional(),
 });
 
-export const chainOptionsSchema = airnodeChainOptionsSchema.extend({
-  gasOracle: gasOracleSchema,
-});
+const chainOptionsErrorMap: z.ZodErrorMap = (issue, ctx) => {
+  if (issue.code === z.ZodIssueCode.unrecognized_keys) {
+    return {
+      message: `Unrecognized or disallowed key(s) for the given transaction type: ${issue.keys
+        .map((val) => `'${val}'`)
+        .join(', ')}`,
+    };
+  }
+  return { message: ctx.defaultError };
+};
+
+export const chainOptionsSchema = z.discriminatedUnion('txType', [
+  z
+    .object(
+      {
+        txType: z.literal('eip1559'),
+        baseFeeMultiplier: z.number().int().optional(), // Defaults to BASE_FEE_MULTIPLIER defined in airnode-utilities
+        priorityFee: amountSchema.optional(), // Defaults to PRIORITY_FEE_IN_WEI defined in airnode-utilities
+        fulfillmentGasLimit: z.number().int(),
+        withdrawalRemainder: amountSchema.optional(),
+        gasOracle: gasOracleSchema,
+      },
+      { errorMap: chainOptionsErrorMap }
+    )
+    .strict(),
+  z
+    .object(
+      {
+        txType: z.literal('legacy'),
+        // No multiplier is used by default. See airnode-utilities for details
+        gasPriceMultiplier: z.number().optional(),
+        fulfillmentGasLimit: z.number().int(),
+        withdrawalRemainder: amountSchema.optional(),
+        gasOracle: gasOracleSchema,
+      },
+      { errorMap: chainOptionsErrorMap }
+    )
+    .strict(),
+]);
+
+export const providerSchema = z
+  .object({
+    url: z.string().url(),
+  })
+  .strict();
 
 export const chainSchema = z
   .object({
