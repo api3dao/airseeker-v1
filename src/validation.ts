@@ -12,6 +12,7 @@ export const logSchema = z.object({
 
 export const evmAddressSchema = z.string().regex(/^0x[a-fA-F0-9]{40}$/);
 export const evmBeaconIdSchema = z.string().regex(/^0x[a-fA-F0-9]{64}$/);
+export const evmBeaconSetIdSchema = z.string().regex(/^0x[a-fA-F0-9]{64}$/);
 export const evmTemplateIdSchema = z.string().regex(/^0x[a-fA-F0-9]{64}$/);
 export const evmEndpointIdSchema = z.string().regex(/^0x[a-fA-F0-9]{64}$/);
 export const emptyObjectSchema = z.object({}).strict();
@@ -39,8 +40,22 @@ export const beaconsSchema = z.record(evmBeaconIdSchema, beaconSchema).superRefi
   });
 });
 
-// TODO: Will be refined once we start supporting beacon sets
-export const beaconSetsSchema = emptyObjectSchema;
+export const beaconSetsSchema = z
+  .record(evmBeaconSetIdSchema, z.array(evmBeaconIdSchema))
+  .superRefine((beaconSets, ctx) => {
+    Object.entries(beaconSets).forEach(([beaconSetId, beacons]) => {
+      // Verify that config.beaconSets.<beaconSetId> is valid
+      // by deriving the hash of the beaconIds in the array
+      const derivedBeaconSetId = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(['bytes32[]'], [beacons]));
+      if (derivedBeaconSetId !== beaconSetId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Beacon set ID "${beaconSetId}" is invalid`,
+          path: [beaconSetId],
+        });
+      }
+    });
+  });
 
 export const latestGasPriceOptionsSchema = z
   .object({
@@ -220,6 +235,23 @@ const validateBeaconsReferences: SuperRefinement<{ beacons: Beacons; gateways: G
   });
 };
 
+const validateBeaconSetsReferences: SuperRefinement<{ beacons: Beacons; beaconSets: BeaconSets }> = (config, ctx) => {
+  Object.entries(config.beaconSets).forEach(([beaconSetId, beacons]) => {
+    beacons.forEach((beaconId, index) => {
+      // Verify that config.beaconSets.<beaconSetId>.[beaconId] is
+      // referencing a valid config.beacons.<beaconId> object
+      const beacon = config.beacons[beaconId];
+      if (isNil(beacon)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Beacon ID "${beaconId}" is not defined in the config.beacons object`,
+          path: ['beaconSets', beaconSetId, index],
+        });
+      }
+    });
+  });
+};
+
 const validateBeaconUpdatesReferences: SuperRefinement<{
   beacons: Beacons;
   chains: Chains;
@@ -264,6 +296,7 @@ export const configSchema = z
   })
   .strict()
   .superRefine(validateBeaconsReferences)
+  .superRefine(validateBeaconSetsReferences)
   .superRefine(validateBeaconUpdatesReferences);
 export const encodedValueSchema = z.string().regex(/^0x[a-fA-F0-9]{64}$/);
 export const signatureSchema = z.string().regex(/^0x[a-fA-F0-9]{130}$/);
@@ -275,6 +308,7 @@ export const signedDataSchema = z.object({
 export type Config = z.infer<typeof configSchema>;
 export type Beacon = z.infer<typeof beaconSchema>;
 export type Beacons = z.infer<typeof beaconsSchema>;
+export type BeaconSets = z.infer<typeof beaconSetsSchema>;
 export type Chain = z.infer<typeof chainSchema>;
 export type Chains = z.infer<typeof chainsSchema>;
 export type GasOracleConfig = z.infer<typeof gasOracleSchema>;
