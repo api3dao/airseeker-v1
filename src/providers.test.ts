@@ -22,24 +22,31 @@ describe('initializeProviders', () => {
     chains: {
       '1': {
         providers: {
-          provider1: {
+          'provider1-1': {
             url: 'https://some.provider1.url',
           },
-          provider2: {
+          'provider1-2': {
+            url: 'https://some.provider2.url',
+          },
+        },
+      },
+      '2': {
+        providers: {
+          'provider2-1': {
             url: 'https://some.provider2.url',
           },
         },
       },
       '3': {
         providers: {
-          provider3: {
+          'provider3-1': {
             url: 'https://some.provider3.url',
           },
         },
       },
       '4': {
         providers: {
-          provider4: {
+          'provider4-1': {
             url: 'https://some.provider4.url',
           },
         },
@@ -50,6 +57,10 @@ describe('initializeProviders', () => {
         '1': {},
         '3': {},
       },
+      beaconSetUpdates: {
+        '1': {},
+        '2': {},
+      },
     },
   } as unknown as Config;
   state.initializeState(config);
@@ -59,13 +70,17 @@ describe('initializeProviders', () => {
 
     const { providers } = state.getState();
 
-    expect(Object.keys(providers)).toHaveLength(2);
+    expect(Object.keys(providers)).toHaveLength(3);
 
     const chain1Providers = providers['1'];
     expect(chain1Providers).toHaveLength(2);
     const chain1ProvidersUrls = chain1Providers.map((provider) => provider.rpcProvider.connection.url);
     expect(chain1ProvidersUrls).toContain('https://some.provider1.url');
     expect(chain1ProvidersUrls).toContain('https://some.provider2.url');
+
+    const chain2Providers = providers['2'];
+    expect(chain2Providers).toHaveLength(1);
+    expect(chain2Providers[0].rpcProvider.connection.url).toEqual('https://some.provider2.url');
 
     const chain3Providers = providers['3'];
     expect(chain3Providers).toHaveLength(1);

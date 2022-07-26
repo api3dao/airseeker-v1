@@ -1,4 +1,5 @@
 import * as node from '@api3/airnode-node';
+import { uniq } from 'lodash';
 import { getState, Provider, Providers, updateState } from './state';
 
 export const initializeProvider = (chainId: string, providerUrl: string): Omit<Provider, 'providerName'> => {
@@ -9,8 +10,11 @@ export const initializeProvider = (chainId: string, providerUrl: string): Omit<P
 
 export const initializeProviders = () => {
   const { config } = getState();
-  const beaconUpdatesChains = Object.keys(config.triggers.beaconUpdates);
-  const providers = beaconUpdatesChains.reduce((acc: Providers, chainId: string) => {
+  const triggersUpdatesChains = uniq([
+    ...Object.keys(config.triggers.beaconUpdates),
+    ...Object.keys(config.triggers.beaconSetUpdates),
+  ]);
+  const providers = triggersUpdatesChains.reduce((acc: Providers, chainId: string) => {
     const chain = config.chains[chainId];
 
     const chainProviders = Object.entries(chain.providers).map(([providerName, provider]) => ({

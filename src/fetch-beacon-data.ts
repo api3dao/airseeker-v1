@@ -16,13 +16,18 @@ export const initiateFetchingBeaconData = async () => {
   logger.debug('Initiating fetching all beacon data');
   const { config } = getState();
 
-  const beaconIdsToUpdate = uniq(
-    Object.values(config.triggers.beaconUpdates).flatMap((beaconUpdatesPerSponsor) => {
+  const beaconIdsToUpdate = uniq([
+    ...Object.values(config.triggers.beaconUpdates).flatMap((beaconUpdatesPerSponsor) => {
       return Object.values(beaconUpdatesPerSponsor).flatMap((beaconUpdate) => {
         return beaconUpdate.beacons.flatMap((b) => b.beaconId);
       });
-    })
-  );
+    }),
+    ...Object.values(config.triggers.beaconSetUpdates).flatMap((beaconSetUpdatesPerSponsor) => {
+      return Object.values(beaconSetUpdatesPerSponsor).flatMap((beaconSetUpdate) => {
+        return beaconSetUpdate.beaconSets.flatMap((b) => config.beaconSets[b.beaconSetId]);
+      });
+    }),
+  ]);
 
   if (isEmpty(beaconIdsToUpdate)) {
     logger.error('No beacons to fetch data for found. Stopping.');
