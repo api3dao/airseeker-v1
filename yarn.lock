@@ -18,7 +18,7 @@
     "@jridgewell/gen-mapping" "^0.1.0"
     "@jridgewell/trace-mapping" "^0.3.9"
 
-"@api3/airnode-abi@^0.6.2", "@api3/airnode-abi@^0.6.5":
+"@api3/airnode-abi@^0.6.2":
   version "0.6.5"
   resolved "https://registry.yarnpkg.com/@api3/airnode-abi/-/airnode-abi-0.6.5.tgz#6a63d491e14785147a66c86f956ef644509dfdf1"
   integrity sha512-Bzb6GH4fBunYUUQ2Bwd531d1PagU57fcD6GBZyHIZK52R0r9sctpBMv0rTUQNs60/R3XDqgs72WmdBuclpfgEQ==
@@ -26,51 +26,60 @@
     ethers "^5.4.5"
     lodash "^4.17.21"
 
-"@api3/airnode-adapter@^0.6.5":
-  version "0.6.5"
-  resolved "https://registry.yarnpkg.com/@api3/airnode-adapter/-/airnode-adapter-0.6.5.tgz#53e2f2ab568306de2e8b478a54166333d462131a"
-  integrity sha512-RE4h9h5IiX21Ip9N0O/ktwddJhqGfH8i/UogakvH4/NZl0A2ctg3qj8qOHM0F5ujVDqnW89UDisuYMxnD0xz8w==
+"@api3/airnode-abi@^0.7.2":
+  version "0.7.2"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-abi/-/airnode-abi-0.7.2.tgz#0779dfb0e45c1d854aaaf6c3252dade7812e5dec"
+  integrity sha512-/J7mf5T9lqf9XIEEYzjwkJ2LPmAQ0ijqwuwVW2uatno1RfBf67SA5EM9lD/wNl9p/Yg4dfJ5y/NlV4Em8lFreg==
   dependencies:
-    "@api3/airnode-ois" "^0.6.5"
-    axios "^0.26.0"
+    ethers "^5.4.5"
+    lodash "^4.17.21"
+
+"@api3/airnode-adapter@^0.7.2":
+  version "0.7.2"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-adapter/-/airnode-adapter-0.7.2.tgz#c56f2a3c5b2d634653e823d16efd622628e341d7"
+  integrity sha512-jJJ8Xjr9wLGSU59HQOfQk91+iZ+r8f8Ndo12xWYoCWg5ve4l5E3StJTiEboJ02ICqkIN0Hq5kmMWu1JYuetDIA==
+  dependencies:
+    "@api3/airnode-ois" "^0.7.2"
+    axios "^0.27.2"
     bignumber.js "^9.0.0"
     ethers "^5.4.5"
     lodash "^4.17.21"
 
-"@api3/airnode-node@^0.6.2":
-  version "0.6.5"
-  resolved "https://registry.yarnpkg.com/@api3/airnode-node/-/airnode-node-0.6.5.tgz#b87c92f6eb4123319f594fc0d851d57cd1e9d815"
-  integrity sha512-2wIytcFhGkY/sQScXMAGOCLRNt/Ot5I3Eb/TPRUaRS0LBkd52TFaPOGDC1eH/a5lBZFax5KkuC4zs6FeTacRnA==
+"@api3/airnode-node@^0.7.2":
+  version "0.7.2"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-node/-/airnode-node-0.7.2.tgz#6f8b97fe2de61d9bff44bd331623dcaf749f4ee7"
+  integrity sha512-Ald2UfWe8ppwCsJG9/SMURPhGQv2HO9deCPGxhme03biGz9Q6rzdoYdL1v1sDALl4Lkpg/NXAdtVxxpNWFyWgA==
   dependencies:
-    "@api3/airnode-abi" "^0.6.5"
-    "@api3/airnode-adapter" "^0.6.5"
-    "@api3/airnode-ois" "^0.6.5"
-    "@api3/airnode-protocol" "^0.6.5"
-    "@api3/airnode-utilities" "^0.6.5"
-    "@api3/airnode-validator" "^0.6.5"
+    "@api3/airnode-abi" "^0.7.2"
+    "@api3/airnode-adapter" "^0.7.2"
+    "@api3/airnode-ois" "^0.7.2"
+    "@api3/airnode-protocol" "^0.7.2"
+    "@api3/airnode-utilities" "^0.7.2"
+    "@api3/airnode-validator" "^0.7.2"
     aws-sdk "^2.992.0"
     dotenv "^16.0.0"
     ethers "^5.4.5"
-    google-auth-library "^7.10.2"
+    google-auth-library "^8.0.1"
     lodash "^4.17.21"
     yargs "^17.0.1"
+    zod "^3.11.6"
 
-"@api3/airnode-ois@^0.6.5":
-  version "0.6.5"
-  resolved "https://registry.yarnpkg.com/@api3/airnode-ois/-/airnode-ois-0.6.5.tgz#595370b816e2b5317823d5dbc53febc365866207"
-  integrity sha512-/2zZrOeuzYhpQUGssPYueCilLdLtGsaZgwAtyVnZgPVwKuiP5kdIECnrnGdp2KiC8nSebiE+s9ytZdeVeyZrMw==
+"@api3/airnode-ois@^0.7.2":
+  version "0.7.2"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-ois/-/airnode-ois-0.7.2.tgz#9ad026c39b8a59c73efc58a12ec9f6f2ee20de4f"
+  integrity sha512-KGQClDBo1glPgzgSxTbINjdP8RfE/ihkve9zmRE8JptOie7phPONKd3stiDfVVj2orI5wH+qCyfEnxLzhoisCg==
   dependencies:
-    "@api3/airnode-validator" "^0.6.5"
+    "@api3/airnode-validator" "^0.7.2"
 
 "@api3/airnode-protocol-v1@^0.5.0":
   version "0.5.1"
   resolved "https://registry.yarnpkg.com/@api3/airnode-protocol-v1/-/airnode-protocol-v1-0.5.1.tgz#a3ac38e95a3c66df6ab3f5cb03195f7be80a1fc3"
   integrity sha512-0UHB3dRlTjL80hAg7bAm+/+UL0PLsv6KdbmMbA0jx7I7GZjmHDvOeoL/wUFFEuFRAVA/tEz4MbJFaFzkDhj8jQ==
 
-"@api3/airnode-protocol@^0.6.5":
-  version "0.6.5"
-  resolved "https://registry.yarnpkg.com/@api3/airnode-protocol/-/airnode-protocol-0.6.5.tgz#5ac553ac351380c0df09a1f8c4b714df0dd869c7"
-  integrity sha512-4X6cAtTZUuPOABTsuY2nqT+puwjMMS+IPIw7UT2LKqXJdJSZcMPrBsTS8zMDGqvQDj3nxszzkdowkqXULiGAcg==
+"@api3/airnode-protocol@^0.7.2":
+  version "0.7.2"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-protocol/-/airnode-protocol-0.7.2.tgz#2f7cf1ffb93033d9cafc4bb9e2e8377e945c3727"
+  integrity sha512-x03QLUHdATbmQ6jiCDaTtCPu5THPEJqDQRIxZ86I4LzZF2232V8gkumt/EnIKX1f9K4LEUEVStMqlnQCNcW7SQ==
   dependencies:
     "@openzeppelin/contracts" "4.4.2"
     ethers "^5.4.5"
@@ -84,7 +93,16 @@
     date-fns "^2.16.1"
     ethers "^5.4.5"
 
-"@api3/airnode-validator@^0.6.2", "@api3/airnode-validator@^0.6.5":
+"@api3/airnode-utilities@^0.7.2":
+  version "0.7.2"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-utilities/-/airnode-utilities-0.7.2.tgz#e29bb14b1670b24a5103a6b6738e9d7f1fa44bd2"
+  integrity sha512-Mn5HVB/sauAoKuyfNiZVJtgbppN5MfdluYf6852Ep5KYauNI2wA1BAiLwzQ4OzpYiendBo3D+1iaaey9SMLC2Q==
+  dependencies:
+    "@lifeomic/attempt" "^3.0.0"
+    date-fns "^2.16.1"
+    ethers "^5.4.5"
+
+"@api3/airnode-validator@^0.6.2":
   version "0.6.5"
   resolved "https://registry.yarnpkg.com/@api3/airnode-validator/-/airnode-validator-0.6.5.tgz#f9b3da07f346f0323b1568ac1a8bafca82f6387f"
   integrity sha512-Fou8RqXQ0/r0b0a5iHoEsvA3kgIAK8fa0zk0aNY7g8Begli8uPqU869aU4nNmn9PDA8v4yRdLjl3GqmdkJuPtg==
@@ -92,6 +110,20 @@
     "@api3/airnode-utilities" "^0.6.5"
     dotenv "^16.0.0"
     lodash "^4.17.21"
+    yargs "^17.0.1"
+    zod "^3.11.6"
+
+"@api3/airnode-validator@^0.7.2":
+  version "0.7.2"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-validator/-/airnode-validator-0.7.2.tgz#ae5c60ad2ca36c9ed7b02c82156414e50c127cf0"
+  integrity sha512-51q4zdt2UBn2Pahb0/2sm2SyFwl+nBq9KOyiTpjPr3zF3p1gpYW7h7uJ4nVSEzUBLkeg78D2d0kaufKU3EJ0aA==
+  dependencies:
+    "@api3/airnode-utilities" "^0.7.2"
+    "@api3/promise-utils" "^0.3.0"
+    dotenv "^16.0.0"
+    ethers "^5.4.5"
+    lodash "^4.17.21"
+    ora "^5.4.1"
     yargs "^17.0.1"
     zod "^3.11.6"
 
@@ -2166,13 +2198,6 @@ axios@^0.21.0, axios@^0.21.1:
   dependencies:
     follow-redirects "^1.14.0"
 
-axios@^0.26.0:
-  version "0.26.1"
-  resolved "https://registry.yarnpkg.com/axios/-/axios-0.26.1.tgz#1ede41c51fcf51bbbd6fd43669caaa4f0495aaa9"
-  integrity sha512-fPwcX4EvnSHuInCMItEhAGnaSEXRBjtzh9fOtsE6E1G6p7vl7edEeZe11QHf18+6+9gR5PbKV/sGKNaD8YaMeA==
-  dependencies:
-    follow-redirects "^1.14.8"
-
 axios@^0.27.2:
   version "0.27.2"
   resolved "https://registry.yarnpkg.com/axios/-/axios-0.27.2.tgz#207658cc8621606e586c85db4b41a750e756d972"
@@ -4192,7 +4217,7 @@ flatted@^3.1.0:
   resolved "https://registry.yarnpkg.com/flatted/-/flatted-3.2.5.tgz#76c8584f4fc843db64702a6bd04ab7a8bd666da3"
   integrity sha512-WIWGi2L3DyTUvUrwRKgGi9TwxQMUEqPOPQBVi71R96jZXJdFskXEmf54BoZaS1kknGODoIGASGEzBUYdyMCBJg==
 
-follow-redirects@^1.12.1, follow-redirects@^1.14.0, follow-redirects@^1.14.8, follow-redirects@^1.14.9:
+follow-redirects@^1.12.1, follow-redirects@^1.14.0, follow-redirects@^1.14.9:
   version "1.15.0"
   resolved "https://registry.yarnpkg.com/follow-redirects/-/follow-redirects-1.15.0.tgz#06441868281c86d0dda4ad8bdaead2d02dca89d4"
   integrity sha512-aExlJShTV4qOUOL7yF1U5tvLCB0xQuudbf6toyYA0E/acBNw71mvjFTnLaRp50aQaYocMR0a/RMMBIHeZnGyjQ==
@@ -4367,12 +4392,22 @@ gaxios@^4.0.0:
     is-stream "^2.0.0"
     node-fetch "^2.6.7"
 
-gcp-metadata@^4.2.0:
-  version "4.3.1"
-  resolved "https://registry.yarnpkg.com/gcp-metadata/-/gcp-metadata-4.3.1.tgz#fb205fe6a90fef2fd9c85e6ba06e5559ee1eefa9"
-  integrity sha512-x850LS5N7V1F3UcV7PoupzGsyD6iVwTVvsh3tbXfkctZnBnjW5yu5z1/3k3SehF7TyoTIe78rJs02GMMy+LF+A==
+gaxios@^5.0.0:
+  version "5.0.1"
+  resolved "https://registry.yarnpkg.com/gaxios/-/gaxios-5.0.1.tgz#50fc76a2d04bc1700ed8c3ff1561e52255dfc6e0"
+  integrity sha512-keK47BGKHyyOVQxgcUaSaFvr3ehZYAlvhvpHXy0YB2itzZef+GqZR8TBsfVRWghdwlKrYsn+8L8i3eblF7Oviw==
   dependencies:
-    gaxios "^4.0.0"
+    extend "^3.0.2"
+    https-proxy-agent "^5.0.0"
+    is-stream "^2.0.0"
+    node-fetch "^2.6.7"
+
+gcp-metadata@^5.0.0:
+  version "5.0.0"
+  resolved "https://registry.yarnpkg.com/gcp-metadata/-/gcp-metadata-5.0.0.tgz#a00f999f60a4461401e7c515f8a3267cfb401ee7"
+  integrity sha512-gfwuX3yA3nNsHSWUL4KG90UulNiq922Ukj3wLTrcnX33BB7PwB1o0ubR8KVvXu9nJH+P5w1j2SQSNNqto+H0DA==
+  dependencies:
+    gaxios "^5.0.0"
     json-bigint "^1.0.0"
 
 gensync@^1.0.0-beta.2:
@@ -4523,25 +4558,25 @@ globby@^11.1.0:
     merge2 "^1.4.1"
     slash "^3.0.0"
 
-google-auth-library@^7.10.2:
-  version "7.14.1"
-  resolved "https://registry.yarnpkg.com/google-auth-library/-/google-auth-library-7.14.1.tgz#e3483034162f24cc71b95c8a55a210008826213c"
-  integrity sha512-5Rk7iLNDFhFeBYc3s8l1CqzbEBcdhwR193RlD4vSNFajIcINKI8W8P0JLmBpwymHqqWbX34pJDQu39cSy/6RsA==
+google-auth-library@^8.0.1:
+  version "8.1.1"
+  resolved "https://registry.yarnpkg.com/google-auth-library/-/google-auth-library-8.1.1.tgz#4068d2b1512b812d3d3dfbdc848452a0d5a550de"
+  integrity sha512-eG3pCfrLgVJe19KhAeZwW0m1LplNEo0FX1GboWf3hu18zD2jq8TUH2K8900AB2YRAuJ7A+1aSXDp1BODjwwRzg==
   dependencies:
     arrify "^2.0.0"
     base64-js "^1.3.0"
     ecdsa-sig-formatter "^1.0.11"
     fast-text-encoding "^1.0.0"
-    gaxios "^4.0.0"
-    gcp-metadata "^4.2.0"
-    gtoken "^5.0.4"
+    gaxios "^5.0.0"
+    gcp-metadata "^5.0.0"
+    gtoken "^6.0.0"
     jws "^4.0.0"
     lru-cache "^6.0.0"
 
-google-p12-pem@^3.1.3:
-  version "3.1.4"
-  resolved "https://registry.yarnpkg.com/google-p12-pem/-/google-p12-pem-3.1.4.tgz#123f7b40da204de4ed1fbf2fd5be12c047fc8b3b"
-  integrity sha512-HHuHmkLgwjdmVRngf5+gSmpkyaRI6QmOg77J8tkNBHhNEI62sGHyw4/+UkgyZEI7h84NbWprXDJ+sa3xOYFvTg==
+google-p12-pem@^4.0.0:
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/google-p12-pem/-/google-p12-pem-4.0.0.tgz#f46581add1dc6ea0b96160cda6ce37ee35ab8ca3"
+  integrity sha512-lRTMn5ElBdDixv4a86bixejPSRk1boRtUowNepeKEVvYiFlkLuAJUVpEz6PfObDHYEKnZWq/9a2zC98xu62A9w==
   dependencies:
     node-forge "^1.3.1"
 
@@ -4579,13 +4614,13 @@ growl@1.10.5:
   resolved "https://registry.yarnpkg.com/growl/-/growl-1.10.5.tgz#f2735dc2283674fa67478b10181059355c369e5e"
   integrity sha512-qBr4OuELkhPenW6goKVXiv47US3clb3/IbuWF9KNKEijAy9oeHxU9IgzjvJhHkUzhaj7rOUD7+YGWqUjLp5oSA==
 
-gtoken@^5.0.4:
-  version "5.3.2"
-  resolved "https://registry.yarnpkg.com/gtoken/-/gtoken-5.3.2.tgz#deb7dc876abe002178e0515e383382ea9446d58f"
-  integrity sha512-gkvEKREW7dXWF8NV8pVrKfW7WqReAmjjkMBh6lNCCGOM4ucS0r0YyXXl0r/9Yj8wcW/32ISkfc8h5mPTDbtifQ==
+gtoken@^6.0.0:
+  version "6.1.0"
+  resolved "https://registry.yarnpkg.com/gtoken/-/gtoken-6.1.0.tgz#62938c679b364662ce21077858e0db3cfe025363"
+  integrity sha512-WPZcFw34wh2LUvbCUWI70GDhOlO7qHpSvFHFqq7d3Wvsf8dIJedE0lnUdOmsKuC0NgflKmF0LxIF38vsGeHHiQ==
   dependencies:
     gaxios "^4.0.0"
-    google-p12-pem "^3.1.3"
+    google-p12-pem "^4.0.0"
     jws "^4.0.0"
 
 hardhat@^2.9.9:
