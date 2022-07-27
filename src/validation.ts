@@ -359,7 +359,8 @@ export const configSchema = z
 export const encodedValueSchema = z.string().regex(/^0x[a-fA-F0-9]{64}$/);
 export const signatureSchema = z.string().regex(/^0x[a-fA-F0-9]{130}$/);
 export const signedDataSchema = z.object({
-  data: z.object({ timestamp: z.string(), value: encodedValueSchema }),
+  timestamp: z.string(),
+  encodedValue: encodedValueSchema,
   signature: signatureSchema,
 });
 

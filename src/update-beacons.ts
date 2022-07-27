@@ -133,7 +133,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
 
     // Based on https://github.com/api3dao/airnode-protocol-v1/blob/main/contracts/dapis/DapiServer.sol#L878
     const newBeaconValue = ethers.BigNumber.from(
-      ethers.utils.defaultAbiCoder.decode(['int256'], newBeaconResponse.data.value)[0]
+      ethers.utils.defaultAbiCoder.decode(['int256'], newBeaconResponse.encodedValue)[0]
     );
     if (newBeaconValue.gt(INT224_MAX) || newBeaconValue.lt(INT224_MIN)) {
       logger.warn(`New beacon value is out of type range. Skipping.`, logOptionsBeaconId);
@@ -152,7 +152,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
     }
 
     // Check that signed data is newer than on chain value
-    const isSignedDataFresh = checkSignedDataFreshness(onChainData.timestamp, newBeaconResponse.data.timestamp);
+    const isSignedDataFresh = checkSignedDataFreshness(onChainData.timestamp, newBeaconResponse.timestamp);
     if (!isSignedDataFresh) {
       logger.warn(`Signed data older than on chain record. Skipping.`, logOptionsBeaconId);
       continue;
@@ -192,8 +192,8 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
           .updateBeaconWithSignedData(
             beaconUpdateData.airnode,
             beaconUpdateData.templateId,
-            newBeaconResponse.data.timestamp,
-            newBeaconResponse.data.value,
+            newBeaconResponse.timestamp,
+            newBeaconResponse.encodedValue,
             newBeaconResponse.signature,
             {
               gasLimit: ethers.BigNumber.from(config.chains[chainId].options.fulfillmentGasLimit),
