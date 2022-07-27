@@ -44,7 +44,13 @@ describe('makeSignedDataGatewayRequests', () => {
       .mockImplementationOnce(() => {
         throw new Error('timeout error');
       })
-      .mockReturnValueOnce({ data: { data: 'invalid', signature: 'invalid signature' } })
+      .mockReturnValueOnce({
+        data: {
+          timestamp: 'invalid',
+          encodedValue: '0x000000000000000000000000000000000000000000000000000000000invalid',
+          signature: 'invalid signature',
+        },
+      })
       .mockReturnValueOnce({
         data: validSignedData,
       });
@@ -68,11 +74,10 @@ describe('makeSignedDataGatewayRequests', () => {
     );
     const zodErrors = [
       {
-        code: 'invalid_type',
-        expected: 'object',
-        received: 'string',
-        path: ['data'],
-        message: 'Expected object, received string',
+        validation: 'regex',
+        code: 'invalid_string',
+        message: 'Invalid',
+        path: ['encodedValue'],
       },
       {
         validation: 'regex',
@@ -102,7 +107,8 @@ describe('makeSignedDataGatewayRequests', () => {
       })
       .mockReturnValueOnce({
         data: {
-          data: 'invalid',
+          timestamp: 'invalid',
+          encodedValue: '0x000000000000000000000000000000000000000000000000000000000invalid',
           signature: validSignedData.signature,
         },
       });
@@ -127,11 +133,10 @@ describe('makeSignedDataGatewayRequests', () => {
     );
     const zodErrors = [
       {
-        code: 'invalid_type',
-        expected: 'object',
-        received: 'string',
-        path: ['data'],
-        message: 'Expected object, received string',
+        validation: 'regex',
+        code: 'invalid_string',
+        message: 'Invalid',
+        path: ['encodedValue'],
       },
     ];
     expect(logger.warn).toHaveBeenCalledWith(
