@@ -88,13 +88,13 @@ describe('checkUpdateCondition', () => {
 
 describe('checkSignedDataFreshness', () => {
   it('returns true if signed data gateway is newer than on chain record', () => {
-    const isFresh = checkSignedDataFreshness(getUnixTimestamp('2022-4-28'), validSignedData.data.timestamp);
+    const isFresh = checkSignedDataFreshness(getUnixTimestamp('2022-4-28'), validSignedData.timestamp);
 
     expect(isFresh).toBe(false);
   });
 
   it('returns false if signed data gateway is older than on chain record', () => {
-    const isFresh = checkSignedDataFreshness(getUnixTimestamp('2019-4-28'), validSignedData.data.timestamp);
+    const isFresh = checkSignedDataFreshness(getUnixTimestamp('2019-4-28'), validSignedData.timestamp);
 
     expect(isFresh).toBe(true);
   });

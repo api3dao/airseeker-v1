@@ -226,10 +226,8 @@ export const deployAndUpdateSubscriptions = async () => {
     signedDataValue
   );
   const signedData = {
-    data: {
-      timestamp: signedDataTimestamp.toString(),
-      value: signedDataValue,
-    },
+    timestamp: signedDataTimestamp.toString(),
+    encodedValue: signedDataValue,
     signature: signedDataSignature,
   };
 

@@ -44,10 +44,8 @@ app.post('/signed-data-gateway/:endpoint', async (req, res) => {
     const { timestamp, signature } = await getTimestampAndSignature(airnodeWallet, templateIdETH, encodedValue);
 
     res.status(200).send({
-      data: {
-        timestamp: `${timestamp}`,
-        value: ethers.utils.hexZeroPad(apiValue.toHexString(), 32),
-      },
+      timestamp: `${timestamp}`,
+      encodedValue: ethers.utils.hexZeroPad(apiValue.toHexString(), 32),
       signature: signature,
     });
     return;
@@ -58,10 +56,8 @@ app.post('/signed-data-gateway/:endpoint', async (req, res) => {
     const encodedValue = ethers.utils.defaultAbiCoder.encode(['int256'], [apiValue]);
     const { timestamp, signature } = await getTimestampAndSignature(airnodeWallet, templateIdBTC, encodedValue);
     res.status(200).send({
-      data: {
-        timestamp: `${timestamp}`,
-        value: ethers.utils.hexZeroPad(apiValue.toHexString(), 32),
-      },
+      timestamp: `${timestamp}`,
+      encodedValue: ethers.utils.hexZeroPad(apiValue.toHexString(), 32),
       signature: signature,
     });
     return;
