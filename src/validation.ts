@@ -377,6 +377,7 @@ export type Template = z.infer<typeof templateSchema>;
 export type Templates = z.infer<typeof templatesSchema>;
 export type BeaconUpdate = z.infer<typeof beaconUpdateSchema>;
 export type BeaconUpdates = z.infer<typeof beaconUpdatesSchema>;
+export type BeaconSetUpdate = z.infer<typeof beaconSetUpdateSchema>;
 export type Triggers = z.infer<typeof triggersSchema>;
 export type Address = z.infer<typeof evmAddressSchema>;
 export type BeaconId = z.infer<typeof evmBeaconIdSchema>;

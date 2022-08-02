@@ -164,7 +164,7 @@ describe('Airseeker', () => {
     expect(beaconValueBTCNew).toEqual(hre.ethers.BigNumber.from(beaconValueBTC));
   });
 
-  it('updates if the dapiserver timestamp is older than hearbeatinterval', async () => {
+  it('updates if the dapiserver timestamp is older than heartbeatinterval', async () => {
     mockReadFileSync(
       'airseeker.json',
       JSON.stringify({
