@@ -1,16 +1,17 @@
 import * as node from '@api3/airnode-node';
-import { DapiServer, DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol-v1';
-import { go, GoAsyncOptions } from '@api3/promise-utils';
+import { DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol-v1';
+import { go } from '@api3/promise-utils';
 import { ethers } from 'ethers';
 import { isEmpty } from 'lodash';
 import { getCurrentBlockNumber } from './block-number';
 import { checkOnchainDataFreshness, checkSignedDataFreshness, checkUpdateCondition } from './check-condition';
 import { INT224_MAX, INT224_MIN, NO_BEACONS_EXIT_CODE, PROTOCOL_ID } from './constants';
 import { getGasPrice } from './gas-oracle';
-import { logger, LogOptionsOverride } from './logging';
+import { logger } from './logging';
+import { readDataFeedWithId } from './read-data-feed-with-id';
 import { getState, Provider } from './state';
 import { getTransactionCount } from './transaction-count';
-import { shortenAddress, sleep, prepareGoOptions } from './utils';
+import { prepareGoOptions, shortenAddress, sleep } from './utils';
 import { BeaconUpdate } from './validation';
 
 type ProviderSponsorBeacons = {
@@ -140,7 +141,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
       continue;
     }
 
-    const onChainData = await readOnChainBeaconData(
+    const onChainData = await readDataFeedWithId(
       voidSigner,
       contract,
       beaconUpdateData.beaconId,
@@ -158,7 +159,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
       continue;
     }
 
-    // Check that on chain data is newer than hearbeat interval
+    // Check that on chain data is newer than heartbeat interval
     const isOnchainDataFresh = checkOnchainDataFreshness(onChainData.timestamp, beaconUpdateData.heartbeatInterval);
     if (!isOnchainDataFresh) {
       logger.info(
@@ -220,34 +221,4 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorBeaco
     );
     nonce++;
   }
-};
-
-export interface OnChainBeaconData {
-  value: ethers.BigNumber;
-  timestamp: number;
-}
-
-export const readOnChainBeaconData = async (
-  voidSigner: ethers.VoidSigner,
-  dapiServer: DapiServer,
-  beaconId: string,
-  goOptions: GoAsyncOptions,
-  logOptions: LogOptionsOverride
-): Promise<OnChainBeaconData | null> => {
-  const logOptionsDapiServerAddress = {
-    ...logOptions,
-    additional: { ...logOptions.additional, 'Dapi-Server': dapiServer.address },
-  };
-
-  const goDataFeed = await go(() => dapiServer.connect(voidSigner).readDataFeedWithId(beaconId), {
-    ...goOptions,
-    onAttemptError: (goError) =>
-      logger.warn(`Failed attempt to read data feed. Error: ${goError.error}`, logOptionsDapiServerAddress),
-  });
-  if (!goDataFeed.success) {
-    logger.warn(`Unable to read data feed. Error: ${goDataFeed.error}`, logOptionsDapiServerAddress);
-    return null;
-  }
-
-  return goDataFeed.data;
 };
