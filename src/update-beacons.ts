@@ -46,6 +46,7 @@ export const initiateBeaconUpdates = () => {
   const providerSponsorBeaconsGroups = groupBeaconsByProviderSponsor();
   if (isEmpty(providerSponsorBeaconsGroups)) {
     logger.error('No beacons for processing found. Stopping.');
+    // TODO: should we stop processing now that beacon sets are run after beacons?
     process.exit(NO_BEACONS_EXIT_CODE);
   }
   providerSponsorBeaconsGroups.forEach(updateBeaconsInLoop);
