@@ -16,7 +16,12 @@ export const buildAirseekerConfig = () => ({
       fetchInterval: 8,
     },
   },
-  beaconSets: {},
+  beaconSets: {
+    '0xf7f1620b7f422eb9a69c8e21b317ba1555d3d87e1d804f0b024f03b107e411e8': [
+      '0x924b5d4cb3ec6366ae4302a1ca6aec035594ea3ea48a102d160b50b0c43ebfb5',
+      '0xbf7ce55d109fd196de2a8bf1515d166c56c9decbe9cb473656bbca30d5743990',
+    ],
+  },
   chains: {
     '31337': {
       contracts: {
@@ -88,7 +93,20 @@ export const buildAirseekerConfig = () => ({
         },
       },
     },
-    beaconSetUpdates: {},
+    beaconSetUpdates: {
+      '31337': {
+        '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC': {
+          beaconSets: [
+            {
+              beaconSetId: '0xf7f1620b7f422eb9a69c8e21b317ba1555d3d87e1d804f0b024f03b107e411e8',
+              deviationThreshold: 0.2,
+              heartbeatInterval: 86400,
+            },
+          ],
+          updateInterval: 6,
+        },
+      },
+    },
   },
 });
 

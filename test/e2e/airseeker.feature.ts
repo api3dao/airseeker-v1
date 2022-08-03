@@ -123,7 +123,20 @@ describe('Airseeker', () => {
               },
             },
           },
-          beaconSetUpdates: {},
+          beaconSetUpdates: {
+            '31337': {
+              '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC': {
+                beaconSets: [
+                  {
+                    beaconSetId: '0xf7f1620b7f422eb9a69c8e21b317ba1555d3d87e1d804f0b024f03b107e411e8',
+                    deviationThreshold: 50,
+                    heartbeatInterval: 86400,
+                  },
+                ],
+                updateInterval: 6,
+              },
+            },
+          },
         },
       })
     );
@@ -189,7 +202,20 @@ describe('Airseeker', () => {
               },
             },
           },
-          beaconSetUpdates: {},
+          beaconSetUpdates: {
+            '31337': {
+              '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC': {
+                beaconSets: [
+                  {
+                    beaconSetId: '0xf7f1620b7f422eb9a69c8e21b317ba1555d3d87e1d804f0b024f03b107e411e8',
+                    deviationThreshold: 50,
+                    heartbeatInterval: 1,
+                  },
+                ],
+                updateInterval: 6,
+              },
+            },
+          },
         },
       })
     );

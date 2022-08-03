@@ -52,7 +52,7 @@ export const groupBeaconSetsByProviderSponsor = () => {
 };
 
 export const initiateBeaconSetUpdates = () => {
-  logger.debug('Initiating beacon updates');
+  logger.debug('Initiating beacon set updates');
 
   const providerSponsorBeaconSetsGroups = groupBeaconSetsByProviderSponsor();
   if (isEmpty(providerSponsorBeaconSetsGroups)) {
