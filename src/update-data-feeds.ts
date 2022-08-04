@@ -1,23 +1,24 @@
-import { evm } from '@api3/airnode-node';
+import * as node from '@api3/airnode-node';
 import { DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol-v1';
 import { go } from '@api3/promise-utils';
 import { ethers } from 'ethers';
 import { isEmpty, isNil } from 'lodash';
 import { getCurrentBlockNumber } from './block-number';
-import { checkOnchainDataFreshness, checkUpdateCondition } from './check-condition';
-import { INT224_MAX, INT224_MIN, NO_BEACON_SETS_EXIT_CODE, PROTOCOL_ID } from './constants';
+import { checkOnchainDataFreshness, checkSignedDataFreshness, checkUpdateCondition } from './check-condition';
+import { INT224_MAX, INT224_MIN, NO_DATA_FEEDS_EXIT_CODE, PROTOCOL_ID } from './constants';
 import { getGasPrice } from './gas-oracle';
 import { logger } from './logging';
 import { readDataFeedWithId } from './read-data-feed-with-id';
 import { getState, Provider } from './state';
 import { getTransactionCount } from './transaction-count';
 import { prepareGoOptions, shortenAddress, sleep } from './utils';
-import { BeaconSetUpdate, SignedData } from './validation';
+import { BeaconSetUpdate, BeaconUpdate, SignedData } from './validation';
 
-type ProviderSponsorBeaconSets = {
+type ProviderSponsorDataFeeds = {
   provider: Provider;
   sponsorAddress: string;
   updateInterval: number;
+  beacons: BeaconUpdate[];
   beaconSets: BeaconSetUpdate[];
 };
 
@@ -32,15 +33,15 @@ type BeaconSetBeaconValue = {
   value: ethers.BigNumber;
 };
 
-export const groupBeaconSetsByProviderSponsor = () => {
+export const groupDataFeedsByProviderSponsor = () => {
   const { config, providers: stateProviders } = getState();
-  return Object.entries(config.triggers.beaconSetUpdates).reduce(
-    (acc: ProviderSponsorBeaconSets[], [chainId, beaconSetUpdatesPerSponsor]) => {
+  return Object.entries(config.triggers.dataFeedUpdates).reduce(
+    (acc: ProviderSponsorDataFeeds[], [chainId, dataFeedUpdatesPerSponsor]) => {
       const providers = stateProviders[chainId];
 
-      const providerSponsorGroups = Object.entries(beaconSetUpdatesPerSponsor).reduce(
-        (acc: ProviderSponsorBeaconSets[], [sponsorAddress, beaconSetUpdate]) => {
-          return [...acc, ...providers.map((provider) => ({ provider, sponsorAddress, ...beaconSetUpdate }))];
+      const providerSponsorGroups = Object.entries(dataFeedUpdatesPerSponsor).reduce(
+        (acc: ProviderSponsorDataFeeds[], [sponsorAddress, dataFeedUpdate]) => {
+          return [...acc, ...providers.map((provider) => ({ provider, sponsorAddress, ...dataFeedUpdate }))];
         },
         []
       );
@@ -51,23 +52,24 @@ export const groupBeaconSetsByProviderSponsor = () => {
   );
 };
 
-export const initiateBeaconSetUpdates = () => {
-  logger.debug('Initiating beacon set updates');
+export const initiateDataFeedUpdates = () => {
+  logger.debug('Initiating data feed updates');
 
-  const providerSponsorBeaconSetsGroups = groupBeaconSetsByProviderSponsor();
-  if (isEmpty(providerSponsorBeaconSetsGroups)) {
-    logger.error('No beacon sets for processing found. Stopping.');
-    process.exit(NO_BEACON_SETS_EXIT_CODE);
+  const providerSponsorDataFeedsGroups = groupDataFeedsByProviderSponsor();
+  if (isEmpty(providerSponsorDataFeedsGroups)) {
+    logger.error('No data feed for processing found. Stopping.');
+    process.exit(NO_DATA_FEEDS_EXIT_CODE);
   }
-  providerSponsorBeaconSetsGroups.forEach(updateBeaconSetsInLoop);
+  providerSponsorDataFeedsGroups.forEach(updateDataFeedsInLoop);
 };
 
-export const updateBeaconSetsInLoop = async (providerSponsorBeaconSets: ProviderSponsorBeaconSets) => {
+export const updateDataFeedsInLoop = async (providerSponsorDataFeeds: ProviderSponsorDataFeeds) => {
   while (!getState().stopSignalReceived) {
     const startTimestamp = Date.now();
-    const { updateInterval } = providerSponsorBeaconSets;
+    const { updateInterval } = providerSponsorDataFeeds;
 
-    await updateBeaconSets(providerSponsorBeaconSets);
+    await updateBeacons(providerSponsorDataFeeds);
+    await updateBeaconSets(providerSponsorDataFeeds);
 
     const duration = Date.now() - startTimestamp;
     const waitTime = Math.max(0, updateInterval * 1_000 - duration);
@@ -77,9 +79,168 @@ export const updateBeaconSetsInLoop = async (providerSponsorBeaconSets: Provider
 
 // We pass return value from `prepareGoOptions` (with calculated timeout) to every `go` call in the function to enforce the update cycle.
 // This solution is not precise but since chain operations are the only ones that actually take some time this should be a good enough solution.
-export const updateBeaconSets = async (providerSponsorBeaconSets: ProviderSponsorBeaconSets) => {
+export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataFeeds) => {
   const { config, beaconValues } = getState();
-  const { provider, sponsorAddress, beaconSets: beaconSetUpdates } = providerSponsorBeaconSets;
+  const { provider, sponsorAddress, beacons } = providerSponsorBeacons;
+  const { rpcProvider, chainId, providerName } = provider;
+  const logOptionsSponsor = {
+    meta: { chainId, providerName },
+    additional: { Sponsor: shortenAddress(sponsorAddress) },
+  };
+  logger.debug(`Processing beacon updates`, logOptionsSponsor);
+
+  const startTime = Date.now();
+  // All the beacon updates for given provider & sponsor have up to <updateInterval> seconds to finish
+  const totalTimeout = providerSponsorBeacons.updateInterval * 1_000;
+
+  // Prepare contract for beacon updates
+  const contractAddress = config.chains[chainId].contracts['DapiServer'];
+  const contract = DapiServerFactory.connect(contractAddress, rpcProvider);
+
+  // Get current block number
+  const blockNumber = await getCurrentBlockNumber(provider, prepareGoOptions(startTime, totalTimeout));
+  if (blockNumber === null) {
+    logger.warn(`Unable to obtain block number`, logOptionsSponsor);
+    return;
+  }
+
+  // Derive sponsor wallet address
+  const sponsorWallet = node.evm
+    .deriveSponsorWalletFromMnemonic(config.airseekerWalletMnemonic, sponsorAddress, PROTOCOL_ID)
+    .connect(rpcProvider);
+
+  // Get transaction count
+  const transactionCount = await getTransactionCount(
+    provider,
+    sponsorWallet.address,
+    blockNumber,
+    prepareGoOptions(startTime, totalTimeout)
+  );
+  if (transactionCount === null) {
+    logger.warn(`Unable to fetch transaction count`, logOptionsSponsor);
+    return;
+  }
+
+  // Process beacon updates
+  let nonce = transactionCount;
+  const voidSigner = new ethers.VoidSigner(ethers.constants.AddressZero, rpcProvider);
+
+  for (const beacon of beacons) {
+    const logOptionsBeaconId = {
+      ...logOptionsSponsor,
+      additional: {
+        ...logOptionsSponsor.additional,
+        'Sponsor-Wallet': shortenAddress(sponsorWallet.address),
+        'Beacon-ID': beacon.beaconId,
+      },
+    };
+
+    const beaconUpdateData = { ...beacon, ...config.beacons[beacon.beaconId] };
+
+    logger.debug(`Updating beacon`, logOptionsBeaconId);
+    // Check whether we have a value for given beacon
+    const newBeaconResponse = beaconValues[beaconUpdateData.beaconId];
+    if (!newBeaconResponse) {
+      logger.warn(`No data available for beacon. Skipping.`, logOptionsBeaconId);
+      continue;
+    }
+
+    // Based on https://github.com/api3dao/airnode-protocol-v1/blob/main/contracts/dapis/DapiServer.sol#L878
+    const newBeaconValue = ethers.BigNumber.from(
+      ethers.utils.defaultAbiCoder.decode(['int256'], newBeaconResponse.encodedValue)[0]
+    );
+    if (newBeaconValue.gt(INT224_MAX) || newBeaconValue.lt(INT224_MIN)) {
+      logger.warn(`New beacon value is out of type range. Skipping.`, logOptionsBeaconId);
+      continue;
+    }
+
+    const onChainData = await readDataFeedWithId(
+      voidSigner,
+      contract,
+      beaconUpdateData.beaconId,
+      prepareGoOptions(startTime, totalTimeout),
+      logOptionsBeaconId
+    );
+    if (!onChainData) {
+      continue;
+    }
+
+    // Check that signed data is newer than on chain value
+    const isSignedDataFresh = checkSignedDataFreshness(onChainData.timestamp, newBeaconResponse.timestamp);
+    if (!isSignedDataFresh) {
+      logger.warn(`Signed data older than on chain record. Skipping.`, logOptionsBeaconId);
+      continue;
+    }
+
+    // Check that on chain data is newer than heartbeat interval
+    const isOnchainDataFresh = checkOnchainDataFreshness(onChainData.timestamp, beaconUpdateData.heartbeatInterval);
+    if (!isOnchainDataFresh) {
+      logger.info(
+        `On chain data timestamp older than heartbeat. Updating without condition check.`,
+        logOptionsBeaconId
+      );
+    } else {
+      // Check beacon condition
+      const shouldUpdate = checkUpdateCondition(onChainData.value, beaconUpdateData.deviationThreshold, newBeaconValue);
+      if (shouldUpdate === null) {
+        logger.warn(`Unable to fetch current beacon value`, logOptionsBeaconId);
+        // This can happen only if we reach the total timeout so it makes no sense to continue with the rest of the beacons
+        return;
+      }
+      if (!shouldUpdate) {
+        logger.info(`Deviation threshold not reached. Skipping.`, logOptionsBeaconId);
+        continue;
+      }
+
+      logger.info(`Deviation threshold reached. Updating.`, logOptionsBeaconId);
+    }
+
+    // Get gas price from oracle
+    const gasPrice = await getGasPrice(provider, config.chains[chainId].options.gasOracle);
+
+    // Update beacon
+    const tx = await go(
+      () =>
+        contract
+          .connect(sponsorWallet)
+          .updateBeaconWithSignedData(
+            beaconUpdateData.airnode,
+            beaconUpdateData.templateId,
+            newBeaconResponse.timestamp,
+            newBeaconResponse.encodedValue,
+            newBeaconResponse.signature,
+            {
+              gasLimit: ethers.BigNumber.from(config.chains[chainId].options.fulfillmentGasLimit),
+              type: config.chains[chainId].options.txType === 'eip1559' ? 2 : 0,
+              gasPrice,
+              nonce,
+            }
+          ),
+      {
+        ...prepareGoOptions(startTime, totalTimeout),
+        onAttemptError: (goError) =>
+          logger.warn(`Failed attempt to update beacon. Error ${goError.error}`, logOptionsBeaconId),
+      }
+    );
+
+    if (!tx.success) {
+      logger.warn(`Unable to update beacon with nonce ${nonce}. Error: ${tx.error}`, logOptionsBeaconId);
+      return;
+    }
+
+    logger.info(
+      `Beacon successfully updated with value ${newBeaconValue} and nonce ${nonce}. Tx hash ${tx.data.hash}.`,
+      logOptionsBeaconId
+    );
+    nonce++;
+  }
+};
+
+// We pass return value from `prepareGoOptions` (with calculated timeout) to every `go` call in the function to enforce the update cycle.
+// This solution is not precise but since chain operations are the only ones that actually take some time this should be a good enough solution.
+export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDataFeeds) => {
+  const { config, beaconValues } = getState();
+  const { provider, sponsorAddress, beaconSets: beaconSetUpdates } = providerSponsorBeacons;
   const { rpcProvider, chainId, providerName } = provider;
   const logOptionsSponsor = {
     meta: { chainId, providerName },
@@ -89,7 +250,7 @@ export const updateBeaconSets = async (providerSponsorBeaconSets: ProviderSponso
 
   const startTime = Date.now();
   // All the beacon set updates for given provider & sponsor have up to <updateInterval> seconds to finish
-  const totalTimeout = providerSponsorBeaconSets.updateInterval * 1_000;
+  const totalTimeout = providerSponsorBeacons.updateInterval * 1_000;
 
   // Prepare contract for beacon set updates
   const contractAddress = config.chains[chainId].contracts['DapiServer'];
@@ -103,7 +264,7 @@ export const updateBeaconSets = async (providerSponsorBeaconSets: ProviderSponso
   }
 
   // Derive sponsor wallet address
-  const sponsorWallet = evm
+  const sponsorWallet = node.evm
     .deriveSponsorWalletFromMnemonic(config.airseekerWalletMnemonic, sponsorAddress, PROTOCOL_ID)
     .connect(rpcProvider);
 
@@ -292,7 +453,7 @@ export const updateBeaconSets = async (providerSponsorBeaconSets: ProviderSponso
       return;
     }
 
-    logger.info(`Beacon set successfully updated. Tx hash ${tx.data.hash}.`, logOptionsBeaconSetId);
+    logger.info(`Beacon set successfully updated with nonce ${nonce}. Tx hash ${tx.data.hash}.`, logOptionsBeaconSetId);
     nonce++;
   }
 };

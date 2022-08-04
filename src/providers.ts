@@ -10,10 +10,7 @@ export const initializeProvider = (chainId: string, providerUrl: string): Omit<P
 
 export const initializeProviders = () => {
   const { config } = getState();
-  const triggersUpdatesChains = uniq([
-    ...Object.keys(config.triggers.beaconUpdates),
-    ...Object.keys(config.triggers.beaconSetUpdates),
-  ]);
+  const triggersUpdatesChains = uniq([...Object.keys(config.triggers.dataFeedUpdates)]);
   const providers = triggersUpdatesChains.reduce((acc: Providers, chainId: string) => {
     const chain = config.chains[chainId];
 
