@@ -50,7 +50,7 @@ export const beaconSetsSchema = z
       if (derivedBeaconSetId !== beaconSetId) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `Beacon set ID "${beaconSetId}" is invalid`,
+          message: `BeaconSet ID "${beaconSetId}" is invalid`,
           path: [beaconSetId],
         });
       }
@@ -201,35 +201,20 @@ export const beaconSetUpdateSchema = z
   .merge(baseBeaconUpdateSchema)
   .strict();
 
-export const baseUpdateSchema = z.object({
-  updateInterval: z.number().int(),
-});
-
-export const beaconUpdatesSchema = z.record(
+// chainId -> sponsorAddress -> dataFeeds
+export const dataFeedUpdatesSchema = z.record(
   z.record(
     evmAddressSchema,
-    z
-      .object({
-        beacons: z.array(beaconUpdateSchema),
-      })
-      .merge(baseUpdateSchema)
-  )
-);
-
-export const beaconSetUpdatesSchema = z.record(
-  z.record(
-    evmAddressSchema,
-    z
-      .object({
-        beaconSets: z.array(beaconSetUpdateSchema),
-      })
-      .merge(baseUpdateSchema)
+    z.object({
+      beacons: z.array(beaconUpdateSchema),
+      beaconSets: z.array(beaconSetUpdateSchema),
+      updateInterval: z.number().int(),
+    })
   )
 );
 
 export const triggersSchema = z.object({
-  beaconUpdates: beaconUpdatesSchema,
-  beaconSetUpdates: beaconSetUpdatesSchema,
+  dataFeedUpdates: dataFeedUpdatesSchema,
 });
 
 const validateBeaconsReferences: SuperRefinement<{ beacons: Beacons; gateways: Gateways; templates: Templates }> = (
@@ -278,61 +263,42 @@ const validateBeaconSetsReferences: SuperRefinement<{ beacons: Beacons; beaconSe
   });
 };
 
-const validateBeaconUpdatesReferences: SuperRefinement<{
+const validateDataFeedUpdatesReferences: SuperRefinement<{
   beacons: Beacons;
+  beaconSets: BeaconSets;
   chains: Chains;
   triggers: Triggers;
 }> = (config, ctx) => {
-  Object.entries(config.triggers.beaconUpdates).forEach(([chainId, beaconUpdatesPerSponsor]) => {
-    // Verify that config.triggers.beaconUpdates.<chainId> is
+  Object.entries(config.triggers.dataFeedUpdates).forEach(([chainId, dataFeedUpdatesPerSponsor]) => {
+    // Verify that config.triggers.dataFeedUpdates.<chainId> is
     // referencing a valid config.chains.<chainId> object
     if (!config.chains[chainId]) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: `Chain ID "${chainId}" is not defined in the config.chains object`,
-        path: ['triggers', 'beaconUpdates', chainId],
+        path: ['triggers', 'dataFeedUpdates', chainId],
       });
     }
-    Object.entries(beaconUpdatesPerSponsor).forEach(([sponsorAddress, beaconUpdate]) => {
-      beaconUpdate.beacons.forEach((beacon, index) => {
-        // Verify that config.triggers.beaconUpdates.<chainId>.<sponsorAddress>.beacons.beaconId is
+    Object.entries(dataFeedUpdatesPerSponsor).forEach(([sponsorAddress, dataFeedUpdate]) => {
+      dataFeedUpdate.beacons.forEach((beacon, index) => {
+        // Verify that config.triggers.dataFeedUpdates.<chainId>.<sponsorAddress>.beacons.beaconId is
         // referencing a valid config.beacons.<beaconId> object
         if (!config.beacons[beacon.beaconId]) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: `Beacon ID "${beacon.beaconId}" is not defined in the config.beacons object`,
-            path: ['triggers', 'beaconUpdates', chainId, sponsorAddress, 'beacons', index],
+            path: ['triggers', 'dataFeedUpdates', chainId, sponsorAddress, 'beacons', index],
           });
         }
       });
-    });
-  });
-};
-
-const validateBeaconSetUpdatesReferences: SuperRefinement<{
-  beaconSets: BeaconSets;
-  chains: Chains;
-  triggers: Triggers;
-}> = (config, ctx) => {
-  Object.entries(config.triggers.beaconSetUpdates).forEach(([chainId, beaconSetUpdatesPerSponsor]) => {
-    // Verify that config.triggers.beaconSetUpdates.<chainId> is
-    // referencing a valid config.chains.<chainId> object
-    if (!config.chains[chainId]) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `Chain ID "${chainId}" is not defined in the config.chains object`,
-        path: ['triggers', 'beaconSetUpdates', chainId],
-      });
-    }
-    Object.entries(beaconSetUpdatesPerSponsor).forEach(([sponsorAddress, beaconSetUpdate]) => {
-      beaconSetUpdate.beaconSets.forEach((beaconSet, index) => {
-        // Verify that config.triggers.beaconSetUpdates.<chainId>.<sponsorAddress>.beaconSets.beaconSetId is
+      dataFeedUpdate.beaconSets.forEach((beaconSet, index) => {
+        // Verify that config.triggers.dataFeedUpdates.<chainId>.<sponsorAddress>.beaconSets.beaconSetId is
         // referencing a valid config.beaconSets.<beaconSetId> object
         if (!config.beaconSets[beaconSet.beaconSetId]) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: `BeaconSet ID "${beaconSet.beaconSetId}" is not defined in the config.beaconSets object`,
-            path: ['triggers', 'beaconSetUpdates', chainId, sponsorAddress, 'beaconSets', index],
+            path: ['triggers', 'dataFeedUpdates', chainId, sponsorAddress, 'beaconSets', index],
           });
         }
       });
@@ -354,8 +320,7 @@ export const configSchema = z
   .strict()
   .superRefine(validateBeaconsReferences)
   .superRefine(validateBeaconSetsReferences)
-  .superRefine(validateBeaconUpdatesReferences)
-  .superRefine(validateBeaconSetUpdatesReferences);
+  .superRefine(validateDataFeedUpdatesReferences);
 export const encodedValueSchema = z.string().regex(/^0x[a-fA-F0-9]{64}$/);
 export const signatureSchema = z.string().regex(/^0x[a-fA-F0-9]{130}$/);
 export const signedDataSchema = z.object({
@@ -375,8 +340,8 @@ export type Gateway = z.infer<typeof gatewaySchema>;
 export type Gateways = z.infer<typeof gatewaysSchema>;
 export type Template = z.infer<typeof templateSchema>;
 export type Templates = z.infer<typeof templatesSchema>;
+export type DataFeedUpdates = z.infer<typeof dataFeedUpdatesSchema>;
 export type BeaconUpdate = z.infer<typeof beaconUpdateSchema>;
-export type BeaconUpdates = z.infer<typeof beaconUpdatesSchema>;
 export type BeaconSetUpdate = z.infer<typeof beaconSetUpdateSchema>;
 export type Triggers = z.infer<typeof triggersSchema>;
 export type Address = z.infer<typeof evmAddressSchema>;

@@ -2,10 +2,9 @@ import * as path from 'path';
 import { logger } from './logging';
 import { loadConfig } from './config';
 import { initiateFetchingBeaconData } from './fetch-beacon-data';
-import { initiateBeaconUpdates } from './update-beacons';
+import { initiateDataFeedUpdates } from './update-data-feeds';
 import { initializeProviders } from './providers';
 import { initializeState, updateState } from './state';
-import { initiateBeaconSetUpdates } from './update-beacon-sets';
 
 export const handleStopSignal = (signal: string) => {
   logger.info(`Signal ${signal} received`);
@@ -25,6 +24,5 @@ export async function main() {
   initializeProviders();
 
   initiateFetchingBeaconData();
-  initiateBeaconUpdates();
-  initiateBeaconSetUpdates();
+  initiateDataFeedUpdates();
 }
