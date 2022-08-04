@@ -17,14 +17,12 @@ export const initiateFetchingBeaconData = async () => {
   const { config } = getState();
 
   const beaconIdsToUpdate = uniq([
-    ...Object.values(config.triggers.beaconUpdates).flatMap((beaconUpdatesPerSponsor) => {
-      return Object.values(beaconUpdatesPerSponsor).flatMap((beaconUpdate) => {
-        return beaconUpdate.beacons.flatMap((b) => b.beaconId);
-      });
-    }),
-    ...Object.values(config.triggers.beaconSetUpdates).flatMap((beaconSetUpdatesPerSponsor) => {
-      return Object.values(beaconSetUpdatesPerSponsor).flatMap((beaconSetUpdate) => {
-        return beaconSetUpdate.beaconSets.flatMap((b) => config.beaconSets[b.beaconSetId]);
+    ...Object.values(config.triggers.dataFeedUpdates).flatMap((dataFeedUpdatesPerSponsor) => {
+      return Object.values(dataFeedUpdatesPerSponsor).flatMap((dataFeedUpdate) => {
+        return [
+          ...dataFeedUpdate.beacons.flatMap((b) => b.beaconId),
+          ...dataFeedUpdate.beaconSets.flatMap((b) => config.beaconSets[b.beaconSetId]),
+        ];
       });
     }),
   ]);

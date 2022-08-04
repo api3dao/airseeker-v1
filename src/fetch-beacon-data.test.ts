@@ -144,7 +144,7 @@ const config: Config = {
     },
   },
   triggers: {
-    beaconUpdates: {
+    dataFeedUpdates: {
       '1': {
         '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC': {
           beacons: [
@@ -159,25 +159,6 @@ const config: Config = {
               heartbeatInterval: 15_000,
             },
           ],
-          updateInterval: 30,
-        },
-      },
-      '3': {
-        '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC': {
-          beacons: [
-            {
-              beaconId: '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c',
-              deviationThreshold: 0.2,
-              heartbeatInterval: 86_400,
-            },
-          ],
-          updateInterval: 30,
-        },
-      },
-    },
-    beaconSetUpdates: {
-      '1': {
-        '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC': {
           beaconSets: [
             {
               beaconSetId: '0x41c3d6e0ee82ae3d33356c4dceb84e98d1a0b361db0f51081fc5a2541ae51683',
@@ -190,6 +171,13 @@ const config: Config = {
       },
       '3': {
         '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC': {
+          beacons: [
+            {
+              beaconId: '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c',
+              deviationThreshold: 0.2,
+              heartbeatInterval: 86_400,
+            },
+          ],
           beaconSets: [
             {
               beaconSetId: '0x41c3d6e0ee82ae3d33356c4dceb84e98d1a0b361db0f51081fc5a2541ae51683',
