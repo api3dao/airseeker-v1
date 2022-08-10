@@ -57,7 +57,7 @@
     "lodash": "^4.17.21",
     "promise.any": "^2.0.4",
     "source-map-support": "^0.5.21",
-    "zod": "^3.17.9"
+    "zod": "^3.18.0"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.1.0",
