@@ -140,6 +140,27 @@ it('fails if beacons.<beaconId>.templateId is not defined in templates', () => {
   );
 });
 
+it('fails if beaconSets.<beaconSetId>.[beaconId] is not defined in beacons', () => {
+  const config: Config = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '..', 'config', 'airseeker.example.json'), 'utf8')
+  );
+  const [firstBeaconSetId, firstBeaconSetValue] = Object.entries(config.beaconSets)[0];
+  const firstBeaconSetBeaconId = firstBeaconSetValue[0];
+  delete config.beacons[firstBeaconSetBeaconId];
+  delete config.triggers.dataFeedUpdates[1];
+  const interpolatedConfig = interpolateSecrets(config, envVariables);
+
+  expect(() => configSchema.parse(interpolatedConfig)).toThrow(
+    new ZodError([
+      {
+        code: 'custom',
+        message: `Beacon ID "${firstBeaconSetBeaconId}" is not defined in the config.beacons object`,
+        path: ['beaconSets', firstBeaconSetId, 0],
+      },
+    ])
+  );
+});
+
 it('fails if triggers.dataFeedUpdates.<chainId> is not defined in chains', () => {
   const config: Config = JSON.parse(
     fs.readFileSync(path.join(__dirname, '..', 'config', 'airseeker.example.json'), 'utf8')
