@@ -33,6 +33,16 @@ type BeaconSetBeaconValue = {
   value: ethers.BigNumber;
 };
 
+const median = (arr: ethers.BigNumber[]) => {
+  const mid = Math.floor(arr.length / 2);
+  const nums = [...arr].sort((a, b) => {
+    if (a.lt(b)) return -1;
+    else if (a.gt(b)) return 1;
+    else return 0;
+  });
+  return arr.length % 2 !== 0 ? nums[mid] : nums[mid - 1].add(nums[mid]).div(2);
+};
+
 export const groupDataFeedsByProviderSponsor = () => {
   const { config, providers: stateProviders } = getState();
   return Object.entries(config.triggers.dataFeedUpdates).reduce(
@@ -68,8 +78,8 @@ export const updateDataFeedsInLoop = async (providerSponsorDataFeeds: ProviderSp
     const startTimestamp = Date.now();
     const { updateInterval } = providerSponsorDataFeeds;
 
-    await updateBeacons(providerSponsorDataFeeds);
-    await updateBeaconSets(providerSponsorDataFeeds);
+    await updateBeacons(providerSponsorDataFeeds, startTimestamp);
+    await updateBeaconSets(providerSponsorDataFeeds, startTimestamp);
 
     const duration = Date.now() - startTimestamp;
     const waitTime = Math.max(0, updateInterval * 1_000 - duration);
@@ -79,7 +89,7 @@ export const updateDataFeedsInLoop = async (providerSponsorDataFeeds: ProviderSp
 
 // We pass return value from `prepareGoOptions` (with calculated timeout) to every `go` call in the function to enforce the update cycle.
 // This solution is not precise but since chain operations are the only ones that actually take some time this should be a good enough solution.
-export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataFeeds) => {
+export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataFeeds, startTime: number) => {
   const { config, beaconValues } = getState();
   const { provider, sponsorAddress, beacons } = providerSponsorBeacons;
   const { rpcProvider, chainId, providerName } = provider;
@@ -89,7 +99,6 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
   };
   logger.debug(`Processing beacon updates`, logOptionsSponsor);
 
-  const startTime = Date.now();
   // All the beacon updates for given provider & sponsor have up to <updateInterval> seconds to finish
   const totalTimeout = providerSponsorBeacons.updateInterval * 1_000;
 
@@ -238,7 +247,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
 
 // We pass return value from `prepareGoOptions` (with calculated timeout) to every `go` call in the function to enforce the update cycle.
 // This solution is not precise but since chain operations are the only ones that actually take some time this should be a good enough solution.
-export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDataFeeds) => {
+export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDataFeeds, startTime: number) => {
   const { config, beaconValues } = getState();
   const { provider, sponsorAddress, beaconSets: beaconSetUpdates } = providerSponsorBeacons;
   const { rpcProvider, chainId, providerName } = provider;
@@ -248,7 +257,6 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
   };
   logger.debug(`Processing beacon set updates`, logOptionsSponsor);
 
-  const startTime = Date.now();
   // All the beacon set updates for given provider & sponsor have up to <updateInterval> seconds to finish
   const totalTimeout = providerSponsorBeacons.updateInterval * 1_000;
 
@@ -352,7 +360,7 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
     });
     const beaconSetBeaconValuesResults = await Promise.allSettled(beaconSetBeaconValuesPromises);
     if (beaconSetBeaconValuesResults.some((data) => data.status === 'rejected')) {
-      logger.warn('There was an error fetching beacon data for beacon set. Skipping.');
+      logger.warn('There was an error fetching beacon data for beacon set. Skipping.', logOptionsBeaconSetId);
       continue;
     }
 
@@ -369,7 +377,7 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
       logOptionsBeaconSetId
     );
     // TODO: what if the beaconSet is not yet initialized?
-    // Should we continue with next beaconSet? See https://github.com/API3-CTT/airseeker/blob/166-update-beacon-sets-implementation/src/update-beacons.ts#L151
+    // Should we continue with next beaconSet? See https://github.com/api3dao/airseeker/blob/166-update-beacon-sets-implementation/src/update-data-feeds.ts#L164-L166
 
     // calculate beacon set timestamp from beacon timestamps (https://github.com/api3dao/airnode-protocol-v1/blob/main/contracts/dapis/DapiServer.sol#L443)
     const accumulatedTimestamp = beaconSetBeaconValues.reduce((total, next) => total + parseInt(next.timestamp, 10), 0);
@@ -391,18 +399,8 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
         logOptionsBeaconSetId
       );
     } else {
-      // IF the deviation threshold is reached do the update, skip otherwise
-      const median = (arr: ethers.BigNumber[]) => {
-        const mid = Math.floor(arr.length / 2);
-        const nums = [...arr].sort((a, b) => {
-          if (a.lt(b)) return -1;
-          else if (a.gt(b)) return 1;
-          else return 0;
-        });
-        return arr.length % 2 !== 0 ? nums[mid] : nums[mid - 1].add(nums[mid]).div(2);
-      };
       // Check beacon set condition
-      // TODO: should we use median like in DapiServer or mean?
+      // IF the deviation threshold is reached do the update, skip otherwise
       const updatedValue = median(beaconSetBeaconValues.map((value) => value.value));
       const shouldUpdate = checkUpdateCondition(
         beaconSetValueOnChain.value,

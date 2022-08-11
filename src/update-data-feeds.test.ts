@@ -202,7 +202,7 @@ type ComparableProviderSponsorDataFeeds = {
   beaconSets: BeaconSetUpdate[];
 };
 
-const cpsbg: ComparableProviderSponsorDataFeeds[] = [
+const cpsdf: ComparableProviderSponsorDataFeeds[] = [
   {
     provider: 'https://some.self.hosted.mainnet.url',
     sponsorAddress: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
@@ -235,9 +235,9 @@ describe('groupDataFeedsByProviderSponsor', () => {
     }));
 
     expect(providerSponsorDataFeedsGroups).toHaveLength(3);
-    expect(comparableProviderSponsorDataFeedsGroups).toContainEqual(cpsbg[0]);
-    expect(comparableProviderSponsorDataFeedsGroups).toContainEqual(cpsbg[1]);
-    expect(comparableProviderSponsorDataFeedsGroups).toContainEqual(cpsbg[2]);
+    expect(comparableProviderSponsorDataFeedsGroups).toContainEqual(cpsdf[0]);
+    expect(comparableProviderSponsorDataFeedsGroups).toContainEqual(cpsdf[1]);
+    expect(comparableProviderSponsorDataFeedsGroups).toContainEqual(cpsdf[2]);
   });
 });
 
@@ -250,9 +250,9 @@ describe('initiateDataFeedUpdates', () => {
 
     api.initiateDataFeedUpdates();
     expect(comparableProviderSponsorDataFeedsGroups).toHaveLength(3);
-    expect(comparableProviderSponsorDataFeedsGroups).toContainEqual(cpsbg[0]);
-    expect(comparableProviderSponsorDataFeedsGroups).toContainEqual(cpsbg[1]);
-    expect(comparableProviderSponsorDataFeedsGroups).toContainEqual(cpsbg[2]);
+    expect(comparableProviderSponsorDataFeedsGroups).toContainEqual(cpsdf[0]);
+    expect(comparableProviderSponsorDataFeedsGroups).toContainEqual(cpsdf[1]);
+    expect(comparableProviderSponsorDataFeedsGroups).toContainEqual(cpsdf[2]);
   });
 });
 
@@ -364,7 +364,7 @@ describe('updateBeaconSets', () => {
 
     const groups = api.groupDataFeedsByProviderSponsor();
 
-    await api.updateBeaconSets(groups[0]);
+    await api.updateBeaconSets(groups[0], Date.now());
 
     expect(readOnChainBeaconDataSpy).toHaveBeenCalled();
     expect(updateBeaconSetWithSignedDataSpy).toHaveBeenCalledWith(

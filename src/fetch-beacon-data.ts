@@ -20,7 +20,7 @@ export const initiateFetchingBeaconData = async () => {
     ...Object.values(config.triggers.dataFeedUpdates).flatMap((dataFeedUpdatesPerSponsor) => {
       return Object.values(dataFeedUpdatesPerSponsor).flatMap((dataFeedUpdate) => {
         return [
-          ...dataFeedUpdate.beacons.flatMap((b) => b.beaconId),
+          ...dataFeedUpdate.beacons.map((b) => b.beaconId),
           ...dataFeedUpdate.beaconSets.flatMap((b) => config.beaconSets[b.beaconSetId]),
         ];
       });
