@@ -2,7 +2,7 @@ import * as node from '@api3/airnode-node';
 import { DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol-v1';
 import { go } from '@api3/promise-utils';
 import { ethers } from 'ethers';
-import { isEmpty, isNil } from 'lodash';
+import { isEmpty } from 'lodash';
 import { getCurrentBlockNumber } from './block-number';
 import { checkOnchainDataFreshness, checkSignedDataFreshness, checkUpdateCondition } from './check-condition';
 import { INT224_MAX, INT224_MIN, NO_DATA_FEEDS_EXIT_CODE, PROTOCOL_ID } from './constants';
@@ -319,7 +319,7 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
       const beaconResponse: SignedData = beaconValues[beaconId];
 
       // Check whether we have a value for given beacon
-      if (isNil(beaconResponse)) {
+      if (!beaconResponse) {
         logger.warn('Missing off chain data for beacon.', logOptionsBeaconId);
         // IF there's no value for a given beacon, fetch it from the chain
         const beaconValueOnChain = await readDataFeedWithId(
@@ -330,7 +330,7 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
           logOptionsBeaconId
         );
         // IF the value is not available on the chain skip the update
-        if (isNil(beaconValueOnChain)) {
+        if (!beaconValueOnChain) {
           const message = `Missing on chain data for beacon.`;
           logger.warn(message, logOptionsBeaconId);
           throw new Error(message);
