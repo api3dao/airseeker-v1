@@ -376,8 +376,11 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
       prepareGoOptions(startTime, totalTimeout),
       logOptionsBeaconSetId
     );
-    // TODO: what if the beaconSet is not yet initialized?
-    // Should we continue with next beaconSet? See https://github.com/api3dao/airseeker/blob/166-update-beacon-sets-implementation/src/update-data-feeds.ts#L164-L166
+    if (!beaconSetValueOnChain) {
+      const message = `Missing on chain data for beaconSet. Skipping.`;
+      logger.warn(message, logOptionsBeaconSetId);
+      continue;
+    }
 
     // calculate beacon set timestamp from beacon timestamps (https://github.com/api3dao/airnode-protocol-v1/blob/main/contracts/dapis/DapiServer.sol#L443)
     const accumulatedTimestamp = beaconSetBeaconValues.reduce((total, next) => total + parseInt(next.timestamp, 10), 0);
