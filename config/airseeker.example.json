@@ -102,7 +102,7 @@
     }
   },
   "triggers": {
-    "beaconUpdates": {
+    "dataFeedUpdates": {
       "1": {
         "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": {
           "beacons": [
@@ -117,25 +117,6 @@
               "heartbeatInterval": 86400
             }
           ],
-          "updateInterval": 30
-        }
-      },
-      "3": {
-        "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": {
-          "beacons": [
-            {
-              "beaconId": "0x717d60cb328ef7ea138ae1b31c78a03fe6caa1a05568b1649e89cd924321b732",
-              "deviationThreshold": 0.2,
-              "heartbeatInterval": 86400
-            }
-          ],
-          "updateInterval": 30
-        }
-      }
-    },
-    "beaconSetUpdates": {
-      "1": {
-        "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": {
           "beaconSets": [
             {
               "beaconSetId": "0x786c4a7929a666c77ba5d4d3ce7ed61f2ba9885525f0a7577f014641568926fe",
@@ -148,13 +129,14 @@
       },
       "3": {
         "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": {
-          "beaconSets": [
+          "beacons": [
             {
-              "beaconSetId": "0x786c4a7929a666c77ba5d4d3ce7ed61f2ba9885525f0a7577f014641568926fe",
+              "beaconId": "0x717d60cb328ef7ea138ae1b31c78a03fe6caa1a05568b1649e89cd924321b732",
               "deviationThreshold": 0.2,
               "heartbeatInterval": 86400
             }
           ],
+          "beaconSets": [],
           "updateInterval": 30
         }
       }

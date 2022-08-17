@@ -59,6 +59,26 @@ it('fails if derived beaconId is different to beacons.<beaconId>', () => {
   );
 });
 
+it('fails if derived beaconSetId is different to beaconSets.<beaconSetId>', () => {
+  const config: Config = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '..', 'config', 'airseeker.example.json'), 'utf8')
+  );
+  const firstBeaconSetId = Object.keys(config.beaconSets)[0];
+  const randomBeaconSetId = ethers.utils.hexlify(ethers.utils.randomBytes(32));
+  config.beaconSets[randomBeaconSetId] = config.beaconSets[firstBeaconSetId];
+  const interpolatedConfig = interpolateSecrets(config, envVariables);
+
+  expect(() => configSchema.parse(interpolatedConfig)).toThrow(
+    new ZodError([
+      {
+        code: 'custom',
+        message: `BeaconSet ID "${randomBeaconSetId}" is invalid`,
+        path: ['beaconSets', randomBeaconSetId],
+      },
+    ])
+  );
+});
+
 it('fails if derived templateId is different to templates.<templateId>', () => {
   const config: Config = JSON.parse(
     fs.readFileSync(path.join(__dirname, '..', 'config', 'airseeker.example.json'), 'utf8')
@@ -120,14 +140,35 @@ it('fails if beacons.<beaconId>.templateId is not defined in templates', () => {
   );
 });
 
-it('fails if triggers.beaconUpdates.<chainId> is not defined in chains', () => {
+it('fails if beaconSets.<beaconSetId>.[beaconId] is not defined in beacons', () => {
   const config: Config = JSON.parse(
     fs.readFileSync(path.join(__dirname, '..', 'config', 'airseeker.example.json'), 'utf8')
   );
-  const [firstChainId, firstChainValues] = Object.entries(config.triggers.beaconUpdates)[0];
+  const [firstBeaconSetId, firstBeaconSetValue] = Object.entries(config.beaconSets)[0];
+  const firstBeaconSetBeaconId = firstBeaconSetValue[0];
+  delete config.beacons[firstBeaconSetBeaconId];
+  delete config.triggers.dataFeedUpdates[1];
+  const interpolatedConfig = interpolateSecrets(config, envVariables);
+
+  expect(() => configSchema.parse(interpolatedConfig)).toThrow(
+    new ZodError([
+      {
+        code: 'custom',
+        message: `Beacon ID "${firstBeaconSetBeaconId}" is not defined in the config.beacons object`,
+        path: ['beaconSets', firstBeaconSetId, 0],
+      },
+    ])
+  );
+});
+
+it('fails if triggers.dataFeedUpdates.<chainId> is not defined in chains', () => {
+  const config: Config = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '..', 'config', 'airseeker.example.json'), 'utf8')
+  );
+  const [firstChainId, firstChainValues] = Object.entries(config.triggers.dataFeedUpdates)[0];
   const randomChainId = '123';
-  config.triggers.beaconUpdates[randomChainId] = firstChainValues;
-  delete config.triggers.beaconUpdates[firstChainId];
+  config.triggers.dataFeedUpdates[randomChainId] = firstChainValues;
+  delete config.triggers.dataFeedUpdates[firstChainId];
   const interpolatedConfig = interpolateSecrets(config, envVariables);
 
   expect(() => configSchema.parse(interpolatedConfig)).toThrow(
@@ -135,20 +176,20 @@ it('fails if triggers.beaconUpdates.<chainId> is not defined in chains', () => {
       {
         code: 'custom',
         message: `Chain ID "${randomChainId}" is not defined in the config.chains object`,
-        path: ['triggers', 'beaconUpdates', randomChainId],
+        path: ['triggers', 'dataFeedUpdates', randomChainId],
       },
     ])
   );
 });
 
-it('fails if triggers.beaconUpdates.<chainId>.<beaconId> is not defined in beacons', () => {
+it('fails if triggers.dataFeedUpdates.<chainId>.<sponsorAddress>.beacons.<beaconId> is not defined in beacons', () => {
   const config: Config = JSON.parse(
     fs.readFileSync(path.join(__dirname, '..', 'config', 'airseeker.example.json'), 'utf8')
   );
   const randomBeaconId = ethers.utils.hexlify(ethers.utils.randomBytes(32));
-  const firstChainId = Object.keys(config.triggers.beaconUpdates)[0];
-  const firstSponsorAddress = Object.keys(config.triggers.beaconUpdates[firstChainId])[0];
-  config.triggers.beaconUpdates[firstChainId][firstSponsorAddress].beacons[0].beaconId = randomBeaconId;
+  const firstChainId = Object.keys(config.triggers.dataFeedUpdates)[0];
+  const firstSponsorAddress = Object.keys(config.triggers.dataFeedUpdates[firstChainId])[0];
+  config.triggers.dataFeedUpdates[firstChainId][firstSponsorAddress].beacons[0].beaconId = randomBeaconId;
   const interpolatedConfig = interpolateSecrets(config, envVariables);
 
   expect(() => configSchema.parse(interpolatedConfig)).toThrow(
@@ -156,7 +197,28 @@ it('fails if triggers.beaconUpdates.<chainId>.<beaconId> is not defined in beaco
       {
         code: 'custom',
         message: `Beacon ID "${randomBeaconId}" is not defined in the config.beacons object`,
-        path: ['triggers', 'beaconUpdates', firstChainId, firstSponsorAddress, 'beacons', 0],
+        path: ['triggers', 'dataFeedUpdates', firstChainId, firstSponsorAddress, 'beacons', 0],
+      },
+    ])
+  );
+});
+
+it('fails if triggers.dataFeedUpdates.<chainId>.<sponsorAddress>.beaconSets.<beaconSetId> is not defined in beaconSets', () => {
+  const config: Config = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '..', 'config', 'airseeker.example.json'), 'utf8')
+  );
+  const randomBeaconSetId = ethers.utils.hexlify(ethers.utils.randomBytes(32));
+  const firstChainId = Object.keys(config.triggers.dataFeedUpdates)[0];
+  const firstSponsorAddress = Object.keys(config.triggers.dataFeedUpdates[firstChainId])[0];
+  config.triggers.dataFeedUpdates[firstChainId][firstSponsorAddress].beaconSets[0].beaconSetId = randomBeaconSetId;
+  const interpolatedConfig = interpolateSecrets(config, envVariables);
+
+  expect(() => configSchema.parse(interpolatedConfig)).toThrow(
+    new ZodError([
+      {
+        code: 'custom',
+        message: `BeaconSet ID "${randomBeaconSetId}" is not defined in the config.beaconSets object`,
+        path: ['triggers', 'dataFeedUpdates', firstChainId, firstSponsorAddress, 'beaconSets', 0],
       },
     ])
   );

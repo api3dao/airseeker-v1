@@ -231,6 +231,23 @@ export const deployAndUpdateSubscriptions = async () => {
     signature: signedDataSignature,
   };
 
+  const beaconIdETH = hre.ethers.utils.keccak256(
+    hre.ethers.utils.solidityPack(['address', 'bytes32'], ['0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace', templateIdETH])
+  );
+  const beaconIdBTC = hre.ethers.utils.keccak256(
+    hre.ethers.utils.solidityPack(['address', 'bytes32'], ['0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace', templateIdBTC])
+  );
+
+  // BeaconSet update
+  const tx = await dapiServer
+    .connect(airnodePspSponsorWallet)
+    .updateBeaconSetWithBeacons([beaconIdETH, beaconIdBTC], { gasLimit: 500_000 });
+  await tx.wait();
+
+  const beaconSetId = hre.ethers.utils.keccak256(
+    hre.ethers.utils.defaultAbiCoder.encode(['bytes32[]'], [[beaconIdETH, beaconIdBTC]])
+  );
+
   return {
     accessControlRegistryFactory,
     accessControlRegistry,
@@ -245,5 +262,8 @@ export const deployAndUpdateSubscriptions = async () => {
     subscriptionIdETH,
     subscriptionIdBTC,
     signedData,
+    beaconIdETH,
+    beaconIdBTC,
+    beaconSetId,
   };
 };

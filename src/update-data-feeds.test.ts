@@ -1,11 +1,13 @@
+import { DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol-v1';
 import { ethers } from 'ethers';
-import { logger } from './logging';
+import * as gasOracleModule from './gas-oracle';
 import * as state from './state';
-import { BeaconUpdate, Config } from './validation';
-import { initializeProviders } from './providers';
-import * as api from './update-beacons';
+import * as api from './update-data-feeds';
+import * as readDataFeedModule from './read-data-feed-with-id';
 import * as utils from './utils';
-import { getUnixTimestamp } from '../test/fixtures';
+import { initializeProviders } from './providers';
+import { BeaconSetUpdate, BeaconUpdate, Config } from './validation';
+import { validSignedData } from '../test/fixtures';
 
 const config: Config = {
   airseekerWalletMnemonic: 'achieve climb couple wait accident symbol spy blouse reduce foil echo label',
@@ -36,7 +38,13 @@ const config: Config = {
       fetchInterval: 40,
     },
   },
-  beaconSets: {},
+  beaconSets: {
+    '0x41c3d6e0ee82ae3d33356c4dceb84e98d1a0b361db0f51081fc5a2541ae51683': [
+      '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c',
+      '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2',
+      '0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469beabcdabcd',
+    ],
+  },
   chains: {
     '1': {
       contracts: {
@@ -140,19 +148,26 @@ const config: Config = {
     },
   },
   triggers: {
-    beaconUpdates: {
+    dataFeedUpdates: {
       '1': {
         '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC': {
           beacons: [
             {
               beaconId: '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c',
               deviationThreshold: 0.1,
-              heartbeatInterval: 86_400,
+              heartbeatInterval: 86400,
             },
             {
               beaconId: '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2',
               deviationThreshold: 0.7,
               heartbeatInterval: 15_000,
+            },
+          ],
+          beaconSets: [
+            {
+              beaconSetId: '0x41c3d6e0ee82ae3d33356c4dceb84e98d1a0b361db0f51081fc5a2541ae51683',
+              deviationThreshold: 0.1,
+              heartbeatInterval: 86400,
             },
           ],
           // Artificially low interval to make the tests run fast without mocking
@@ -165,85 +180,90 @@ const config: Config = {
             {
               beaconId: '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c',
               deviationThreshold: 0.2,
-              heartbeatInterval: 86_400,
+              heartbeatInterval: 86400,
             },
           ],
+          beaconSets: [],
           updateInterval: 40,
         },
       },
     },
-    beaconSetUpdates: {},
   },
 };
 state.initializeState(config);
 initializeProviders();
 
 // Can't compare RPC provider instances so comparing groups where the provider is represented by its URL
-type ComparableProviderSponsorBeacons = {
+type ComparableProviderSponsorDataFeeds = {
   provider: string;
   sponsorAddress: string;
   updateInterval: number;
   beacons: BeaconUpdate[];
+  beaconSets: BeaconSetUpdate[];
 };
 
-const cpsbg: ComparableProviderSponsorBeacons[] = [
+const cpsdf: ComparableProviderSponsorDataFeeds[] = [
   {
     provider: 'https://some.self.hosted.mainnet.url',
     sponsorAddress: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
     updateInterval: 1,
-    beacons: config.triggers.beaconUpdates['1']['0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC'].beacons,
+    beacons: config.triggers.dataFeedUpdates['1']['0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC'].beacons,
+    beaconSets: config.triggers.dataFeedUpdates['1']['0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC'].beaconSets,
   },
   {
     provider: 'https://some.infura.mainnet.url',
     sponsorAddress: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
     updateInterval: 1,
-    beacons: config.triggers.beaconUpdates['1']['0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC'].beacons,
+    beacons: config.triggers.dataFeedUpdates['1']['0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC'].beacons,
+    beaconSets: config.triggers.dataFeedUpdates['1']['0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC'].beaconSets,
   },
   {
     provider: 'https://some.influra.ropsten.url',
     sponsorAddress: '0x417B205fEdB1b2352c7996B0F050A7a61544c5e2',
     updateInterval: 40,
-    beacons: config.triggers.beaconUpdates['3']['0x417B205fEdB1b2352c7996B0F050A7a61544c5e2'].beacons,
+    beacons: config.triggers.dataFeedUpdates['3']['0x417B205fEdB1b2352c7996B0F050A7a61544c5e2'].beacons,
+    beaconSets: config.triggers.dataFeedUpdates['3']['0x417B205fEdB1b2352c7996B0F050A7a61544c5e2'].beaconSets,
   },
 ];
 
-describe('groupBeaconsByProviderSponsor', () => {
-  it('groups beacons by provider+sponsor pair', () => {
-    const providerSponsorBeaconsGroups = api.groupBeaconsByProviderSponsor();
-    const comparableProviderSponsorBeaconsGroups = providerSponsorBeaconsGroups.map((psbg) => ({
-      ...psbg,
-      provider: psbg.provider.rpcProvider.connection.url,
+describe('groupDataFeedsByProviderSponsor', () => {
+  it('groups dataFeeds by provider+sponsor pair', () => {
+    const providerSponsorDataFeedsGroups = api.groupDataFeedsByProviderSponsor();
+    const comparableProviderSponsorDataFeedsGroups = providerSponsorDataFeedsGroups.map((psdfg) => ({
+      ...psdfg,
+      provider: psdfg.provider.rpcProvider.connection.url,
     }));
 
-    expect(providerSponsorBeaconsGroups).toHaveLength(3);
-    expect(comparableProviderSponsorBeaconsGroups).toContainEqual(cpsbg[0]);
-    expect(comparableProviderSponsorBeaconsGroups).toContainEqual(cpsbg[1]);
-    expect(comparableProviderSponsorBeaconsGroups).toContainEqual(cpsbg[2]);
+    expect(providerSponsorDataFeedsGroups).toHaveLength(3);
+    expect(comparableProviderSponsorDataFeedsGroups).toContainEqual(cpsdf[0]);
+    expect(comparableProviderSponsorDataFeedsGroups).toContainEqual(cpsdf[1]);
+    expect(comparableProviderSponsorDataFeedsGroups).toContainEqual(cpsdf[2]);
   });
 });
 
-describe('initiateBeaconUpdates', () => {
+describe('initiateDataFeedUpdates', () => {
   it('initiates beacon updates', async () => {
-    const comparableProviderSponsorBeaconsGroups: ComparableProviderSponsorBeacons[] = [];
-    jest.spyOn(api, 'updateBeaconsInLoop').mockImplementation(async (group) => {
-      comparableProviderSponsorBeaconsGroups.push({ ...group, provider: group.provider.rpcProvider.connection.url });
+    const comparableProviderSponsorDataFeedsGroups: ComparableProviderSponsorDataFeeds[] = [];
+    jest.spyOn(api, 'updateDataFeedsInLoop').mockImplementation(async (group) => {
+      comparableProviderSponsorDataFeedsGroups.push({ ...group, provider: group.provider.rpcProvider.connection.url });
     });
 
-    api.initiateBeaconUpdates();
-    expect(comparableProviderSponsorBeaconsGroups).toHaveLength(3);
-    expect(comparableProviderSponsorBeaconsGroups).toContainEqual(cpsbg[0]);
-    expect(comparableProviderSponsorBeaconsGroups).toContainEqual(cpsbg[1]);
-    expect(comparableProviderSponsorBeaconsGroups).toContainEqual(cpsbg[2]);
+    api.initiateDataFeedUpdates();
+    expect(comparableProviderSponsorDataFeedsGroups).toHaveLength(3);
+    expect(comparableProviderSponsorDataFeedsGroups).toContainEqual(cpsdf[0]);
+    expect(comparableProviderSponsorDataFeedsGroups).toContainEqual(cpsdf[1]);
+    expect(comparableProviderSponsorDataFeedsGroups).toContainEqual(cpsdf[2]);
   });
 });
 
-describe('updateBeaconsInLoop', () => {
-  it('calls updateBeacons in a loop', async () => {
-    const groups = api.groupBeaconsByProviderSponsor();
+describe('updateDataFeedsInLoop', () => {
+  it('calls updateBeacons and updateBeaconSets in a loop', async () => {
+    const groups = api.groupDataFeedsByProviderSponsor();
     let requestCount = 0;
     jest.spyOn(api, 'updateBeacons').mockImplementation(async () => {
       requestCount++;
     });
+    jest.spyOn(api, 'updateBeaconSets');
     jest.spyOn(state, 'getState').mockImplementation(() => {
       if (requestCount === 2) {
         return {
@@ -264,9 +284,10 @@ describe('updateBeaconsInLoop', () => {
       }
     });
 
-    await api.updateBeaconsInLoop(groups[0]);
+    await api.updateDataFeedsInLoop(groups[0]);
 
     expect(api.updateBeacons).toHaveBeenCalledTimes(2);
+    expect(api.updateBeaconSets).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -296,43 +317,71 @@ describe('prepareGoOptions', () => {
   });
 });
 
-it('readOnChainBeaconData', async () => {
-  jest.spyOn(logger, 'warn');
-  const feedValue = { value: ethers.BigNumber.from('123'), timestamp: getUnixTimestamp('2019-3-21') };
-  const readDataFeedWithIdMock = jest
-    .fn()
-    .mockRejectedValueOnce(new Error('cannot read chain'))
-    .mockRejectedValueOnce(new Error('some other error'))
-    .mockResolvedValue(feedValue);
+describe('updateBeaconSets', () => {
+  it('calls updateBeaconSetWithSignedData in DapiServer contract', async () => {
+    state.updateState((currentState) => ({
+      ...currentState,
+      beaconValues: {
+        '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c': validSignedData,
+        '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2': undefined as any,
+        '0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469beabcdabcd': validSignedData,
+      },
+    }));
 
-  const dapiServer: any = {
-    address: ethers.utils.getAddress(ethers.utils.hexlify(ethers.utils.randomBytes(20))),
-    connect() {
-      return this;
-    },
-    readDataFeedWithId: readDataFeedWithIdMock,
-  };
+    const getBlockNumberSpy = jest.spyOn(ethers.providers.JsonRpcProvider.prototype, 'getBlockNumber');
+    getBlockNumberSpy.mockResolvedValueOnce(12);
 
-  const providerUrl = 'http://127.0.0.1:8545/';
-  const voidSigner = new ethers.VoidSigner(
-    ethers.constants.AddressZero,
-    new ethers.providers.JsonRpcProvider(providerUrl)
-  );
+    const txCountSpy = jest.spyOn(ethers.providers.JsonRpcProvider.prototype, 'getTransactionCount');
+    txCountSpy.mockResolvedValueOnce(212);
 
-  const onChainBeaconData = await api.readOnChainBeaconData(
-    voidSigner,
-    dapiServer,
-    'some-id',
-    { retries: 100_000 },
-    {}
-  );
+    const gasPriceSpy = jest.spyOn(gasOracleModule, 'getGasPrice');
+    gasPriceSpy.mockImplementationOnce(jest.fn());
 
-  expect(onChainBeaconData).toEqual(feedValue);
-  expect(logger.warn).toHaveBeenCalledTimes(2);
-  expect(logger.warn).toHaveBeenNthCalledWith(1, 'Failed attempt to read data feed. Error: Error: cannot read chain', {
-    additional: { 'Dapi-Server': dapiServer.address },
-  });
-  expect(logger.warn).toHaveBeenNthCalledWith(2, 'Failed attempt to read data feed. Error: Error: some other error', {
-    additional: { 'Dapi-Server': dapiServer.address },
+    const timestamp = 1649664085;
+    const readOnChainBeaconDataSpy = jest
+      .spyOn(readDataFeedModule, 'readDataFeedWithId')
+      .mockReturnValueOnce(Promise.resolve({ timestamp: timestamp - 25, value: ethers.BigNumber.from(40000000000) }))
+      .mockReturnValueOnce(
+        Promise.resolve({
+          timestamp: timestamp - 30,
+          value: ethers.BigNumber.from(41000000000),
+        })
+      );
+
+    const updateBeaconSetWithSignedDataSpy = jest.fn();
+    const updateBeaconSetWithSignedDataMock = updateBeaconSetWithSignedDataSpy.mockImplementation(async () => ({
+      hash: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
+    }));
+    jest.spyOn(DapiServerFactory, 'connect').mockImplementation(
+      (_dapiServerAddress, _provider) =>
+        ({
+          connect(_signerOrProvider: ethers.Signer | ethers.providers.Provider | string) {
+            return this;
+          },
+          updateBeaconSetWithSignedData: updateBeaconSetWithSignedDataMock,
+        } as any)
+    );
+
+    const groups = api.groupDataFeedsByProviderSponsor();
+
+    await api.updateBeaconSets(groups[0], Date.now());
+
+    expect(readOnChainBeaconDataSpy).toHaveBeenCalled();
+    expect(updateBeaconSetWithSignedDataSpy).toHaveBeenCalledWith(
+      [
+        '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
+        '0x5656D3A378B1AAdFDDcF4196ea364A9d78617290',
+        '0x5656D3A378B1AAdFDDcF4196ea364A9d78617290',
+      ],
+      [
+        '0xea30f92923ece1a97af69d450a8418db31be5a26a886540a13c09c739ba8eaaa',
+        '0xea30f92923ece1a97af69d450a8418db31be5a26a886540a13c09c739ba8eaaa',
+        '0x9ec34b00a5019442dcd05a4860ff2bf015164b368cb83fcb756088fcabcdabcd',
+      ],
+      [validSignedData.timestamp, expect.any(String), validSignedData.timestamp],
+      [validSignedData.encodedValue, '0x', validSignedData.encodedValue],
+      [validSignedData.signature, expect.any(String), validSignedData.signature],
+      expect.objectContaining({ gasLimit: expect.any(ethers.BigNumber), gasPrice: undefined, nonce: 212, type: 2 })
+    );
   });
 });

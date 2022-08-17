@@ -184,7 +184,7 @@ const config: Config = {
     },
   },
   triggers: {
-    beaconUpdates: {
+    dataFeedUpdates: {
       '3317': {
         '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC': {
           beacons: [
@@ -199,6 +199,7 @@ const config: Config = {
               heartbeatInterval: 15_000,
             },
           ],
+          beaconSets: [],
           updateInterval: 30,
         },
       },
@@ -216,6 +217,7 @@ const config: Config = {
               heartbeatInterval: 15_000,
             },
           ],
+          beaconSets: [],
           updateInterval: 30,
         },
       },
@@ -228,11 +230,11 @@ const config: Config = {
               heartbeatInterval: 86_400,
             },
           ],
+          beaconSets: [],
           updateInterval: 30,
         },
       },
     },
-    beaconSetUpdates: {},
   },
 };
 
