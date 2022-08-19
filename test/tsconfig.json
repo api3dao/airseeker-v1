@@ -1,9 +1,11 @@
 {
-  "extends": "../tsconfig.base.json",
+  "extends": "../tsconfig.json",
   "compilerOptions": {
     "rootDir": "..",
-    "outDir": "./dist"
+    // The output files of this TS config are for development only. See the referenced TS configs
+    // which build the sources into the "dist" folder in the root of the validator project.
+    "outDir": "../build"
   },
   "references": [{ "path": "../src" }],
-  "include": ["../src/**/*.test.ts", "./**/*.ts"]
+  "include": ["./**/*.ts", "../src/**/*.test.ts"]
 }

@@ -2,9 +2,13 @@
 
 # Package directories & files
 /node_modules
-# Ignore dist folder in every (sub)folder
+# Ignore dist and build folder in every (sub)folder
 dist
+build
 *.tgz
+
+# TypeScript build files
+*.tsbuildinfo
 
 # IDE specific files
 .vscode
