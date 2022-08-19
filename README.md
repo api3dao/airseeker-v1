@@ -2,7 +2,7 @@
 
 A tool to update a beacons with signed responses from Airnode's gateway
 
-# Installation
+## Installation
 
 ```sh
 yarn install
@@ -47,62 +47,63 @@ secrets file.
 yarn start
 ```
 
-### Running with process manager
-
-You can use [PM2](https://pm2.keymetrics.io/) process manager to run Airseeker. PM2 is also used in the
-[Dockerized](#docker) version.
-
-```sh
-# Starting Airseeker
-yarn pm2:start
-# PM2 status
-yarn pm2:status
-# Logs
-yarn pm2:logs
-# Stopping Airseeker
-yarn pm2:stop
-```
-
-## Docker
-
-The container is running the Airseeker with the [PM2](https://pm2.keymetrics.io/) process manager and running a cronjob
-taking care of log rotation with [logrotate](https://linux.die.net/man/8/logrotate). We're using a default
-[generated logrotate configuration from PM2](https://pm2.keymetrics.io/docs/usage/log-management/#setting-up-a-native-logrotate).
-
-### Build
-
-```sh
-yarn docker:build
-```
-
-Resulting image is named `api3/airseeker`.
-
 ## Deploy
 
-Airseeker can be deployed to an ECS AWS cluster using the terraform recipes located in the `terraform` directory.
+### Credentials
 
-Terraform will build an intermediate docker image based on another image previously built using the `docker/Dockerfile`
-file. This intermediate image will have the config file baked into it and it will then be pushed to an ECR repository.
+Export AWS credentials in your terminal or ensure your local aws installation is logged in.
 
-### Prerequisites
+### General Airseeker Deployment Notes
 
-- [Docker](https://docs.docker.com/)
-- [Terraform](https://www.terraform.io/)
+The deployed Airseeker function won't immediately start (due to the scheduler).
 
-### Steps to deploy to AWS
+There are two main strategies for dealing with this:
 
-To run deploy Airseeker then you will need to cd into the `terraform` directory and run the following commands:
+1. Deploy Airseeker and start the new Airseeker immediately using the invoke commands below.
+2. Deploy Airseeker and wait up to 14 minutes for the deployed Airseeker to start.
 
-```sh
-terraform init
-terraform apply -var 'app_environment=dev'
-Alternatively you can provide the `aws_region`, `app_environment`, `app_docker_image`, etc as arguments to the `terraform apply` command.
+**Deploy Airseeker:**
+
+```shell
+yarn sls deploy --region us-east-1 --config serverless.aws.yml
 ```
 
-### Steps to remove from AWS
+**Invoke Airseeker:** (Optional)
 
-Then to destroy the deployment you can run the following command:
+```shell
+# Invoke the remote function - this will block until the Lambda times out, so we need to send it to the background and
+# then kill it prematurely. Killing this process does not stop the Lambda from continuing to execute. This command will
+# cause a scenario where two invocation instances of the Airseeker function will overlap temporarily.
+yarn sls invoke --config serverless.aws.yml --function airseeker &
 
-```sh
-terraform destroy -var 'app_environment=dev' -auto-approve
+# Store the PID of the previous command in a variable called `pid`
+pid=$!
+
+# Wait a bit
+sleep 10;
+
+# Kill the background process
+kill $pid
 ```
+
+**Remove Airseeker:**
+
+```shell
+yarn sls remove --config serverless.aws.yml
+```
+
+**Update Airseeker**
+
+If an Airseeker is already deployed, deploy the new Airseeker using a different service name in `serverless.yaml`, so
+that both Airseekers can run concurrently. Wait for the new Airseeker to start. Once it does, ensure that you're
+satisfied that it is functioning correctly (by referring to the target chains and/or CloudWatch logs). You may then
+revert the name of the service stack to the old Airseeker and remove it or alternatively delete it using the AWS
+CloudFormation console.
+
+### Caveats
+
+Sometimes a stack fails to be removed automatically. In these cases navigate to "Cloud Formation" in the AWS console and
+check the resources tab of the stack in question to see errors. Manually remove those resources.
+
+In particular AWS will sometimes refuse to delete an associated S3 bucket. Empty the bucket and remove it, then
+re-remove the CloudFormation stack.
