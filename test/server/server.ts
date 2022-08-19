@@ -1,5 +1,6 @@
 import express from 'express';
 import { ethers } from 'ethers';
+import morgan from 'morgan';
 import * as abi from '@api3/airnode-abi';
 import { validSignedData } from '../fixtures/index';
 import { logger } from '../../src/logging';
@@ -32,6 +33,7 @@ const PORT = 5432;
 
 const app = express();
 app.use(express.json());
+app.use(morgan('combined'));
 
 app.post('/signed-data-gateway/:endpoint', async (req, res) => {
   const encodedParameters = req.body.encodedParameters;
