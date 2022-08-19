@@ -14,8 +14,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "files": [
-    "dist",
-    "airseeker-service.config.js"
+    "dist"
   ],
   "scripts": {
     "build": "yarn clean && yarn compile",
@@ -32,10 +31,6 @@
     "eslint": "eslint . --ext .js,.ts",
     "eslint:fix": "eslint . --ext .js,.ts --fix",
     "postinstall": "husky install",
-    "pm2:logs": "pm2 logs",
-    "pm2:start": "ts-node -T scripts/run-locally.ts pm2 start airseeker-service.config.js",
-    "pm2:status": "pm2 status",
-    "pm2:stop": "pm2 delete airseeker-service.config.js",
     "prettier": "prettier --check \"./**/*.{js,ts,md,yml,json}\"",
     "prettier:fix": "prettier --write \"./**/*.{js,ts,md,yml,json}\" --ignore-unknown",
     "start": "ts-node -T scripts/run-locally.ts ts-node src/index.ts",
