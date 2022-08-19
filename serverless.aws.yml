@@ -13,7 +13,7 @@ provider:
   runtime: nodejs14.x
   architecture: arm64
   logRetentionInDays: 14
-  environment: ${file(load-secrets-env.js)}
+  environment: ${file(scripts/load-secrets-env.js)}
   deploymentMethod: direct
 
 functions:
