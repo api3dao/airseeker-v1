@@ -30,11 +30,6 @@ cache
 logs
 *.log
 
-# Terraform
-.terraform*
-terraform.tfstate*
-*.tfvars
-
 # Ignore Serverless directories
 .serverless
 .build

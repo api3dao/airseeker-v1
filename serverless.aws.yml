@@ -3,7 +3,6 @@ service: airseeker
 package:
   patterns:
     - ./config/airseeker.json
-    - '!terraform'
     - '!src'
     - '!.*'
 
