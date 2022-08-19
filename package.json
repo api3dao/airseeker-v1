@@ -40,7 +40,7 @@
     "pm2:stop": "pm2 delete airseeker-service.config.js",
     "prettier": "prettier --check \"./**/*.{js,ts,md,yml,json}\"",
     "prettier:fix": "prettier --write \"./**/*.{js,ts,md,yml,json}\" --ignore-unknown",
-    "start": "ts-node -T scripts/run-locally.ts ts-node src/index.ts",
+    "start": "ts-node -T scripts/run-locally.ts ts-node src/entrypoint.ts",
     "terraform:fmt:check": "ts-node scripts/terraform-fmt check",
     "terraform:fmt:write": "ts-node scripts/terraform-fmt write",
     "test": "SILENCE_LOGGER=true jest --selectProjects unit",
