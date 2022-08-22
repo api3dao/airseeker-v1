@@ -62,7 +62,7 @@
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.1.0",
     "@types/express": "^4.17.13",
-    "@types/jest": "^28.1.6",
+    "@types/jest": "^28.1.7",
     "@types/lodash": "^4.14.184",
     "@types/node": "^18.7.4",
     "@types/promise.any": "^2.0.0",
