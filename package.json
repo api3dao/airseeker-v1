@@ -47,7 +47,7 @@
     "test:e2e": "SILENCE_LOGGER=true jest --selectProjects e2e --runInBand"
   },
   "dependencies": {
-    "@api3/airnode-abi": "^0.7.2",
+    "@api3/airnode-abi": "^0.7.3",
     "@api3/airnode-node": "^0.7.2",
     "@api3/airnode-protocol-v1": "^0.6.0",
     "@api3/airnode-utilities": "^0.7.2",
