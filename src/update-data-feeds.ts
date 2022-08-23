@@ -4,6 +4,7 @@ import { go } from '@api3/promise-utils';
 import { ethers } from 'ethers';
 import { isEmpty } from 'lodash';
 import { getCurrentBlockNumber } from './block-number';
+import { calculateMedian } from './calculations';
 import { checkOnchainDataFreshness, checkSignedDataFreshness, checkUpdateCondition } from './check-condition';
 import { INT224_MAX, INT224_MIN, NO_DATA_FEEDS_EXIT_CODE, PROTOCOL_ID } from './constants';
 import { getGasPrice } from './gas-oracle';
@@ -31,16 +32,6 @@ type BeaconSetBeaconValue = {
   encodedValue: string;
   signature: string;
   value: ethers.BigNumber;
-};
-
-const median = (arr: ethers.BigNumber[]) => {
-  const mid = Math.floor(arr.length / 2);
-  const nums = [...arr].sort((a, b) => {
-    if (a.lt(b)) return -1;
-    else if (a.gt(b)) return 1;
-    else return 0;
-  });
-  return arr.length % 2 !== 0 ? nums[mid] : nums[mid - 1].add(nums[mid]).div(2);
 };
 
 export const groupDataFeedsByProviderSponsor = () => {
@@ -404,7 +395,7 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
     } else {
       // Check beacon set condition
       // IF the deviation threshold is reached do the update, skip otherwise
-      const updatedValue = median(beaconSetBeaconValues.map((value) => value.value));
+      const updatedValue = calculateMedian(beaconSetBeaconValues.map((value) => value.value));
       const shouldUpdate = checkUpdateCondition(
         beaconSetValueOnChain.value,
         beaconSetUpdate.deviationThreshold,
