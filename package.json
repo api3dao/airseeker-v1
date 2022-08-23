@@ -33,7 +33,6 @@
     "postinstall": "husky install",
     "prettier": "prettier --check \"./**/*.{js,ts,md,yml,json}\"",
     "prettier:fix": "prettier --write \"./**/*.{js,ts,md,yml,json}\" --ignore-unknown",
-    "start": "ts-node -T scripts/run-locally.ts ts-node src/entrypoint.ts",
     "test": "SILENCE_LOGGER=true jest --selectProjects unit",
     "test:e2e": "SILENCE_LOGGER=true jest --selectProjects e2e --runInBand"
   },
@@ -61,7 +60,6 @@
     "@typescript-eslint/eslint-plugin": "^5.33.0",
     "@typescript-eslint/parser": "^5.33.0",
     "cross-env": "^7.0.3",
-    "dotenv": "^16.0.1",
     "eslint": "^8.22.0",
     "eslint-plugin-functional": "^4.2.2",
     "eslint-plugin-import": "^2.26.0",

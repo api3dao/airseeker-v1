@@ -41,12 +41,6 @@ secrets file.
     compared to the reference block gas price percentile (defaults to `2`). Used to protect against large gas price
     spikes.
 
-## Usage
-
-```sh
-yarn start
-```
-
 ## Deploy
 
 ### Credentials
@@ -84,6 +78,12 @@ sleep 10;
 
 # Kill the background process
 kill $pid
+```
+
+**Invoke Airseeker (local):** (Optional)
+
+```shell
+yarn sls invoke local --config serverless.aws.yml -f airseeker
 ```
 
 **Remove Airseeker:**
