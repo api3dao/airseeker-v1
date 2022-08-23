@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { ethers } from 'ethers';
 import morgan from 'morgan';
 import * as abi from '@api3/airnode-abi';
@@ -35,7 +35,7 @@ const app = express();
 app.use(express.json());
 app.use(morgan('combined'));
 
-app.post('/signed-data-gateway/:endpoint', async (req, res) => {
+const handleResponse = async (req: Request, res: Response) => {
   const encodedParameters = req.body.encodedParameters;
   const decodedParameters = abi.decode(encodedParameters);
   const { from, to } = decodedParameters;
@@ -66,6 +66,22 @@ app.post('/signed-data-gateway/:endpoint', async (req, res) => {
   }
 
   res.status(200).send(validSignedData);
+};
+
+app.post('/signed-data-gateway/:endpoint', async (req, res) => {
+  handleResponse(req, res);
+});
+
+let throttledRequests = 0;
+
+app.post('/signed-data-gateway/throttled/:endpoint', async (req, res) => {
+  throttledRequests += 1;
+  if (throttledRequests % 2 === 1) {
+    res.status(400).send({});
+    return;
+  }
+
+  handleResponse(req, res);
 });
 
 app.listen(PORT, () => {

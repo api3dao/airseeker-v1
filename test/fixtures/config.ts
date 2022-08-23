@@ -108,6 +108,7 @@ export const buildLocalSecrets = () => ({
   CP_LOCAL_URL: 'http://127.0.0.1:8545/',
   HTTP_GATEWAY_API_KEY: 'some-api-key',
   HTTP_SIGNED_DATA_GATEWAY_URL: 'http://localhost:5432/signed-data-gateway/',
+  HTTP_SIGNED_DATA_GATEWAY_THROTTLED_URL: 'http://localhost:5432/signed-data-gateway/throttled/',
 });
 
 // Config for ETH subscription

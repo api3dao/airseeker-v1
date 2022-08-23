@@ -48,7 +48,8 @@ export const initiateFetchingBeaconData = async () => {
 export const fetchBeaconDataInLoop = async (beaconId: string) => {
   const { config } = getState();
 
-  while (!getState().stopSignalReceived) {
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
     const startTimestamp = Date.now();
     const { fetchInterval } = config.beacons[beaconId];
 

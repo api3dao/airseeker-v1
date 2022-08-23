@@ -1,3 +1,5 @@
+import * as path from 'path';
+import { loadConfig } from './config';
 import { main } from './main';
 
 /**
@@ -5,7 +7,8 @@ import { main } from './main';
  * We need a separate function from main to keep Jest happy (without having a dedicated Jest check).
  */
 export async function handler() {
-  main();
+  const config = loadConfig(path.join(__dirname, '..', 'config', 'airseeker.json'), process.env);
+  main(config);
 
   await new Promise((_resolve) => {});
 }

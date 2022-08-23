@@ -17,7 +17,6 @@ export type Providers = Record<string, Provider[]>;
 
 export interface State {
   config: Config;
-  stopSignalReceived: boolean;
   beaconValues: BeaconValueStorage;
   providers: Providers;
   logOptions: LogOptions;
@@ -33,7 +32,6 @@ export const initializeState = (config: Config) => {
 export const getInitialState = (config: Config) => {
   return {
     config,
-    stopSignalReceived: false,
     beaconValues: {},
     providers: {},
     logOptions: buildBaseOptions(

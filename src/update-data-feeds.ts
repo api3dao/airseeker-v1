@@ -14,7 +14,7 @@ import { getTransactionCount } from './transaction-count';
 import { prepareGoOptions, shortenAddress, sleep } from './utils';
 import { BeaconSetUpdate, BeaconUpdate, SignedData } from './validation';
 
-type ProviderSponsorDataFeeds = {
+export type ProviderSponsorDataFeeds = {
   provider: Provider;
   sponsorAddress: string;
   updateInterval: number;
@@ -74,7 +74,8 @@ export const initiateDataFeedUpdates = () => {
 };
 
 export const updateDataFeedsInLoop = async (providerSponsorDataFeeds: ProviderSponsorDataFeeds) => {
-  while (!getState().stopSignalReceived) {
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
     const startTimestamp = Date.now();
     const { updateInterval } = providerSponsorDataFeeds;
 

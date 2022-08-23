@@ -244,9 +244,9 @@ describe('groupDataFeedsByProviderSponsor', () => {
 describe('initiateDataFeedUpdates', () => {
   it('initiates beacon updates', async () => {
     const comparableProviderSponsorDataFeedsGroups: ComparableProviderSponsorDataFeeds[] = [];
-    jest.spyOn(api, 'updateDataFeedsInLoop').mockImplementation(async (group) => {
+    jest.spyOn(api, 'updateDataFeedsInLoop').mockImplementation((async (group) => {
       comparableProviderSponsorDataFeedsGroups.push({ ...group, provider: group.provider.rpcProvider.connection.url });
-    });
+    }) as (group: api.ProviderSponsorDataFeeds) => Promise<never>);
 
     api.initiateDataFeedUpdates();
     expect(comparableProviderSponsorDataFeedsGroups).toHaveLength(3);

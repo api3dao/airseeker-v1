@@ -196,9 +196,9 @@ state.initializeState(config);
 describe('initiateFetchingBeaconData', () => {
   it('starts fetching data for all unique beacons', async () => {
     const fetchBeaconDataIds: string[] = [];
-    jest.spyOn(api, 'fetchBeaconDataInLoop').mockImplementation(async (id) => {
+    jest.spyOn(api, 'fetchBeaconDataInLoop').mockImplementation((async (id) => {
       fetchBeaconDataIds.push(id);
-    });
+    }) as (id: string) => Promise<never>);
 
     await api.initiateFetchingBeaconData();
 
