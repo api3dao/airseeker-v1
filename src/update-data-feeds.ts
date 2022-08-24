@@ -39,6 +39,18 @@ type BeaconSetBeaconValue = {
   value: ethers.BigNumber;
 };
 
+// Based on https://github.com/api3dao/airnode-protocol-v1/blob/main/contracts/dapis/DapiServer.sol#L878
+export const decodeBeaconValue = (encodedBeaconValue: string) => {
+  const decodedBeaconValue = ethers.BigNumber.from(
+    ethers.utils.defaultAbiCoder.decode(['int256'], encodedBeaconValue)[0]
+  );
+  if (decodedBeaconValue.gt(INT224_MAX) || decodedBeaconValue.lt(INT224_MIN)) {
+    return null;
+  }
+
+  return decodedBeaconValue;
+};
+
 export const groupDataFeedsByProviderSponsor = () => {
   const { config, providers: stateProviders } = getState();
   return Object.entries(config.triggers.dataFeedUpdates).reduce(
@@ -150,11 +162,8 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
       continue;
     }
 
-    // Based on https://github.com/api3dao/airnode-protocol-v1/blob/main/contracts/dapis/DapiServer.sol#L878
-    const newBeaconValue = ethers.BigNumber.from(
-      ethers.utils.defaultAbiCoder.decode(['int256'], newBeaconResponse.encodedValue)[0]
-    );
-    if (newBeaconValue.gt(INT224_MAX) || newBeaconValue.lt(INT224_MIN)) {
+    const newBeaconValue = decodeBeaconValue(newBeaconResponse.encodedValue);
+    if (!newBeaconValue) {
       logger.warn(`New beacon value is out of type range. Skipping.`, logOptionsBeaconId);
       continue;
     }
@@ -356,11 +365,8 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
         };
       }
 
-      // Based on https://github.com/api3dao/airnode-protocol-v1/blob/main/contracts/dapis/DapiServer.sol#L878
-      const decodedValue = ethers.BigNumber.from(
-        ethers.utils.defaultAbiCoder.decode(['int256'], beaconResponse.encodedValue)[0]
-      );
-      if (decodedValue.gt(INT224_MAX) || decodedValue.lt(INT224_MIN)) {
+      const decodedValue = decodeBeaconValue(beaconResponse.encodedValue);
+      if (!decodedValue) {
         const message = `New beacon value is out of type range.`;
         logger.warn(message, logOptionsBeaconId);
         throw new Error(message);

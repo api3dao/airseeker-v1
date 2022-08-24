@@ -385,3 +385,21 @@ describe('updateBeaconSets', () => {
     );
   });
 });
+
+describe('decodeBeaconValue', () => {
+  it('returns decoded value', () => {
+    expect(api.decodeBeaconValue(validSignedData.encodedValue)).toEqual(ethers.BigNumber.from(42350000000));
+  });
+
+  it('returns null for value higher than the type range', () => {
+    // INT224_MAX + 1
+    const bigEncodedValue = '0x0000000080000000000000000000000000000000000000000000000000000000';
+    expect(api.decodeBeaconValue(bigEncodedValue)).toBeNull();
+  });
+
+  it('returns null for value lower than the type range', () => {
+    // INT224_MIN - 1
+    const bigEncodedValue = '0xffffffff7fffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+    expect(api.decodeBeaconValue(bigEncodedValue)).toBeNull();
+  });
+});
