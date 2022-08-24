@@ -1,8 +1,8 @@
 import { ethers } from 'ethers';
 import { Config, GasOracleConfig } from './validation';
 import * as api from './gas-oracle';
-import * as prices from './gas-prices';
 import * as state from './state';
+import { parsePriorityFee } from './utils';
 import {
   GAS_ORACLE_MAX_TIMEOUT_S,
   GAS_PRICE_MAX_DEVIATION_MULTIPLIER,
@@ -667,7 +667,7 @@ describe('Gas oracle', () => {
       expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(1, 'latest');
       expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(2, -20);
 
-      expect(gasPrice).toEqual(prices.parsePriorityFee(defaultGasOracleConfig.fallbackGasPrice));
+      expect(gasPrice).toEqual(parsePriorityFee(defaultGasOracleConfig.fallbackGasPrice));
     });
 
     it('returns config fallback gas price if failing to fetch both blocks and fallback', async () => {
@@ -688,7 +688,7 @@ describe('Gas oracle', () => {
       expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(1, 'latest');
       expect(getBlockWithTransactionsSpy).toHaveBeenNthCalledWith(2, -20);
 
-      expect(gasPrice).toEqual(prices.parsePriorityFee(defaultGasOracleConfig.fallbackGasPrice));
+      expect(gasPrice).toEqual(parsePriorityFee(defaultGasOracleConfig.fallbackGasPrice));
     });
 
     it('retries provider getBlockWithTransactions', async () => {
@@ -705,7 +705,7 @@ describe('Gas oracle', () => {
       const gasPrice = await api.fetchBlockData(stateProvider, defaultGasOracleOptions);
 
       expect(getBlockWithTransactionsSpy).toHaveBeenCalledTimes(4);
-      expect(gasPrice).toEqual(prices.parsePriorityFee(defaultGasOracleConfig.fallbackGasPrice));
+      expect(gasPrice).toEqual(parsePriorityFee(defaultGasOracleConfig.fallbackGasPrice));
     });
 
     it('retries provider getGasPrice', async () => {
@@ -727,7 +727,7 @@ describe('Gas oracle', () => {
 
       expect(getBlockWithTransactionsSpy).toHaveBeenCalledTimes(4);
       expect(getBlockWithTransactionsSpy).toHaveBeenCalledTimes(4);
-      expect(gasPrice).toEqual(prices.parsePriorityFee(defaultGasOracleConfig.fallbackGasPrice));
+      expect(gasPrice).toEqual(parsePriorityFee(defaultGasOracleConfig.fallbackGasPrice));
     });
   });
 
@@ -796,7 +796,7 @@ describe('Gas oracle', () => {
 
       const gasPrice = await api.getGasPrice(stateProvider, api.getChainProviderConfig(defaultGasOracleConfig));
 
-      expect(gasPrice).toEqual(prices.parsePriorityFee(defaultGasOracleConfig.fallbackGasPrice));
+      expect(gasPrice).toEqual(parsePriorityFee(defaultGasOracleConfig.fallbackGasPrice));
     });
   });
 });

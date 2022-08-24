@@ -1,14 +1,14 @@
 import * as hre from 'hardhat';
 import { BigNumber } from 'ethers';
 import '@nomiclabs/hardhat-ethers';
-import * as nodeUtils from '@api3/airnode-utilities';
+import { PriorityFee } from '@api3/airnode-utilities';
 import * as gasOracle from '../../src/gas-oracle';
-import * as gasPrices from '../../src/gas-prices';
 import * as state from '../../src/state';
 import * as providersApi from '../../src/providers';
 import { buildAirseekerConfig, buildLocalSecrets } from '../fixtures/config';
 import { executeTransactions } from '../setup/transactions';
 import { GasOracleConfig } from '../../src/validation';
+import { parsePriorityFee } from '../../src/utils';
 
 // Jest version 27 has a bug where jest.setTimeout does not work correctly inside describe or test blocks
 // https://github.com/facebook/jest/issues/11607
@@ -27,7 +27,7 @@ const processBlockData = async (
   blocksWithGasPrices: { blockNumber: number; gasPrices: BigNumber[] }[],
   percentile: number,
   maxDeviationMultiplier: number,
-  fallbackGasPrice: nodeUtils.PriorityFee
+  fallbackGasPrice: PriorityFee
 ) => {
   const latestBlock = blocksWithGasPrices[0];
   const referenceBlock = blocksWithGasPrices[20];
@@ -52,7 +52,7 @@ const processBlockData = async (
   try {
     return await provider.getGasPrice();
   } catch (_e) {
-    return gasPrices.parsePriorityFee(fallbackGasPrice);
+    return parsePriorityFee(fallbackGasPrice);
   }
 };
 
@@ -92,7 +92,7 @@ describe('Gas oracle', () => {
           blocksWithGasPrices,
           gasOracleConfig.latestGasPriceOptions.percentile,
           gasOracleConfig.latestGasPriceOptions.maxDeviationMultiplier,
-          gasOracleConfig.fallbackGasPrice as nodeUtils.PriorityFee
+          gasOracleConfig.fallbackGasPrice as PriorityFee
         );
 
         expect(gasPrice).toEqual(processedPercentileGasPrice);
@@ -163,7 +163,7 @@ describe('Gas oracle', () => {
           { ...provider, providerName },
           gasOracle.getChainProviderConfig(gasOracleConfig as GasOracleConfig)
         );
-        const fallbackGasPrice = gasPrices.parsePriorityFee(gasOracleConfig.fallbackGasPrice as nodeUtils.PriorityFee);
+        const fallbackGasPrice = parsePriorityFee(gasOracleConfig.fallbackGasPrice as PriorityFee);
 
         expect(gasPrice).toEqual(fallbackGasPrice);
       });
@@ -182,7 +182,7 @@ describe('Gas oracle', () => {
           blocksWithGasPrices,
           gasOracleConfig.latestGasPriceOptions.percentile,
           gasOracleConfig.latestGasPriceOptions.maxDeviationMultiplier,
-          gasOracleConfig.fallbackGasPrice as nodeUtils.PriorityFee
+          gasOracleConfig.fallbackGasPrice as PriorityFee
         );
 
         expect(gasPrice).toEqual(processedPercentileGasPrice);
@@ -222,7 +222,7 @@ describe('Gas oracle', () => {
           gasOracle.getChainProviderConfig(gasOracleConfig as GasOracleConfig)
         );
 
-        const fallbackGasPrice = gasPrices.parsePriorityFee(gasOracleConfig.fallbackGasPrice as nodeUtils.PriorityFee);
+        const fallbackGasPrice = parsePriorityFee(gasOracleConfig.fallbackGasPrice as PriorityFee);
 
         expect(gasPrice).toEqual(fallbackGasPrice);
       });
