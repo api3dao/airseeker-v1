@@ -295,7 +295,21 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
 
     logger.debug(`Updating beacon set`, logOptionsBeaconSetId);
 
-    // retrieve values for each beacon within the set from the cache (common memory)
+    // Fetch beacon set value & timestamp from the chain
+    const beaconSetValueOnChain = await readDataFeedWithId(
+      voidSigner,
+      contract,
+      beaconSetUpdate.beaconSetId,
+      prepareGoOptions(startTime, totalTimeout),
+      logOptionsBeaconSetId
+    );
+    if (!beaconSetValueOnChain) {
+      const message = `Missing on chain data for beaconSet. Skipping.`;
+      logger.warn(message, logOptionsBeaconSetId);
+      continue;
+    }
+
+    // Retrieve values for each beacon within the set from the cache (common memory)
     const beaconSetBeaconValuesPromises: Promise<BeaconSetBeaconValue>[] = config.beaconSets[
       beaconSetUpdate.beaconSetId
     ].map(async (beaconId) => {
@@ -359,21 +373,7 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
       (result) => (result as PromiseFulfilledResult<BeaconSetBeaconValue>).value
     );
 
-    // fetch beacon set value & timestamp from the chain
-    const beaconSetValueOnChain = await readDataFeedWithId(
-      voidSigner,
-      contract,
-      beaconSetUpdate.beaconSetId,
-      prepareGoOptions(startTime, totalTimeout),
-      logOptionsBeaconSetId
-    );
-    if (!beaconSetValueOnChain) {
-      const message = `Missing on chain data for beaconSet. Skipping.`;
-      logger.warn(message, logOptionsBeaconSetId);
-      continue;
-    }
-
-    // calculate beacon set timestamp from beacon timestamps (https://github.com/api3dao/airnode-protocol-v1/blob/main/contracts/dapis/DapiServer.sol#L443)
+    // Calculate beacon set timestamp from beacon timestamps (https://github.com/api3dao/airnode-protocol-v1/blob/main/contracts/dapis/DapiServer.sol#L443)
     const accumulatedTimestamp = beaconSetBeaconValues.reduce((total, next) => total + parseInt(next.timestamp, 10), 0);
     const updatedTimestamp = Math.floor(accumulatedTimestamp / beaconSetBeaconValues.length);
 
@@ -417,7 +417,7 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
     // Get gas price from oracle
     const gasPrice = await getGasPrice(provider, config.chains[chainId].options.gasOracle);
 
-    // Update beacon
+    // Update beacon set
     const tx = await go(
       () =>
         contract.connect(sponsorWallet).updateBeaconSetWithSignedData(
