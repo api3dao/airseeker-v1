@@ -5,7 +5,12 @@ import { ethers } from 'ethers';
 import { isEmpty } from 'lodash';
 import { getCurrentBlockNumber } from './block-number';
 import { calculateMedian } from './calculations';
-import { checkOnchainDataFreshness, checkSignedDataFreshness, checkUpdateCondition } from './check-condition';
+import {
+  checkBeaconSetSignedDataFreshness,
+  checkOnchainDataFreshness,
+  checkBeaconSignedDataFreshness,
+  checkUpdateCondition,
+} from './check-condition';
 import { INT224_MAX, INT224_MIN, NO_DATA_FEEDS_EXIT_CODE, PROTOCOL_ID } from './constants';
 import { getGasPrice } from './gas-oracle';
 import { logger } from './logging';
@@ -166,7 +171,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
     }
 
     // Check that signed data is newer than on chain value
-    const isSignedDataFresh = checkSignedDataFreshness(onChainData.timestamp, newBeaconResponse.timestamp);
+    const isSignedDataFresh = checkBeaconSignedDataFreshness(onChainData.timestamp, newBeaconResponse.timestamp);
     if (!isSignedDataFresh) {
       logger.warn(`Signed data older than on chain record. Skipping.`, logOptionsBeaconId);
       continue;
@@ -326,7 +331,7 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
       // Check whether we have a value for given beacon
       if (!beaconResponse) {
         logger.warn('Missing off chain data for beacon.', logOptionsBeaconId);
-        // IF there's no value for a given beacon, fetch it from the chain
+        // If there's no value for a given beacon, fetch it from the chain
         const beaconValueOnChain = await readDataFeedWithId(
           voidSigner,
           contract,
@@ -334,7 +339,7 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
           prepareGoOptions(startTime, totalTimeout),
           logOptionsBeaconId
         );
-        // IF the value is not available on the chain skip the update
+        // If the value is not available on the chain skip the update
         if (!beaconValueOnChain) {
           const message = `Missing on chain data for beacon.`;
           logger.warn(message, logOptionsBeaconId);
@@ -373,20 +378,20 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
       (result) => (result as PromiseFulfilledResult<BeaconSetBeaconValue>).value
     );
 
-    // Calculate beacon set timestamp from beacon timestamps (https://github.com/api3dao/airnode-protocol-v1/blob/main/contracts/dapis/DapiServer.sol#L443)
-    const accumulatedTimestamp = beaconSetBeaconValues.reduce((total, next) => total + parseInt(next.timestamp, 10), 0);
-    const updatedTimestamp = Math.floor(accumulatedTimestamp / beaconSetBeaconValues.length);
-
-    // IF new timestamp is older than the on-chain one skip the update (similar to checkSignedDataFreshness)
-    if (beaconSetValueOnChain && beaconSetValueOnChain.timestamp >= updatedTimestamp) {
+    const isSignedDataFresh = checkBeaconSetSignedDataFreshness(
+      beaconSetValueOnChain.timestamp,
+      beaconSetBeaconValues.map((value) => value.timestamp)
+    );
+    if (!isSignedDataFresh) {
       logger.info('On chain beacon set value is more up-to-date. Skipping.');
       continue;
     }
 
-    // IF the last update is older than now + heartbeat interval force update
-    const isOnchainDataFresh =
-      beaconSetValueOnChain &&
-      checkOnchainDataFreshness(beaconSetValueOnChain.timestamp, beaconSetUpdate.heartbeatInterval);
+    // Check that on chain data is newer than heartbeat interval
+    const isOnchainDataFresh = checkOnchainDataFreshness(
+      beaconSetValueOnChain.timestamp,
+      beaconSetUpdate.heartbeatInterval
+    );
     if (!isOnchainDataFresh) {
       logger.info(
         `On chain data timestamp older than heartbeat. Updating without condition check.`,
@@ -394,7 +399,7 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
       );
     } else {
       // Check beacon set condition
-      // IF the deviation threshold is reached do the update, skip otherwise
+      // If the deviation threshold is reached do the update, skip otherwise
       const updatedValue = calculateMedian(beaconSetBeaconValues.map((value) => value.value));
       const shouldUpdate = checkUpdateCondition(
         beaconSetValueOnChain.value,

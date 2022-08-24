@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { calculateUpdateInPercentage } from './calculations';
+import { calculateBeaconSetTimestamp, calculateUpdateInPercentage } from './calculations';
 import { HUNDRED_PERCENT } from './constants';
 
 export const checkUpdateCondition = (
@@ -16,14 +16,22 @@ export const checkUpdateCondition = (
 };
 
 /**
- * Returns true when the signed data response is fresh enough to be used for an on chain update.
+ * Returns true when the beacon signed data response is fresh enough to be used for an on chain update.
  *
  * Update transaction with stale data would revert on chain, draining the sponsor wallet. See:
  * https://github.com/api3dao/airnode-protocol-v1/blob/e0d778fabff0df888987a6db31498c93ee2f6219/contracts/dapis/DapiServer.sol#L867
  * This can happen if the gateway or Airseeker is down and Airkeeper does the updates instead.
  */
-export const checkSignedDataFreshness = (onChainTimestamp: number, signedDataTimestamp: string) => {
+export const checkBeaconSignedDataFreshness = (onChainTimestamp: number, signedDataTimestamp: string) => {
   return onChainTimestamp < parseInt(signedDataTimestamp, 10);
+};
+
+/**
+ * Returns true when the beacon set signed data (calculated from beacon signed data) is fresh enough to be used for an on chain update.
+ */
+export const checkBeaconSetSignedDataFreshness = (onChainTimestamp: number, beaconSetBeaconTimestamps: string[]) => {
+  const beaconSetTimestamp = calculateBeaconSetTimestamp(beaconSetBeaconTimestamps);
+  return onChainTimestamp < beaconSetTimestamp;
 };
 
 /**

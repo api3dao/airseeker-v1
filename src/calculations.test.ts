@@ -1,5 +1,5 @@
 import { BigNumber, ethers } from 'ethers';
-import { calculateMedian, calculateUpdateInPercentage } from './calculations';
+import { calculateBeaconSetTimestamp, calculateMedian, calculateUpdateInPercentage } from './calculations';
 import { HUNDRED_PERCENT } from './constants';
 import { State, updateState } from './state';
 
@@ -77,5 +77,12 @@ describe('caluclateMedian', () => {
       const arr = [BigNumber.from(24), BigNumber.from(11), BigNumber.from(10), BigNumber.from(30)];
       expect(calculateMedian(arr)).toEqual(BigNumber.from(17));
     });
+  });
+});
+
+describe('calculateBeaconSetTimestamp', () => {
+  it('calculates beacon set timestamp', () => {
+    const beaconSetBeaconTimestamps = ['1555711223', '1556229645', '1555020018', '1556402497'];
+    expect(calculateBeaconSetTimestamp(beaconSetBeaconTimestamps)).toEqual(1555840845);
   });
 });

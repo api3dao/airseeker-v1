@@ -20,3 +20,9 @@ export const calculateMedian = (arr: ethers.BigNumber[]) => {
   });
   return arr.length % 2 !== 0 ? nums[mid] : nums[mid - 1].add(nums[mid]).div(2);
 };
+
+// Calculate beacon set timestamp from beacon timestamps (https://github.com/api3dao/airnode-protocol-v1/blob/main/contracts/dapis/DapiServer.sol#L443)
+export const calculateBeaconSetTimestamp = (beaconSetBeaconTimestamps: string[]) => {
+  const accumulatedTimestamp = beaconSetBeaconTimestamps.reduce((total, next) => total + parseInt(next, 10), 0);
+  return Math.floor(accumulatedTimestamp / beaconSetBeaconTimestamps.length);
+};
