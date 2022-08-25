@@ -39,6 +39,11 @@ type BeaconSetBeaconValue = {
   value: ethers.BigNumber;
 };
 
+export enum DataFeedType {
+  Beacon = 'Beacon',
+  BeaconSet = 'BeaconSet',
+}
+
 // Based on https://github.com/api3dao/airnode-protocol-v1/blob/main/contracts/dapis/DapiServer.sol#L878
 export const decodeBeaconValue = (encodedBeaconValue: string) => {
   const decodedBeaconValue = ethers.BigNumber.from(
@@ -97,18 +102,23 @@ export const updateDataFeedsInLoop = async (providerSponsorDataFeeds: ProviderSp
 
 // We pass return value from `prepareGoOptions` (with calculated timeout) to every `go` call in the function to enforce the update cycle.
 // This solution is not precise but since chain operations are the only ones that actually take some time this should be a good enough solution.
-export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataFeeds, startTime: number) => {
+export const initializeUpdateCycle = async (
+  providerSponsorDataFeeds: ProviderSponsorDataFeeds,
+  dataFeedType: DataFeedType,
+  startTime: number
+) => {
   const { config, beaconValues } = getState();
-  const { provider, sponsorAddress, beacons } = providerSponsorBeacons;
+  const { provider, updateInterval, sponsorAddress, beacons, beaconSets } = providerSponsorDataFeeds;
   const { rpcProvider, chainId, providerName } = provider;
-  const logOptionsSponsor = {
+  const logOptions = {
     meta: { chainId, providerName },
-    additional: { Sponsor: shortenAddress(sponsorAddress) },
+    additional: { Sponsor: shortenAddress(sponsorAddress), DataFeedType: dataFeedType },
   };
-  logger.debug(`Processing beacon updates`, logOptionsSponsor);
+
+  logger.debug(`Initializing updates`, logOptions);
 
   // All the beacon updates for given provider & sponsor have up to <updateInterval> seconds to finish
-  const totalTimeout = providerSponsorBeacons.updateInterval * 1_000;
+  const totalTimeout = updateInterval * 1_000;
 
   // Prepare contract for beacon updates
   const contractAddress = config.chains[chainId].contracts['DapiServer'];
@@ -117,8 +127,8 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
   // Get current block number
   const blockNumber = await getCurrentBlockNumber(provider, prepareGoOptions(startTime, totalTimeout));
   if (blockNumber === null) {
-    logger.warn(`Unable to obtain block number`, logOptionsSponsor);
-    return;
+    logger.warn(`Unable to obtain block number`, logOptions);
+    return null;
   }
 
   // Derive sponsor wallet address
@@ -134,19 +144,54 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
     prepareGoOptions(startTime, totalTimeout)
   );
   if (transactionCount === null) {
-    logger.warn(`Unable to fetch transaction count`, logOptionsSponsor);
-    return;
+    logger.warn(`Unable to fetch transaction count`, logOptions);
+    return null;
   }
+
+  const voidSigner = new ethers.VoidSigner(ethers.constants.AddressZero, rpcProvider);
+
+  return {
+    contract,
+    sponsorWallet,
+    transactionCount,
+    voidSigner,
+    totalTimeout,
+    logOptions,
+    beaconValues,
+    beacons,
+    beaconSets,
+    config,
+    provider,
+  };
+};
+
+// We pass return value from `prepareGoOptions` (with calculated timeout) to every `go` call in the function to enforce the update cycle.
+// This solution is not precise but since chain operations are the only ones that actually take some time this should be a good enough solution.
+export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataFeeds, startTime: number) => {
+  const initialUpdateData = await initializeUpdateCycle(providerSponsorBeacons, DataFeedType.Beacon, startTime);
+  if (!initialUpdateData) return;
+  const {
+    contract,
+    sponsorWallet,
+    transactionCount,
+    voidSigner,
+    totalTimeout,
+    logOptions,
+    beaconValues,
+    beacons,
+    config,
+    provider,
+  } = initialUpdateData;
+  const { chainId } = provider;
 
   // Process beacon updates
   let nonce = transactionCount;
-  const voidSigner = new ethers.VoidSigner(ethers.constants.AddressZero, rpcProvider);
 
   for (const beacon of beacons) {
     const logOptionsBeaconId = {
-      ...logOptionsSponsor,
+      ...logOptions,
       additional: {
-        ...logOptionsSponsor.additional,
+        ...logOptions.additional,
         'Sponsor-Wallet': shortenAddress(sponsorWallet.address),
         'Beacon-ID': beacon.beaconId,
       },
@@ -253,57 +298,31 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
 // We pass return value from `prepareGoOptions` (with calculated timeout) to every `go` call in the function to enforce the update cycle.
 // This solution is not precise but since chain operations are the only ones that actually take some time this should be a good enough solution.
 export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDataFeeds, startTime: number) => {
-  const { config, beaconValues } = getState();
-  const { provider, sponsorAddress, beaconSets: beaconSetUpdates } = providerSponsorBeacons;
-  const { rpcProvider, chainId, providerName } = provider;
-  const logOptionsSponsor = {
-    meta: { chainId, providerName },
-    additional: { Sponsor: shortenAddress(sponsorAddress) },
-  };
-  logger.debug(`Processing beacon set updates`, logOptionsSponsor);
-
-  // All the beacon set updates for given provider & sponsor have up to <updateInterval> seconds to finish
-  const totalTimeout = providerSponsorBeacons.updateInterval * 1_000;
-
-  // Prepare contract for beacon set updates
-  const contractAddress = config.chains[chainId].contracts['DapiServer'];
-  const contract = DapiServerFactory.connect(contractAddress, rpcProvider);
-
-  // Get current block number
-  const blockNumber = await getCurrentBlockNumber(provider, prepareGoOptions(startTime, totalTimeout));
-  if (blockNumber === null) {
-    logger.warn(`Unable to obtain block number`, logOptionsSponsor);
-    return;
-  }
-
-  // Derive sponsor wallet address
-  const sponsorWallet = node.evm
-    .deriveSponsorWalletFromMnemonic(config.airseekerWalletMnemonic, sponsorAddress, PROTOCOL_ID)
-    .connect(rpcProvider);
-
-  // Get transaction count
-  const transactionCount = await getTransactionCount(
+  const initialUpdateData = await initializeUpdateCycle(providerSponsorBeacons, DataFeedType.BeaconSet, startTime);
+  if (!initialUpdateData) return;
+  const {
+    contract,
+    sponsorWallet,
+    transactionCount,
+    voidSigner,
+    totalTimeout,
+    logOptions,
+    beaconValues,
+    beaconSets,
+    config,
     provider,
-    sponsorWallet.address,
-    blockNumber,
-    prepareGoOptions(startTime, totalTimeout)
-  );
-  if (transactionCount === null) {
-    logger.warn(`Unable to fetch transaction count`, logOptionsSponsor);
-    return;
-  }
-
-  // Process beacon set updates
+  } = initialUpdateData;
+  const { chainId } = provider;
+  // Process beacon updates
   let nonce = transactionCount;
-  const voidSigner = new ethers.VoidSigner(ethers.constants.AddressZero, rpcProvider);
 
-  for (const beaconSetUpdate of beaconSetUpdates) {
+  for (const beaconSet of beaconSets) {
     const logOptionsBeaconSetId = {
-      ...logOptionsSponsor,
+      ...logOptions,
       additional: {
-        ...logOptionsSponsor.additional,
+        ...logOptions.additional,
         'Sponsor-Wallet': shortenAddress(sponsorWallet.address),
-        'BeaconSet-ID': beaconSetUpdate.beaconSetId,
+        'BeaconSet-ID': beaconSet.beaconSetId,
       },
     };
 
@@ -313,7 +332,7 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
     const beaconSetValueOnChain = await readDataFeedWithId(
       voidSigner,
       contract,
-      beaconSetUpdate.beaconSetId,
+      beaconSet.beaconSetId,
       prepareGoOptions(startTime, totalTimeout),
       logOptionsBeaconSetId
     );
@@ -324,56 +343,56 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
     }
 
     // Retrieve values for each beacon within the set from the cache (common memory)
-    const beaconSetBeaconValuesPromises: Promise<BeaconSetBeaconValue>[] = config.beaconSets[
-      beaconSetUpdate.beaconSetId
-    ].map(async (beaconId) => {
-      const logOptionsBeaconId = {
-        ...logOptionsBeaconSetId,
-        additional: {
-          ...logOptionsBeaconSetId.additional,
-          'Beacon-ID': beaconId,
-        },
-      };
+    const beaconSetBeaconValuesPromises: Promise<BeaconSetBeaconValue>[] = config.beaconSets[beaconSet.beaconSetId].map(
+      async (beaconId) => {
+        const logOptionsBeaconId = {
+          ...logOptionsBeaconSetId,
+          additional: {
+            ...logOptionsBeaconSetId.additional,
+            'Beacon-ID': beaconId,
+          },
+        };
 
-      const beaconResponse: SignedData = beaconValues[beaconId];
+        const beaconResponse: SignedData = beaconValues[beaconId];
 
-      // Check whether we have a value for given beacon
-      if (!beaconResponse) {
-        logger.warn('Missing off chain data for beacon.', logOptionsBeaconId);
-        // If there's no value for a given beacon, fetch it from the chain
-        const beaconValueOnChain = await readDataFeedWithId(
-          voidSigner,
-          contract,
-          beaconId,
-          prepareGoOptions(startTime, totalTimeout),
-          logOptionsBeaconId
-        );
-        // If the value is not available on the chain skip the update
-        if (!beaconValueOnChain) {
-          const message = `Missing on chain data for beacon.`;
+        // Check whether we have a value for given beacon
+        if (!beaconResponse) {
+          logger.warn('Missing off chain data for beacon.', logOptionsBeaconId);
+          // If there's no value for a given beacon, fetch it from the chain
+          const beaconValueOnChain = await readDataFeedWithId(
+            voidSigner,
+            contract,
+            beaconId,
+            prepareGoOptions(startTime, totalTimeout),
+            logOptionsBeaconId
+          );
+          // If the value is not available on the chain skip the update
+          if (!beaconValueOnChain) {
+            const message = `Missing on chain data for beacon.`;
+            logger.warn(message, logOptionsBeaconId);
+            throw new Error(message);
+          }
+
+          return {
+            beaconId,
+            timestamp: beaconValueOnChain.timestamp.toString(),
+            encodedValue: '0x',
+            signature: '0x',
+            value: beaconValueOnChain.value,
+            ...config.beacons[beaconId],
+          };
+        }
+
+        const decodedValue = decodeBeaconValue(beaconResponse.encodedValue);
+        if (!decodedValue) {
+          const message = `New beacon value is out of type range.`;
           logger.warn(message, logOptionsBeaconId);
           throw new Error(message);
         }
 
-        return {
-          beaconId,
-          timestamp: beaconValueOnChain.timestamp.toString(),
-          encodedValue: '0x',
-          signature: '0x',
-          value: beaconValueOnChain.value,
-          ...config.beacons[beaconId],
-        };
+        return { beaconId, ...beaconResponse, value: decodedValue, ...config.beacons[beaconId] };
       }
-
-      const decodedValue = decodeBeaconValue(beaconResponse.encodedValue);
-      if (!decodedValue) {
-        const message = `New beacon value is out of type range.`;
-        logger.warn(message, logOptionsBeaconId);
-        throw new Error(message);
-      }
-
-      return { beaconId, ...beaconResponse, value: decodedValue, ...config.beacons[beaconId] };
-    });
+    );
     const beaconSetBeaconValuesResults = await Promise.allSettled(beaconSetBeaconValuesPromises);
     if (beaconSetBeaconValuesResults.some((data) => data.status === 'rejected')) {
       logger.warn('There was an error fetching beacon data for beacon set. Skipping.', logOptionsBeaconSetId);
@@ -394,10 +413,7 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
     }
 
     // Check that on chain data is newer than heartbeat interval
-    const isOnchainDataFresh = checkOnchainDataFreshness(
-      beaconSetValueOnChain.timestamp,
-      beaconSetUpdate.heartbeatInterval
-    );
+    const isOnchainDataFresh = checkOnchainDataFreshness(beaconSetValueOnChain.timestamp, beaconSet.heartbeatInterval);
     if (!isOnchainDataFresh) {
       logger.info(
         `On chain data timestamp older than heartbeat. Updating without condition check.`,
@@ -409,7 +425,7 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
       const updatedValue = calculateMedian(beaconSetBeaconValues.map((value) => value.value));
       const shouldUpdate = checkUpdateCondition(
         beaconSetValueOnChain.value,
-        beaconSetUpdate.deviationThreshold,
+        beaconSet.deviationThreshold,
         updatedValue
       );
       if (shouldUpdate === null) {

@@ -376,3 +376,73 @@ describe('decodeBeaconValue', () => {
     expect(api.decodeBeaconValue(bigEncodedValue)).toBeNull();
   });
 });
+
+describe('initializeUpdateCycle', () => {
+  it('returns initial update data', async () => {
+    state.updateState((currentState) => ({
+      ...currentState,
+      beaconValues: {
+        '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c': validSignedData,
+        '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2': undefined as any,
+        '0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469beabcdabcd': validSignedData,
+      },
+    }));
+
+    const getBlockNumberSpy = jest.spyOn(ethers.providers.JsonRpcProvider.prototype, 'getBlockNumber');
+    getBlockNumberSpy.mockResolvedValueOnce(12);
+
+    const txCountSpy = jest.spyOn(ethers.providers.JsonRpcProvider.prototype, 'getTransactionCount');
+    txCountSpy.mockResolvedValueOnce(212);
+
+    const groups = api.groupDataFeedsByProviderSponsor();
+    const initialUpdateData = await api.initializeUpdateCycle(groups[0], api.DataFeedType.Beacon, Date.now());
+    const {
+      contract,
+      sponsorWallet,
+      transactionCount,
+      voidSigner,
+      totalTimeout,
+      logOptions,
+      beaconValues,
+      beacons,
+      beaconSets,
+      config: initConfig,
+      provider,
+    } = initialUpdateData!;
+
+    expect(contract.address).toEqual('0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0');
+    expect(sponsorWallet.address).toEqual('0x1129eEDf4996cF133e0e9555d4c9d305c9918EC5');
+    expect(transactionCount).toEqual(212);
+    expect(voidSigner.address).toEqual(ethers.constants.AddressZero);
+    expect(totalTimeout).toEqual(1_000);
+    expect(logOptions).toEqual({
+      meta: { chainId: '1', providerName: 'selfHostedMainnet' },
+      additional: { Sponsor: '0x3C4...93BC', DataFeedType: 'Beacon' },
+    });
+    expect(beaconValues).toEqual({
+      '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c': validSignedData,
+      '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2': undefined,
+      '0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469beabcdabcd': validSignedData,
+    });
+    expect(beacons).toEqual(groups[0].beacons);
+    expect(beaconSets).toEqual(groups[0].beaconSets);
+    expect(initConfig).toEqual(config);
+    expect(provider).toEqual(groups[0].provider);
+  });
+
+  it(`returns null if current block can't be retrieved`, async () => {
+    const getBlockNumberSpy = jest.spyOn(ethers.providers.JsonRpcProvider.prototype, 'getBlockNumber');
+    getBlockNumberSpy.mockRejectedValueOnce('Error');
+
+    const groups = api.groupDataFeedsByProviderSponsor();
+    expect(await api.initializeUpdateCycle(groups[0], api.DataFeedType.Beacon, Date.now())).toBeNull();
+  });
+
+  it(`returns null if transaction count can't be retrieved`, async () => {
+    const getBlockNumberSpy = jest.spyOn(ethers.providers.JsonRpcProvider.prototype, 'getTransactionCount');
+    getBlockNumberSpy.mockRejectedValueOnce('Error');
+
+    const groups = api.groupDataFeedsByProviderSponsor();
+    expect(await api.initializeUpdateCycle(groups[0], api.DataFeedType.Beacon, Date.now())).toBeNull();
+  });
+});
