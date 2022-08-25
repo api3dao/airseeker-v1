@@ -4,7 +4,6 @@ import * as gasOracleModule from './gas-oracle';
 import * as state from './state';
 import * as api from './update-data-feeds';
 import * as readDataFeedModule from './read-data-feed-with-id';
-import * as utils from './utils';
 import { initializeProviders } from './providers';
 import { BeaconSetUpdate, BeaconUpdate, Config } from './validation';
 import { validSignedData } from '../test/fixtures';
@@ -288,32 +287,6 @@ describe('updateDataFeedsInLoop', () => {
 
     expect(api.updateBeacons).toHaveBeenCalledTimes(2);
     expect(api.updateBeaconSets).toHaveBeenCalledTimes(2);
-  });
-});
-
-describe('calculateTimeout', () => {
-  it('calculates the remaining time for timeout', () => {
-    const startTime = 1650548022000;
-    const totalTimeout = 3000;
-    jest.spyOn(Date, 'now').mockReturnValue(1650548023000);
-
-    expect(utils.calculateTimeout(startTime, totalTimeout)).toEqual(2000);
-  });
-});
-
-describe('prepareGoOptions', () => {
-  it('prepares options for the go function', () => {
-    const startTime = 1650548022000;
-    const totalTimeout = 3000;
-    jest.spyOn(Date, 'now').mockReturnValue(1650548023000);
-
-    const expectedGoOptions = {
-      attemptTimeoutMs: 5_000,
-      totalTimeoutMs: 2000,
-      retries: 100_000,
-      delay: { type: 'random' as const, minDelayMs: 0, maxDelayMs: 2_500 },
-    };
-    expect(utils.prepareGoOptions(startTime, totalTimeout)).toEqual(expectedGoOptions);
   });
 });
 
