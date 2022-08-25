@@ -20,6 +20,8 @@
     "build": "yarn clean && yarn compile",
     "clean": "rimraf -rf ./build ./dist *.tgz",
     "compile": "tsc --build tsconfig.json",
+    "dev:create-local-config": "ts-node scripts/create-local-config.js",
+    "dev:setup-local-node": "hardhat run scripts/setup-local-node.js",
     "dev:api": "ts-node test/server/server.ts",
     "dev:eth-node": "hardhat node",
     "dev:testing-services:start": "pm2 start test/testing-services.config.js",
