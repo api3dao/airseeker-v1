@@ -3,8 +3,12 @@
 # Package directories & files
 /node_modules
 *.tgz
-# Ignore dist folder in every (sub)folder
+# Ignore dist and build folder in every (sub)folder
 dist
+build
+
+# TypeScript build files
+*.tsbuildinfo
 
 # IDE specific files
 .vscode
@@ -25,11 +29,6 @@ cache
 # Ignore log files
 logs
 *.log
-
-# Terraform
-.terraform*
-terraform.tfstate*
-*.tfvars
 
 # Ignore Serverless directories
 .serverless
