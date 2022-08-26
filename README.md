@@ -18,9 +18,7 @@ yarn build
 
 You need to create a configuration file `config/airseeker.json`. Take a look at `config/airseeker.example.json` for an
 example configuration file. You can use string interpolation (with `${VAR}` syntax) for providing secrets. Secrets are
-read from the environment variables. When running locally, either just with `yarn start` or via process manager, secrets
-are automatically loaded from `config/secrets.env` file. Take a look at `config/secrets.example.env` for an example
-secrets file.
+read from the environment variables. Take a look at `config/secrets.example.env` for an example secrets file.
 
 ### Gas oracle options
 
@@ -80,12 +78,6 @@ sleep 10;
 kill $pid
 ```
 
-**Invoke Airseeker (local):** (Optional)
-
-```shell
-yarn sls invoke local --config serverless.aws.yml -f airseeker
-```
-
 **Remove Airseeker:**
 
 ```shell
@@ -107,3 +99,45 @@ check the resources tab of the stack in question to see errors. Manually remove 
 
 In particular AWS will sometimes refuse to delete an associated S3 bucket. Empty the bucket and remove it, then
 re-remove the CloudFormation stack.
+
+## Running Airseeker locally (Optional)
+
+1. For running Airseeker locally you can make use of the pm2 testing services by running this command in a terminal:
+
+   ```shell
+   yarn run dev:testing-services:start
+   ```
+
+   A local ethereum node will be started along with a node.js express server that will return signed data (basically a
+   substitute to the Airnode's signed data gateway).
+
+2. Next step is to run this script:
+
+   ```shell
+   yarn run dev:setup-local-node
+   ```
+
+   This will deploy the DapiServer contract to the local ethereum node and also send funds to a test Airseeker sponsor
+   wallet (used to submit data feed update transactions).
+
+3. Then you might also want to run the following script to create the required testing config files:
+
+   ```shell
+   yarn run dev:create-local-config
+   ```
+
+   You should verify that the DapiServer contract address in the `config/airseeker.json` file matches the address
+   displayed when running the script from the previous step. Secrets are automatically loaded from `config/secrets.env`
+   file when Airseeker is invoked locally.
+
+4. Lastly you need to invoke Airseeker via serverless framework like this:
+
+   ```shell
+   yarn sls invoke local --config serverless.aws.yml -f airseeker
+   ```
+
+5. If you want to stop the testing services after exiting the Airseeker process you can run the following command:
+
+   ```shell
+   yarn run dev:testing-services:stop
+   ```
