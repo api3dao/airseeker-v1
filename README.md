@@ -114,7 +114,7 @@ re-remove the CloudFormation stack.
 2. Next step is to run this script:
 
    ```shell
-   yarn run dev:create-local-config
+   yarn run dev:setup-local-node
    ```
 
    This will deploy the DapiServer contract to the local ethereum node and also send funds to a test Airseeker sponsor
