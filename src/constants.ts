@@ -22,3 +22,7 @@ export const GAS_PRICE_PERCENTILE = 60;
 // The minimum number of transactions required in a block before falling back to getGasPrice
 export const MIN_TRANSACTION_COUNT = 10;
 export const PAST_TO_COMPARE_IN_BLOCKS = 20;
+// Number that represents 100% is chosen to avoid overflows in DapiServer's
+// `calculateUpdateInPercentage()`. Since the reported data needs to fit
+// into 224 bits, its multiplication by 10^8 is guaranteed not to overflow.
+export const HUNDRED_PERCENT = 1e8;

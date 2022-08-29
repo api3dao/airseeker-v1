@@ -4,7 +4,6 @@ import * as gasOracleModule from './gas-oracle';
 import * as state from './state';
 import * as api from './update-data-feeds';
 import * as readDataFeedModule from './read-data-feed-with-id';
-import * as utils from './utils';
 import { initializeProviders } from './providers';
 import { BeaconSetUpdate, BeaconUpdate, Config } from './validation';
 import { validSignedData } from '../test/fixtures';
@@ -291,32 +290,6 @@ describe('updateDataFeedsInLoop', () => {
   });
 });
 
-describe('calculateTimeout', () => {
-  it('calculates the remaining time for timeout', () => {
-    const startTime = 1650548022000;
-    const totalTimeout = 3000;
-    jest.spyOn(Date, 'now').mockReturnValue(1650548023000);
-
-    expect(utils.calculateTimeout(startTime, totalTimeout)).toEqual(2000);
-  });
-});
-
-describe('prepareGoOptions', () => {
-  it('prepares options for the go function', () => {
-    const startTime = 1650548022000;
-    const totalTimeout = 3000;
-    jest.spyOn(Date, 'now').mockReturnValue(1650548023000);
-
-    const expectedGoOptions = {
-      attemptTimeoutMs: 5_000,
-      totalTimeoutMs: 2000,
-      retries: 100_000,
-      delay: { type: 'random' as const, minDelayMs: 0, maxDelayMs: 2_500 },
-    };
-    expect(utils.prepareGoOptions(startTime, totalTimeout)).toEqual(expectedGoOptions);
-  });
-});
-
 describe('updateBeaconSets', () => {
   it('calls updateBeaconSetWithSignedData in DapiServer contract', async () => {
     state.updateState((currentState) => ({
@@ -383,5 +356,93 @@ describe('updateBeaconSets', () => {
       [validSignedData.signature, expect.any(String), validSignedData.signature],
       expect.objectContaining({ gasLimit: expect.any(ethers.BigNumber), gasPrice: undefined, nonce: 212, type: 2 })
     );
+  });
+});
+
+describe('decodeBeaconValue', () => {
+  it('returns decoded value', () => {
+    expect(api.decodeBeaconValue(validSignedData.encodedValue)).toEqual(ethers.BigNumber.from(42350000000));
+  });
+
+  it('returns null for value higher than the type range', () => {
+    // INT224_MAX + 1
+    const bigEncodedValue = '0x0000000080000000000000000000000000000000000000000000000000000000';
+    expect(api.decodeBeaconValue(bigEncodedValue)).toBeNull();
+  });
+
+  it('returns null for value lower than the type range', () => {
+    // INT224_MIN - 1
+    const bigEncodedValue = '0xffffffff7fffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+    expect(api.decodeBeaconValue(bigEncodedValue)).toBeNull();
+  });
+});
+
+describe('initializeUpdateCycle', () => {
+  it('returns initial update data', async () => {
+    state.updateState((currentState) => ({
+      ...currentState,
+      beaconValues: {
+        '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c': validSignedData,
+        '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2': undefined as any,
+        '0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469beabcdabcd': validSignedData,
+      },
+    }));
+
+    const getBlockNumberSpy = jest.spyOn(ethers.providers.JsonRpcProvider.prototype, 'getBlockNumber');
+    getBlockNumberSpy.mockResolvedValueOnce(12);
+
+    const txCountSpy = jest.spyOn(ethers.providers.JsonRpcProvider.prototype, 'getTransactionCount');
+    txCountSpy.mockResolvedValueOnce(212);
+
+    const groups = api.groupDataFeedsByProviderSponsor();
+    const initialUpdateData = await api.initializeUpdateCycle(groups[0], api.DataFeedType.Beacon, Date.now());
+    const {
+      contract,
+      sponsorWallet,
+      transactionCount,
+      voidSigner,
+      totalTimeout,
+      logOptions,
+      beaconValues,
+      beacons,
+      beaconSets,
+      config: initConfig,
+      provider,
+    } = initialUpdateData!;
+
+    expect(contract.address).toEqual('0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0');
+    expect(sponsorWallet.address).toEqual('0x1129eEDf4996cF133e0e9555d4c9d305c9918EC5');
+    expect(transactionCount).toEqual(212);
+    expect(voidSigner.address).toEqual(ethers.constants.AddressZero);
+    expect(totalTimeout).toEqual(1_000);
+    expect(logOptions).toEqual({
+      meta: { chainId: '1', providerName: 'selfHostedMainnet' },
+      additional: { Sponsor: '0x3C4...93BC', DataFeedType: 'Beacon' },
+    });
+    expect(beaconValues).toEqual({
+      '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c': validSignedData,
+      '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2': undefined,
+      '0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469beabcdabcd': validSignedData,
+    });
+    expect(beacons).toEqual(groups[0].beacons);
+    expect(beaconSets).toEqual(groups[0].beaconSets);
+    expect(initConfig).toEqual(config);
+    expect(provider).toEqual(groups[0].provider);
+  });
+
+  it(`returns null if current block can't be retrieved`, async () => {
+    const getBlockNumberSpy = jest.spyOn(ethers.providers.JsonRpcProvider.prototype, 'getBlockNumber');
+    getBlockNumberSpy.mockRejectedValueOnce('Error');
+
+    const groups = api.groupDataFeedsByProviderSponsor();
+    expect(await api.initializeUpdateCycle(groups[0], api.DataFeedType.Beacon, Date.now())).toBeNull();
+  });
+
+  it(`returns null if transaction count can't be retrieved`, async () => {
+    const getBlockNumberSpy = jest.spyOn(ethers.providers.JsonRpcProvider.prototype, 'getTransactionCount');
+    getBlockNumberSpy.mockRejectedValueOnce('Error');
+
+    const groups = api.groupDataFeedsByProviderSponsor();
+    expect(await api.initializeUpdateCycle(groups[0], api.DataFeedType.Beacon, Date.now())).toBeNull();
   });
 });
