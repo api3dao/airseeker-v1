@@ -1,4 +1,5 @@
 import * as node from '@api3/airnode-node';
+import * as protocol from '@api3/airnode-protocol';
 import { DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol-v1';
 import { go } from '@api3/promise-utils';
 import { ethers } from 'ethers';
@@ -11,7 +12,7 @@ import {
   checkBeaconSignedDataFreshness,
   checkUpdateCondition,
 } from './check-condition';
-import { INT224_MAX, INT224_MIN, NO_DATA_FEEDS_EXIT_CODE, PROTOCOL_ID } from './constants';
+import { INT224_MAX, INT224_MIN, NO_DATA_FEEDS_EXIT_CODE } from './constants';
 import { getGasPrice } from './gas-oracle';
 import { logger } from './logging';
 import { readDataFeedWithId } from './read-data-feed-with-id';
@@ -133,7 +134,7 @@ export const initializeUpdateCycle = async (
 
   // Derive sponsor wallet address
   const sponsorWallet = node.evm
-    .deriveSponsorWalletFromMnemonic(config.airseekerWalletMnemonic, sponsorAddress, PROTOCOL_ID)
+    .deriveSponsorWalletFromMnemonic(config.airseekerWalletMnemonic, sponsorAddress, protocol.PROTOCOL_IDS.AIRSEEKER)
     .connect(rpcProvider);
 
   // Get transaction count

@@ -3,15 +3,14 @@ import * as hre from 'hardhat';
 import '@nomiclabs/hardhat-ethers';
 import * as abi from '@api3/airnode-abi';
 import * as node from '@api3/airnode-node';
+import * as protocol from '@api3/airnode-protocol';
 import {
   AccessControlRegistry__factory as AccessControlRegistryFactory,
   AirnodeProtocol__factory as AirnodeProtocolFactory,
   DapiServer__factory as DapiServerFactory,
 } from '@api3/airnode-protocol-v1';
 import { buildLocalConfigETH, buildLocalConfigBTC } from '../fixtures/config';
-import { PROTOCOL_ID } from '../../src/constants';
 
-const PROTOCOL_ID_PSP = '2';
 const subscriptionIdETH = '0xc1ed31de05a9aa74410c24bccd6aa40235006f9063f1c65d47401e97ad04560e';
 const subscriptionIdBTC = '0xb4c3cea3b78c384eb4409df1497bb2f1fd872f1928a218f8907c38fe0d66ffea';
 const provider = new hre.ethers.providers.JsonRpcProvider('http://127.0.0.1:8545');
@@ -116,7 +115,7 @@ export const deployAndUpdateSubscriptions = async () => {
   // Wallets
   const airnodeWallet = hre.ethers.Wallet.fromMnemonic(localConfigETH.airnodeMnemonic);
   const airnodePspSponsorWallet = node.evm
-    .deriveSponsorWalletFromMnemonic(localConfigETH.airnodeMnemonic, roles.sponsor.address, PROTOCOL_ID_PSP)
+    .deriveSponsorWalletFromMnemonic(localConfigETH.airnodeMnemonic, roles.sponsor.address, protocol.PROTOCOL_IDS.PSP)
     .connect(provider);
   await roles.deployer.sendTransaction({
     to: airnodePspSponsorWallet.address,
@@ -124,7 +123,11 @@ export const deployAndUpdateSubscriptions = async () => {
   });
 
   const airseekerSponsorWallet = node.evm
-    .deriveSponsorWalletFromMnemonic(localConfigETH.airnodeMnemonic, roles.sponsor.address, PROTOCOL_ID)
+    .deriveSponsorWalletFromMnemonic(
+      localConfigETH.airnodeMnemonic,
+      roles.sponsor.address,
+      protocol.PROTOCOL_IDS.AIRSEEKER
+    )
     .connect(provider);
 
   await roles.deployer.sendTransaction({
