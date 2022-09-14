@@ -27,6 +27,11 @@ describe('updateDataFeeds', () => {
   beforeEach(async () => {
     // Reset the local hardhat network state for each test to prevent issues with other test contracts
     await hre.network.provider.send('hardhat_reset');
+    // Set the net block timestamp to current time in seconds
+    await hre.network.provider.send('evm_setNextBlockTimestamp', [Math.floor(Date.now() / 1000)]);
+    // Mine the next block to set the timestamp for the following test
+    await hre.network.provider.send('evm_mine');
+
     jest.restoreAllMocks();
 
     const { signedData: preparedSignedData } = await deployAndUpdateSubscriptions();
