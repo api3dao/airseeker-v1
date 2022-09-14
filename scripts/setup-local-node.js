@@ -1,12 +1,12 @@
 require('@nomiclabs/hardhat-ethers');
 const hre = require('hardhat');
 const node = require('@api3/airnode-node');
+const protocol = require('@api3/airnode-protocol');
 const {
   AccessControlRegistry__factory: AccessControlRegistryFactory,
   AirnodeProtocol__factory: AirnodeProtocolFactory,
   DapiServer__factory: DapiServerFactory,
 } = require('@api3/airnode-protocol-v1');
-const { PROTOCOL_ID } = require('../src/constants');
 
 async function main() {
   const [deployer, manager, sponsor] = await hre.ethers.getSigners();
@@ -44,7 +44,7 @@ async function main() {
   const airseekerSponsorWallet = node.evm.deriveSponsorWalletFromMnemonic(
     'achieve climb couple wait accident symbol spy blouse reduce foil echo label',
     sponsor.address,
-    PROTOCOL_ID
+    protocol.PROTOCOL_IDS.AIRSEEKER
   );
 
   await deployer.sendTransaction({
