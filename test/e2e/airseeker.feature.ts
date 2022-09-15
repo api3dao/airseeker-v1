@@ -12,7 +12,7 @@ import * as makeRequest from '../../src/make-request';
 // https://github.com/facebook/jest/issues/11607
 jest.setTimeout(60_000);
 
-const provider = new hre.ethers.providers.JsonRpcProvider('http://127.0.0.1:8545');
+const provider = new hre.ethers.providers.StaticJsonRpcProvider('http://127.0.0.1:8545');
 
 const airseekerConfig = buildAirseekerConfig();
 const secretsConfig = buildLocalSecrets();

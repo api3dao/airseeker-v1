@@ -24,7 +24,7 @@ describe('readDataFeedWithId', () => {
     const providerUrl = 'http://127.0.0.1:8545/';
     const voidSigner = new ethers.VoidSigner(
       ethers.constants.AddressZero,
-      new ethers.providers.JsonRpcProvider(providerUrl)
+      new ethers.providers.StaticJsonRpcProvider(providerUrl)
     );
 
     const onChainBeaconData = await api.readDataFeedWithId(voidSigner, dapiServer, 'some-id', { retries: 100_000 }, {});

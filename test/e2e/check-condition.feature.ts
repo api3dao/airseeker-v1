@@ -10,7 +10,7 @@ import { DataFeed, readDataFeedWithId } from '../../src/read-data-feed-with-id';
 jest.setTimeout(60_000);
 
 const providerUrl = 'http://127.0.0.1:8545/';
-const provider = new ethers.providers.JsonRpcProvider(providerUrl);
+const provider = new ethers.providers.StaticJsonRpcProvider(providerUrl);
 const voidSigner = new ethers.VoidSigner(ethers.constants.AddressZero, provider);
 const dapiServer = DapiServerFactory.connect('0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0', provider);
 

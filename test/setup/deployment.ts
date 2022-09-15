@@ -13,7 +13,7 @@ import { buildLocalConfigETH, buildLocalConfigBTC } from '../fixtures/config';
 
 const subscriptionIdETH = '0xc1ed31de05a9aa74410c24bccd6aa40235006f9063f1c65d47401e97ad04560e';
 const subscriptionIdBTC = '0xb4c3cea3b78c384eb4409df1497bb2f1fd872f1928a218f8907c38fe0d66ffea';
-const provider = new hre.ethers.providers.JsonRpcProvider('http://127.0.0.1:8545');
+const provider = new hre.ethers.providers.StaticJsonRpcProvider('http://127.0.0.1:8545');
 const localConfigETH = buildLocalConfigETH();
 
 const roles = {
