@@ -261,11 +261,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
 
     // Get the latest gas price
     const [logs, gasTarget] = await getGasPrice(provider.rpcProvider, config.chains[chainId].options);
-    logs.forEach((log) =>
-      log.level === 'ERROR'
-        ? logger.error(log.message + log.error ? `Error: ${log.error?.message}` : '')
-        : logger.info(log.message)
-    );
+    logs.forEach((log) => (log.level === 'ERROR' ? logger.error(log.message) : logger.info(log.message)));
 
     // Update beacon
     const tx = await go(
@@ -451,11 +447,7 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
 
     // Get the latest gas price
     const [logs, gasTarget] = await getGasPrice(provider.rpcProvider, config.chains[chainId].options);
-    logs.forEach((log) =>
-      log.level === 'ERROR'
-        ? logger.error(log.message + log.error ? `Error: ${log.error?.message}` : '')
-        : logger.info(log.message)
-    );
+    logs.forEach((log) => (log.level === 'ERROR' ? logger.error(log.message) : logger.info(log.message)));
 
     // Update beacon set
     const tx = await go(
