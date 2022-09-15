@@ -35,11 +35,11 @@ describe('readDataFeedWithId', () => {
       1,
       'Failed attempt to read data feed. Error: Error: cannot read chain',
       {
-        additional: { 'Dapi-Server': dapiServer.address },
+        meta: { 'Dapi-Server': dapiServer.address },
       }
     );
     expect(logger.warn).toHaveBeenNthCalledWith(2, 'Failed attempt to read data feed. Error: Error: some other error', {
-      additional: { 'Dapi-Server': dapiServer.address },
+      meta: { 'Dapi-Server': dapiServer.address },
     });
   });
 });

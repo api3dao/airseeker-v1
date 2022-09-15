@@ -1,31 +1,22 @@
 import { ethers } from 'ethers';
 import { SuperRefinement, z } from 'zod';
+import { config } from '@api3/airnode-validator';
 import isNil from 'lodash/isNil';
 
-export const logFormatSchema = z.union([z.literal('json'), z.literal('plain')]);
-export const logLevelSchema = z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARN'), z.literal('ERROR')]);
-
 export const logSchema = z.object({
-  format: logFormatSchema,
-  level: logLevelSchema,
+  format: config.logFormatSchema,
+  level: config.logLevelSchema,
 });
-
-export const evmAddressSchema = z.string().regex(/^0x[a-fA-F0-9]{40}$/);
-export const evmBeaconIdSchema = z.string().regex(/^0x[a-fA-F0-9]{64}$/);
-export const evmBeaconSetIdSchema = z.string().regex(/^0x[a-fA-F0-9]{64}$/);
-export const evmTemplateIdSchema = z.string().regex(/^0x[a-fA-F0-9]{64}$/);
-export const evmEndpointIdSchema = z.string().regex(/^0x[a-fA-F0-9]{64}$/);
-export const emptyObjectSchema = z.object({}).strict();
 
 export const beaconSchema = z
   .object({
-    airnode: evmAddressSchema,
-    templateId: evmTemplateIdSchema,
+    airnode: config.evmAddressSchema,
+    templateId: config.evmIdSchema,
     fetchInterval: z.number().int().positive(),
   })
   .strict();
 
-export const beaconsSchema = z.record(evmBeaconIdSchema, beaconSchema).superRefine((beacons, ctx) => {
+export const beaconsSchema = z.record(config.evmIdSchema, beaconSchema).superRefine((beacons, ctx) => {
   Object.entries(beacons).forEach(([beaconId, beacon]) => {
     // Verify that config.beacons.<beaconId> is valid
     // by deriving the hash of the airnode address and templateId
@@ -41,7 +32,7 @@ export const beaconsSchema = z.record(evmBeaconIdSchema, beaconSchema).superRefi
 });
 
 export const beaconSetsSchema = z
-  .record(evmBeaconSetIdSchema, z.array(evmBeaconIdSchema))
+  .record(config.evmIdSchema, z.array(config.evmIdSchema))
   .superRefine((beaconSets, ctx) => {
     Object.entries(beaconSets).forEach(([beaconSetId, beacons]) => {
       // Verify that config.beaconSets.<beaconSetId> is valid
@@ -57,77 +48,6 @@ export const beaconSetsSchema = z
     });
   });
 
-export const latestGasPriceOptionsSchema = z
-  .object({
-    percentile: z.number().int().optional(),
-    minTransactionCount: z.number().int().optional(),
-    pastToCompareInBlocks: z.number().int().optional(),
-    maxDeviationMultiplier: z.number().optional(),
-  })
-  .optional();
-
-export const amountSchema = z
-  .object({
-    value: z.number().lte(9007199254740991), // 2**53 - 1
-    unit: z.union([
-      z.literal('wei'),
-      z.literal('kwei'),
-      z.literal('mwei'),
-      z.literal('gwei'),
-      z.literal('szabo'),
-      z.literal('finney'),
-      z.literal('ether'),
-    ]),
-  })
-  .strict();
-
-export const gasOracleSchema = z.object({
-  fallbackGasPrice: amountSchema,
-  recommendedGasPriceMultiplier: z.number().positive().optional(),
-  latestGasPriceOptions: latestGasPriceOptionsSchema,
-  maxTimeout: z.number().int().optional(),
-});
-
-const chainOptionsErrorMap: z.ZodErrorMap = (issue, ctx) => {
-  if (issue.code === z.ZodIssueCode.unrecognized_keys) {
-    return {
-      message: `Unrecognized or disallowed key(s) for the given transaction type: ${issue.keys
-        .map((val) => `'${val}'`)
-        .join(', ')}`,
-    };
-  }
-  return { message: ctx.defaultError };
-};
-
-export const chainOptionsSchema = z.discriminatedUnion('txType', [
-  z
-    .object(
-      {
-        txType: z.literal('eip1559'),
-        baseFeeMultiplier: z.number().int().optional(), // Defaults to BASE_FEE_MULTIPLIER defined in airnode-utilities
-        priorityFee: amountSchema.optional(), // Defaults to PRIORITY_FEE_IN_WEI defined in airnode-utilities
-        fulfillmentGasLimit: z.number().int(),
-        withdrawalRemainder: amountSchema.optional(),
-        gasOracle: gasOracleSchema,
-      },
-      { errorMap: chainOptionsErrorMap }
-    )
-    .strict(),
-  z
-    .object(
-      {
-        txType: z.literal('legacy'),
-        // No multiplier is used by default. See airnode-utilities for details
-        gasPriceMultiplier: z.number().optional(),
-        fulfillmentGasLimit: z.number().int(),
-        withdrawalRemainder: amountSchema.optional(),
-        gasOracle: gasOracleSchema,
-      },
-      { errorMap: chainOptionsErrorMap }
-    )
-    .strict(),
-]);
-
 export const providerSchema = z
   .object({
     url: z.string().url(),
@@ -136,11 +56,11 @@ export const providerSchema = z
 
 export const chainSchema = z
   .object({
-    contracts: z.record(evmAddressSchema).refine((contracts) => {
+    contracts: z.record(config.evmAddressSchema).refine((contracts) => {
       return !isNil(contracts['DapiServer']);
     }, 'DapiServer contract address is missing'),
     providers: z.record(providerSchema),
-    options: chainOptionsSchema,
+    options: config.chainOptionsSchema,
   })
   .strict();
 
@@ -159,12 +79,12 @@ export const gatewaysSchema = z.record(gatewayArraySchema);
 
 export const templateSchema = z
   .object({
-    endpointId: evmEndpointIdSchema,
+    endpointId: config.evmIdSchema,
     parameters: z.string(),
   })
   .strict();
 
-export const templatesSchema = z.record(evmTemplateIdSchema, templateSchema).superRefine((templates, ctx) => {
+export const templatesSchema = z.record(config.evmIdSchema, templateSchema).superRefine((templates, ctx) => {
   Object.entries(templates).forEach(([templateId, template]) => {
     // Verify that config.templates.<templateId> is valid
     // by deriving the hash of the endpointId and parameters
@@ -189,14 +109,14 @@ export const baseBeaconUpdateSchema = z.object({
 
 export const beaconUpdateSchema = z
   .object({
-    beaconId: evmBeaconIdSchema,
+    beaconId: config.evmIdSchema,
   })
   .merge(baseBeaconUpdateSchema)
   .strict();
 
 export const beaconSetUpdateSchema = z
   .object({
-    beaconSetId: evmBeaconSetIdSchema,
+    beaconSetId: config.evmIdSchema,
   })
   .merge(baseBeaconUpdateSchema)
   .strict();
@@ -204,7 +124,7 @@ export const beaconSetUpdateSchema = z
 // chainId -> sponsorAddress -> dataFeeds
 export const dataFeedUpdatesSchema = z.record(
   z.record(
-    evmAddressSchema,
+    config.evmAddressSchema,
     z.object({
       beacons: z.array(beaconUpdateSchema),
       beaconSets: z.array(beaconSetUpdateSchema),
@@ -335,7 +255,6 @@ export type Beacons = z.infer<typeof beaconsSchema>;
 export type BeaconSets = z.infer<typeof beaconSetsSchema>;
 export type Chain = z.infer<typeof chainSchema>;
 export type Chains = z.infer<typeof chainsSchema>;
-export type GasOracleConfig = z.infer<typeof gasOracleSchema>;
 export type Gateway = z.infer<typeof gatewaySchema>;
 export type Gateways = z.infer<typeof gatewaysSchema>;
 export type Template = z.infer<typeof templateSchema>;
@@ -344,8 +263,8 @@ export type DataFeedUpdates = z.infer<typeof dataFeedUpdatesSchema>;
 export type BeaconUpdate = z.infer<typeof beaconUpdateSchema>;
 export type BeaconSetUpdate = z.infer<typeof beaconSetUpdateSchema>;
 export type Triggers = z.infer<typeof triggersSchema>;
-export type Address = z.infer<typeof evmAddressSchema>;
-export type BeaconId = z.infer<typeof evmBeaconIdSchema>;
-export type TemplateId = z.infer<typeof evmTemplateIdSchema>;
-export type EndpointId = z.infer<typeof evmEndpointIdSchema>;
+export type Address = z.infer<typeof config.evmAddressSchema>;
+export type BeaconId = z.infer<typeof config.evmIdSchema>;
+export type TemplateId = z.infer<typeof config.evmIdSchema>;
+export type EndpointId = z.infer<typeof config.evmIdSchema>;
 export type SignedData = z.infer<typeof signedDataSchema>;

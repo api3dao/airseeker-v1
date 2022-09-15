@@ -33,23 +33,27 @@ export const buildAirseekerConfig = () => ({
         },
       },
       options: {
-        txType: 'legacy',
-
         fulfillmentGasLimit: 500_000,
-        gasOracle: {
-          maxTimeout: 1, // Set low to make tests run faster
-          fallbackGasPrice: {
-            value: 10,
-            unit: 'gwei',
-          },
-          recommendedGasPriceMultiplier: 1,
-          latestGasPriceOptions: {
+        gasPriceOracle: [
+          {
+            gasPriceStrategy: 'latestBlockPercentileGasPrice',
             percentile: 60,
-            minTransactionCount: 9,
+            minTransactionCount: 20,
             pastToCompareInBlocks: 20,
             maxDeviationMultiplier: 5, // Set high to ensure that e2e tests do not use fallback
           },
-        },
+          {
+            gasPriceStrategy: 'providerRecommendedGasPrice',
+            recommendedGasPriceMultiplier: 1.2,
+          },
+          {
+            gasPriceStrategy: 'constantGasPrice',
+            gasPrice: {
+              value: 10,
+              unit: 'gwei',
+            },
+          },
+        ],
       },
     },
   },

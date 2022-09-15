@@ -17,7 +17,7 @@ export const readDataFeedWithId = async (
 ): Promise<DataFeed | null> => {
   const logOptionsDapiServerAddress = {
     ...logOptions,
-    additional: { ...logOptions.additional, 'Dapi-Server': dapiServer.address },
+    meta: { ...logOptions.meta, 'Dapi-Server': dapiServer.address },
   };
 
   const goDataFeed = await go(() => dapiServer.connect(voidSigner).readDataFeedWithId(dataFeedId), {

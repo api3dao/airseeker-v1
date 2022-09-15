@@ -11,8 +11,7 @@ export const getTransactionCount = async (
 ): Promise<number | null> => {
   const { chainId, rpcProvider, providerName } = provider;
   const logOptionsSponsorWallet = {
-    meta: { chainId, providerName },
-    additional: { 'Sponsor-Wallet': shortenAddress(sponsorWalletAddress) },
+    meta: { 'Chain-ID': chainId, Provider: providerName, 'Sponsor-Wallet': shortenAddress(sponsorWalletAddress) },
   };
 
   const goTransactionCount = await go(() => rpcProvider.getTransactionCount(sponsorWalletAddress, currentBlockNumber), {

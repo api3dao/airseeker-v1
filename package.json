@@ -39,18 +39,19 @@
     "test:e2e": "SILENCE_LOGGER=true jest --selectProjects e2e --runInBand"
   },
   "dependencies": {
-    "@api3/airnode-abi": "^0.7.2",
-    "@api3/airnode-node": "^0.7.2",
+    "@api3/airnode-abi": "^0.8.0",
+    "@api3/airnode-node": "^0.8.0",
     "@api3/airnode-protocol": "^0.8.0",
     "@api3/airnode-protocol-v1": "^0.7.0",
-    "@api3/airnode-utilities": "^0.7.2",
+    "@api3/airnode-utilities": "^0.8.0",
+    "@api3/airnode-validator": "^0.8.0",
     "@api3/promise-utils": "^0.3.0",
     "axios": "^0.27.2",
-    "ethers": "^5.6.9",
+    "ethers": "^5.7.0",
     "lodash": "^4.17.21",
     "promise.any": "^2.0.4",
     "source-map-support": "^0.5.21",
-    "zod": "^3.18.0"
+    "zod": "^3.17.3"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.1.0",
