@@ -36,7 +36,7 @@
     "prettier": "prettier --check \"./**/*.{js,ts,md,yml,json}\"",
     "prettier:fix": "prettier --write \"./**/*.{js,ts,md,yml,json}\" --ignore-unknown",
     "test": "SILENCE_LOGGER=true jest --selectProjects unit",
-    "test:e2e": "SILENCE_LOGGER=true jest --selectProjects e2e --runInBand"
+    "test:e2e": "jest --selectProjects e2e --runInBand"
   },
   "dependencies": {
     "@api3/airnode-abi": "^0.8.0",
