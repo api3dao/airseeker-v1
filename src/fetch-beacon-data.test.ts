@@ -55,27 +55,27 @@ const config: Config = {
         },
       },
       options: {
-        txType: 'eip1559',
-        priorityFee: {
-          value: 3.12,
-          unit: 'gwei',
-        },
-        baseFeeMultiplier: 2,
         fulfillmentGasLimit: 500_000,
-        gasOracle: {
-          maxTimeout: 3,
-          fallbackGasPrice: {
-            value: 10,
-            unit: 'gwei',
-          },
-          recommendedGasPriceMultiplier: 1.2,
-          latestGasPriceOptions: {
+        gasPriceOracle: [
+          {
+            gasPriceStrategy: 'latestBlockPercentileGasPrice',
             percentile: 60,
             minTransactionCount: 10,
             pastToCompareInBlocks: 20,
             maxDeviationMultiplier: 2,
           },
-        },
+          {
+            gasPriceStrategy: 'providerRecommendedGasPrice',
+            recommendedGasPriceMultiplier: 1.2,
+          },
+          {
+            gasPriceStrategy: 'constantGasPrice',
+            gasPrice: {
+              value: 10,
+              unit: 'gwei',
+            },
+          },
+        ],
       },
     },
     '3': {
@@ -88,27 +88,27 @@ const config: Config = {
         },
       },
       options: {
-        txType: 'eip1559',
-        priorityFee: {
-          value: 3.12,
-          unit: 'gwei',
-        },
-        baseFeeMultiplier: 2,
         fulfillmentGasLimit: 500_000,
-        gasOracle: {
-          maxTimeout: 3,
-          fallbackGasPrice: {
-            value: 10,
-            unit: 'gwei',
-          },
-          recommendedGasPriceMultiplier: 1.2,
-          latestGasPriceOptions: {
+        gasPriceOracle: [
+          {
+            gasPriceStrategy: 'latestBlockPercentileGasPrice',
             percentile: 60,
             minTransactionCount: 10,
             pastToCompareInBlocks: 20,
             maxDeviationMultiplier: 2,
           },
-        },
+          {
+            gasPriceStrategy: 'providerRecommendedGasPrice',
+            recommendedGasPriceMultiplier: 1.2,
+          },
+          {
+            gasPriceStrategy: 'constantGasPrice',
+            gasPrice: {
+              value: 10,
+              unit: 'gwei',
+            },
+          },
+        ],
       },
     },
   },

@@ -19,7 +19,7 @@ export const makeSignedDataGatewayRequests = async (
   template: Id<Template>
 ): Promise<SignedData> => {
   const { endpointId, parameters, id: templateId } = template;
-  const logOptionsTemplateId = { additional: { 'Template-ID': templateId } };
+  const logOptionsTemplateId = { meta: { 'Template-ID': templateId } };
 
   // Initiate HTTP request to each of the gateways and resolve with the data (or reject otherwise)
   const requests = gateways.map(async (gateway) => {

@@ -1,4 +1,4 @@
-import { buildBaseOptions, LogOptions, randomHexString } from '@api3/airnode-utilities';
+import { setLogOptions, randomHexString } from '@api3/airnode-utilities';
 import { ethers } from 'ethers';
 import { BeaconId, Config, SignedData } from './validation';
 
@@ -20,7 +20,6 @@ export interface State {
   stopSignalReceived: boolean;
   beaconValues: BeaconValueStorage;
   providers: Providers;
-  logOptions: LogOptions;
 }
 
 // TODO: Freeze the state in development mode
@@ -31,15 +30,16 @@ export const initializeState = (config: Config) => {
 };
 
 export const getInitialState = (config: Config) => {
+  // Set initial log options
+  setLogOptions({
+    ...config.log,
+    meta: { 'Coordinator-ID': randomHexString(16) },
+  });
   return {
     config,
     stopSignalReceived: false,
     beaconValues: {},
     providers: {},
-    logOptions: buildBaseOptions(
-      { nodeSettings: { logFormat: config.log.format, logLevel: config.log.level } },
-      { coordinatorId: randomHexString(16) }
-    ),
   };
 };
 

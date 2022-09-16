@@ -24,7 +24,7 @@ describe('readDataFeedWithId', () => {
     const providerUrl = 'http://127.0.0.1:8545/';
     const voidSigner = new ethers.VoidSigner(
       ethers.constants.AddressZero,
-      new ethers.providers.JsonRpcProvider(providerUrl)
+      new ethers.providers.StaticJsonRpcProvider(providerUrl)
     );
 
     const onChainBeaconData = await api.readDataFeedWithId(voidSigner, dapiServer, 'some-id', { retries: 100_000 }, {});
@@ -35,11 +35,11 @@ describe('readDataFeedWithId', () => {
       1,
       'Failed attempt to read data feed. Error: Error: cannot read chain',
       {
-        additional: { 'Dapi-Server': dapiServer.address },
+        meta: { 'Dapi-Server': dapiServer.address },
       }
     );
     expect(logger.warn).toHaveBeenNthCalledWith(2, 'Failed attempt to read data feed. Error: Error: some other error', {
-      additional: { 'Dapi-Server': dapiServer.address },
+      meta: { 'Dapi-Server': dapiServer.address },
     });
   });
 });

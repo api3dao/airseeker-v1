@@ -12,7 +12,7 @@ import * as makeRequest from '../../src/make-request';
 // https://github.com/facebook/jest/issues/11607
 jest.setTimeout(60_000);
 
-const provider = new hre.ethers.providers.JsonRpcProvider('http://127.0.0.1:8545');
+const provider = new hre.ethers.providers.StaticJsonRpcProvider('http://127.0.0.1:8545');
 
 const airseekerConfig = buildAirseekerConfig();
 const secretsConfig = buildLocalSecrets();
@@ -120,7 +120,7 @@ describe('Airseeker', () => {
                     heartbeatInterval: 86400,
                   },
                 ],
-                updateInterval: 10,
+                updateInterval: 20,
               },
             },
           },
@@ -174,7 +174,7 @@ describe('Airseeker', () => {
                     heartbeatInterval: 10,
                   },
                 ],
-                updateInterval: 10,
+                updateInterval: 20,
               },
             },
           },
@@ -249,22 +249,27 @@ describe('Airseeker', () => {
               },
             },
             options: {
-              txType: 'legacy',
-              fulfillmentGasLimit: 500_000,
-              gasOracle: {
-                maxTimeout: 1, // Set low to make tests run faster
-                fallbackGasPrice: {
-                  value: 10,
-                  unit: 'gwei',
-                },
-                recommendedGasPriceMultiplier: 1,
-                latestGasPriceOptions: {
+              fulfillmentGasLimit: 500000,
+              gasPriceOracle: [
+                {
+                  gasPriceStrategy: 'latestBlockPercentileGasPrice',
                   percentile: 60,
-                  minTransactionCount: 9,
+                  minTransactionCount: 29,
                   pastToCompareInBlocks: 20,
-                  maxDeviationMultiplier: 5, // Set high to ensure that e2e tests do not use fallback
+                  maxDeviationMultiplier: 5,
                 },
-              },
+                {
+                  gasPriceStrategy: 'providerRecommendedGasPrice',
+                  recommendedGasPriceMultiplier: 1.2,
+                },
+                {
+                  gasPriceStrategy: 'constantGasPrice',
+                  gasPrice: {
+                    value: 10,
+                    unit: 'gwei',
+                  },
+                },
+              ],
             },
           },
         },

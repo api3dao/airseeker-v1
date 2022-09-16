@@ -14,13 +14,6 @@ export const INT224_MIN = ethers.BigNumber.from(2).pow(ethers.BigNumber.from(223
 export const INT224_MAX = ethers.BigNumber.from(2).pow(ethers.BigNumber.from(223)).sub(ethers.BigNumber.from(1));
 export const NO_DATA_FEEDS_EXIT_CODE = 1;
 export const NO_FETCH_EXIT_CODE = 2;
-export const GAS_ORACLE_MAX_TIMEOUT_S = 3;
-// Percentage value to check that latest block gas prices are not too large compared to (latest - pastToCompareInBlocks) block
-export const GAS_PRICE_MAX_DEVIATION_MULTIPLIER = 2;
-export const GAS_PRICE_PERCENTILE = 60;
-// The minimum number of transactions required in a block before falling back to getGasPrice
-export const MIN_TRANSACTION_COUNT = 10;
-export const PAST_TO_COMPARE_IN_BLOCKS = 20;
 // Number that represents 100% is chosen to avoid overflows in DapiServer's
 // `calculateUpdateInPercentage()`. Since the reported data needs to fit
 // into 224 bits, its multiplication by 10^8 is guaranteed not to overflow.

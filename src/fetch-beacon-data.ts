@@ -61,7 +61,7 @@ export const fetchBeaconDataInLoop = async (beaconId: string) => {
 };
 
 export const fetchBeaconData = async (beaconId: string) => {
-  const logOptionsBeaconId = { additional: { 'Beacon-ID': beaconId } };
+  const logOptionsBeaconId = { meta: { 'Beacon-ID': beaconId } };
   logger.debug('Fetching beacon data', logOptionsBeaconId);
   const { config } = getState();
 

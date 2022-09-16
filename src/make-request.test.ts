@@ -70,7 +70,7 @@ describe('makeSignedDataGatewayRequests', () => {
     expect(mockedAxios).toHaveBeenCalledTimes(3);
     expect(logger.warn).toHaveBeenCalledWith(
       'Failed to make signed data gateway request for gateway: "https://gateway-1.com/endpoint". Error: "Error: timeout error"',
-      { additional: { 'Template-ID': templateId } }
+      { meta: { 'Template-ID': templateId } }
     );
     const zodErrors = [
       {
@@ -92,11 +92,11 @@ describe('makeSignedDataGatewayRequests', () => {
         null,
         2
       )}"`,
-      { additional: { 'Template-ID': templateId } }
+      { meta: { 'Template-ID': templateId } }
     );
     expect(logger.info).toBeCalledWith(
       `Using the following signed data response: "${JSON.stringify(validSignedData)}"`,
-      { additional: { 'Template-ID': templateId } }
+      { meta: { 'Template-ID': templateId } }
     );
   });
 
@@ -129,7 +129,7 @@ describe('makeSignedDataGatewayRequests', () => {
     expect(logger.info).not.toHaveBeenCalled();
     expect(logger.warn).toHaveBeenCalledWith(
       'Failed to make signed data gateway request for gateway: "https://gateway-1.com/endpoint". Error: "Error: timeout error"',
-      { additional: { 'Template-ID': templateId } }
+      { meta: { 'Template-ID': templateId } }
     );
     const zodErrors = [
       {
@@ -145,10 +145,10 @@ describe('makeSignedDataGatewayRequests', () => {
         null,
         2
       )}"`,
-      { additional: { 'Template-ID': templateId } }
+      { meta: { 'Template-ID': templateId } }
     );
     expect(logger.warn).toBeCalledWith(`All gateway requests have failed with an error. No response to be used`, {
-      additional: { 'Template-ID': templateId },
+      meta: { 'Template-ID': templateId },
     });
   });
 });

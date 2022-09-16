@@ -4,7 +4,7 @@ import { Provider } from './state';
 
 export const getCurrentBlockNumber = async (provider: Provider, goOptions: GoAsyncOptions): Promise<number | null> => {
   const { chainId, rpcProvider, providerName } = provider;
-  const logOptionsChainId = { meta: { chainId, providerName } };
+  const logOptionsChainId = { meta: { 'Chain-ID': chainId, Provider: providerName } };
 
   const goBlockNumber = await go(() => rpcProvider.getBlockNumber(), {
     ...goOptions,
