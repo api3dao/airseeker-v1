@@ -1,12 +1,15 @@
 import { DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol-v1';
 import { ethers } from 'ethers';
-import * as gasOracleModule from './gas-oracle';
 import * as state from './state';
 import * as api from './update-data-feeds';
 import * as readDataFeedModule from './read-data-feed-with-id';
 import { initializeProviders } from './providers';
 import { BeaconSetUpdate, BeaconUpdate, Config } from './validation';
 import { validSignedData } from '../test/fixtures';
+
+// Jest version 27 has a bug where jest.setTimeout does not work correctly inside describe or test blocks
+// https://github.com/facebook/jest/issues/11607
+jest.setTimeout(15_000);
 
 const config: Config = {
   airseekerWalletMnemonic: 'achieve climb couple wait accident symbol spy blouse reduce foil echo label',
@@ -58,27 +61,27 @@ const config: Config = {
         },
       },
       options: {
-        txType: 'eip1559',
-        priorityFee: {
-          value: 3.12,
-          unit: 'gwei',
-        },
-        baseFeeMultiplier: 2,
-        fulfillmentGasLimit: 500_000,
-        gasOracle: {
-          maxTimeout: 1,
-          fallbackGasPrice: {
-            value: 10,
-            unit: 'gwei',
-          },
-          recommendedGasPriceMultiplier: 1.2,
-          latestGasPriceOptions: {
+        fulfillmentGasLimit: 500000,
+        gasPriceOracle: [
+          {
+            gasPriceStrategy: 'latestBlockPercentileGasPrice',
             percentile: 60,
-            minTransactionCount: 10,
+            minTransactionCount: 20,
             pastToCompareInBlocks: 20,
             maxDeviationMultiplier: 2,
           },
-        },
+          {
+            gasPriceStrategy: 'providerRecommendedGasPrice',
+            recommendedGasPriceMultiplier: 1.2,
+          },
+          {
+            gasPriceStrategy: 'constantGasPrice',
+            gasPrice: {
+              value: 10,
+              unit: 'gwei',
+            },
+          },
+        ],
       },
     },
     '3': {
@@ -91,27 +94,16 @@ const config: Config = {
         },
       },
       options: {
-        txType: 'eip1559',
-        priorityFee: {
-          value: 3.12,
-          unit: 'gwei',
-        },
-        baseFeeMultiplier: 2,
-        fulfillmentGasLimit: 500_000,
-        gasOracle: {
-          maxTimeout: 1,
-          fallbackGasPrice: {
-            value: 10,
-            unit: 'gwei',
+        fulfillmentGasLimit: 500000,
+        gasPriceOracle: [
+          {
+            gasPriceStrategy: 'constantGasPrice',
+            gasPrice: {
+              value: 10,
+              unit: 'gwei',
+            },
           },
-          recommendedGasPriceMultiplier: 1.2,
-          latestGasPriceOptions: {
-            percentile: 60,
-            minTransactionCount: 10,
-            pastToCompareInBlocks: 20,
-            maxDeviationMultiplier: 2,
-          },
-        },
+        ],
       },
     },
   },
@@ -301,14 +293,11 @@ describe('updateBeaconSets', () => {
       },
     }));
 
-    const getBlockNumberSpy = jest.spyOn(ethers.providers.JsonRpcProvider.prototype, 'getBlockNumber');
+    const getBlockNumberSpy = jest.spyOn(ethers.providers.StaticJsonRpcProvider.prototype, 'getBlockNumber');
     getBlockNumberSpy.mockResolvedValueOnce(12);
 
-    const txCountSpy = jest.spyOn(ethers.providers.JsonRpcProvider.prototype, 'getTransactionCount');
+    const txCountSpy = jest.spyOn(ethers.providers.StaticJsonRpcProvider.prototype, 'getTransactionCount');
     txCountSpy.mockResolvedValueOnce(212);
-
-    const gasPriceSpy = jest.spyOn(gasOracleModule, 'getGasPrice');
-    gasPriceSpy.mockImplementationOnce(jest.fn());
 
     const timestamp = 1649664085;
     const readOnChainBeaconDataSpy = jest
@@ -354,7 +343,12 @@ describe('updateBeaconSets', () => {
       [validSignedData.timestamp, expect.any(String), validSignedData.timestamp],
       [validSignedData.encodedValue, '0x', validSignedData.encodedValue],
       [validSignedData.signature, expect.any(String), validSignedData.signature],
-      expect.objectContaining({ gasLimit: expect.any(ethers.BigNumber), gasPrice: undefined, nonce: 212, type: 2 })
+      expect.objectContaining({
+        gasLimit: expect.any(ethers.BigNumber),
+        gasPrice: expect.any(ethers.BigNumber),
+        nonce: 212,
+        type: 0,
+      })
     );
   });
 });
@@ -388,10 +382,10 @@ describe('initializeUpdateCycle', () => {
       },
     }));
 
-    const getBlockNumberSpy = jest.spyOn(ethers.providers.JsonRpcProvider.prototype, 'getBlockNumber');
+    const getBlockNumberSpy = jest.spyOn(ethers.providers.StaticJsonRpcProvider.prototype, 'getBlockNumber');
     getBlockNumberSpy.mockResolvedValueOnce(12);
 
-    const txCountSpy = jest.spyOn(ethers.providers.JsonRpcProvider.prototype, 'getTransactionCount');
+    const txCountSpy = jest.spyOn(ethers.providers.StaticJsonRpcProvider.prototype, 'getTransactionCount');
     txCountSpy.mockResolvedValueOnce(212);
 
     const groups = api.groupDataFeedsByProviderSponsor();
@@ -416,8 +410,7 @@ describe('initializeUpdateCycle', () => {
     expect(voidSigner.address).toEqual(ethers.constants.AddressZero);
     expect(totalTimeout).toEqual(1_000);
     expect(logOptions).toEqual({
-      meta: { chainId: '1', providerName: 'selfHostedMainnet' },
-      additional: { Sponsor: '0x3C4...93BC', DataFeedType: 'Beacon' },
+      meta: { 'Chain-ID': '1', Provider: 'selfHostedMainnet', Sponsor: '0x3C4...93BC', DataFeedType: 'Beacon' },
     });
     expect(beaconValues).toEqual({
       '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c': validSignedData,
@@ -431,7 +424,7 @@ describe('initializeUpdateCycle', () => {
   });
 
   it(`returns null if current block can't be retrieved`, async () => {
-    const getBlockNumberSpy = jest.spyOn(ethers.providers.JsonRpcProvider.prototype, 'getBlockNumber');
+    const getBlockNumberSpy = jest.spyOn(ethers.providers.StaticJsonRpcProvider.prototype, 'getBlockNumber');
     getBlockNumberSpy.mockRejectedValueOnce('Error');
 
     const groups = api.groupDataFeedsByProviderSponsor();
@@ -439,7 +432,7 @@ describe('initializeUpdateCycle', () => {
   });
 
   it(`returns null if transaction count can't be retrieved`, async () => {
-    const getBlockNumberSpy = jest.spyOn(ethers.providers.JsonRpcProvider.prototype, 'getTransactionCount');
+    const getBlockNumberSpy = jest.spyOn(ethers.providers.StaticJsonRpcProvider.prototype, 'getTransactionCount');
     getBlockNumberSpy.mockRejectedValueOnce('Error');
 
     const groups = api.groupDataFeedsByProviderSponsor();

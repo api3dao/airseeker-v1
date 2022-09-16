@@ -36,22 +36,27 @@
         }
       },
       "options": {
-        "txType": "legacy",
         "fulfillmentGasLimit": 500000,
-        "gasOracle": {
-          "maxTimeout": 3,
-          "fallbackGasPrice": {
-            "value": 10,
-            "unit": "gwei"
-          },
-          "recommendedGasPriceMultiplier": 1.2,
-          "latestGasPriceOptions": {
+        "gasPriceOracle": [
+          {
+            "gasPriceStrategy": "latestBlockPercentileGasPrice",
             "percentile": 60,
-            "minTransactionCount": 10,
+            "minTransactionCount": 20,
             "pastToCompareInBlocks": 20,
             "maxDeviationMultiplier": 2
+          },
+          {
+            "gasPriceStrategy": "providerRecommendedGasPrice",
+            "recommendedGasPriceMultiplier": 1.2
+          },
+          {
+            "gasPriceStrategy": "constantGasPrice",
+            "gasPrice": {
+              "value": 10,
+              "unit": "gwei"
+            }
           }
-        }
+        ]
       }
     },
     "3": {
@@ -64,22 +69,27 @@
         }
       },
       "options": {
-        "txType": "legacy",
         "fulfillmentGasLimit": 500000,
-        "gasOracle": {
-          "maxTimeout": 3,
-          "fallbackGasPrice": {
-            "value": 10,
-            "unit": "gwei"
-          },
-          "recommendedGasPriceMultiplier": 1.2,
-          "latestGasPriceOptions": {
+        "gasPriceOracle": [
+          {
+            "gasPriceStrategy": "latestBlockPercentileGasPrice",
             "percentile": 60,
-            "minTransactionCount": 10,
+            "minTransactionCount": 20,
             "pastToCompareInBlocks": 20,
             "maxDeviationMultiplier": 2
+          },
+          {
+            "gasPriceStrategy": "providerRecommendedGasPrice",
+            "recommendedGasPriceMultiplier": 1.2
+          },
+          {
+            "gasPriceStrategy": "constantGasPrice",
+            "gasPrice": {
+              "value": 10,
+              "unit": "gwei"
+            }
           }
-        }
+        ]
       }
     }
   },

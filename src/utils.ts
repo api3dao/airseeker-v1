@@ -1,6 +1,4 @@
-import { PriorityFee } from '@api3/airnode-utilities';
 import { GoAsyncOptions } from '@api3/promise-utils';
-import { ethers } from 'ethers';
 import { INFINITE_RETRIES, PROVIDER_TIMEOUT_MS, RANDOM_BACKOFF_MAX_MS, RANDOM_BACKOFF_MIN_MS } from './constants';
 
 export const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
@@ -16,6 +14,3 @@ export const prepareGoOptions = (startTime: number, totalTimeout: number): GoAsy
   retries: INFINITE_RETRIES,
   delay: { type: 'random' as const, minDelayMs: RANDOM_BACKOFF_MIN_MS, maxDelayMs: RANDOM_BACKOFF_MAX_MS },
 });
-
-export const parsePriorityFee = ({ value, unit }: PriorityFee) =>
-  ethers.utils.parseUnits(value.toString(), unit ?? 'wei');

@@ -2,6 +2,7 @@ import * as node from '@api3/airnode-node';
 import * as protocol from '@api3/airnode-protocol';
 import { DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol-v1';
 import { go } from '@api3/promise-utils';
+import { getGasPrice } from '@api3/airnode-utilities';
 import { ethers } from 'ethers';
 import { isEmpty } from 'lodash';
 import { getCurrentBlockNumber } from './block-number';
@@ -13,7 +14,6 @@ import {
   checkUpdateCondition,
 } from './check-condition';
 import { INT224_MAX, INT224_MIN, NO_DATA_FEEDS_EXIT_CODE } from './constants';
-import { getGasPrice } from './gas-oracle';
 import { logger } from './logging';
 import { readDataFeedWithId } from './read-data-feed-with-id';
 import { getState, Provider } from './state';
@@ -112,8 +112,12 @@ export const initializeUpdateCycle = async (
   const { provider, updateInterval, sponsorAddress, beacons, beaconSets } = providerSponsorDataFeeds;
   const { rpcProvider, chainId, providerName } = provider;
   const logOptions = {
-    meta: { chainId, providerName },
-    additional: { Sponsor: shortenAddress(sponsorAddress), DataFeedType: dataFeedType },
+    meta: {
+      'Chain-ID': chainId,
+      Provider: providerName,
+      Sponsor: shortenAddress(sponsorAddress),
+      DataFeedType: dataFeedType,
+    },
   };
 
   logger.debug(`Initializing updates`, logOptions);
@@ -191,8 +195,8 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
   for (const beacon of beacons) {
     const logOptionsBeaconId = {
       ...logOptions,
-      additional: {
-        ...logOptions.additional,
+      meta: {
+        ...logOptions.meta,
         'Sponsor-Wallet': shortenAddress(sponsorWallet.address),
         'Beacon-ID': beacon.beaconId,
       },
@@ -255,8 +259,9 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
       logger.info(`Deviation threshold reached. Updating.`, logOptionsBeaconId);
     }
 
-    // Get gas price from oracle
-    const gasPrice = await getGasPrice(provider, config.chains[chainId].options.gasOracle);
+    // Get the latest gas price
+    const [logs, gasTarget] = await getGasPrice(provider.rpcProvider, config.chains[chainId].options);
+    logs.forEach((log) => (log.level === 'ERROR' ? logger.error(log.message) : logger.info(log.message)));
 
     // Update beacon
     const tx = await go(
@@ -270,10 +275,8 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
             newBeaconResponse.encodedValue,
             newBeaconResponse.signature,
             {
-              gasLimit: ethers.BigNumber.from(config.chains[chainId].options.fulfillmentGasLimit),
-              type: config.chains[chainId].options.txType === 'eip1559' ? 2 : 0,
-              gasPrice,
               nonce,
+              ...gasTarget,
             }
           ),
       {
@@ -320,8 +323,8 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
   for (const beaconSet of beaconSets) {
     const logOptionsBeaconSetId = {
       ...logOptions,
-      additional: {
-        ...logOptions.additional,
+      meta: {
+        ...logOptions.meta,
         'Sponsor-Wallet': shortenAddress(sponsorWallet.address),
         'BeaconSet-ID': beaconSet.beaconSetId,
       },
@@ -348,8 +351,8 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
       async (beaconId) => {
         const logOptionsBeaconId = {
           ...logOptionsBeaconSetId,
-          additional: {
-            ...logOptionsBeaconSetId.additional,
+          meta: {
+            ...logOptionsBeaconSetId.meta,
             'Beacon-ID': beaconId,
           },
         };
@@ -442,8 +445,9 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
       logger.info(`Deviation threshold reached. Updating.`, logOptionsBeaconSetId);
     }
 
-    // Get gas price from oracle
-    const gasPrice = await getGasPrice(provider, config.chains[chainId].options.gasOracle);
+    // Get the latest gas price
+    const [logs, gasTarget] = await getGasPrice(provider.rpcProvider, config.chains[chainId].options);
+    logs.forEach((log) => (log.level === 'ERROR' ? logger.error(log.message) : logger.info(log.message)));
 
     // Update beacon set
     const tx = await go(
@@ -455,10 +459,8 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
           beaconSetBeaconValues.map((value) => value.encodedValue),
           beaconSetBeaconValues.map((value) => value.signature),
           {
-            gasLimit: ethers.BigNumber.from(config.chains[chainId].options.fulfillmentGasLimit),
-            type: config.chains[chainId].options.txType === 'eip1559' ? 2 : 0,
-            gasPrice,
             nonce,
+            ...gasTarget,
           }
         ),
       {
