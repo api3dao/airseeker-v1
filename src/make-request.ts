@@ -2,7 +2,7 @@ import { go } from '@api3/promise-utils';
 import axios from 'axios';
 import anyPromise from 'promise.any';
 import { logger } from './logging';
-import { Gateway, SignedData, signedDataSchema, Template } from './validation';
+import { Gateway, SignedData, signedDataSchema, signedDataSchemaLegacy, Template } from './validation';
 import { GATEWAY_TIMEOUT_MS } from './constants';
 import { Id } from './state';
 
@@ -49,11 +49,25 @@ export const makeSignedDataGatewayRequests = async (
       throw new Error(message);
     }
 
-    const parsed = signedDataSchema.safeParse(goRes.data);
-    if (!parsed.success) {
-      const message = `Failed to parse signed data response for gateway: "${fullUrl}". Error: "${parsed.error}"`;
-      logger.warn(message, logOptionsTemplateId);
-      throw new Error(message);
+    let parsed;
+    // We try first parsing signed data response prior to v0.8.0
+    const parsedLegacy = signedDataSchemaLegacy.safeParse(goRes.data);
+    if (parsedLegacy.success) {
+      parsed = {
+        data: {
+          timestamp: parsedLegacy.data.data.timestamp,
+          encodedValue: parsedLegacy.data.data.value,
+          signature: parsedLegacy.data.signature,
+        },
+      };
+    } else {
+      // If above fails then we try parsing v0.8.0 response
+      parsed = signedDataSchema.safeParse(goRes.data);
+      if (!parsed.success) {
+        const message = `Failed to parse signed data response for gateway: "${fullUrl}". Error: "${parsed.error}"`;
+        logger.warn(message, logOptionsTemplateId);
+        throw new Error(message);
+      }
     }
 
     return parsed.data;

@@ -317,7 +317,7 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
     provider,
   } = initialUpdateData;
   const { chainId } = provider;
-  // Process beacon updates
+  // Process beacon set updates
   let nonce = transactionCount;
 
   for (const beaconSet of beaconSets) {
@@ -434,7 +434,7 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
       );
       if (shouldUpdate === null) {
         logger.warn(`Unable to fetch current beacon set value`, logOptionsBeaconSetId);
-        // This can happen only if we reach the total timeout so it makes no sense to continue with the rest of the beacons
+        // This can happen only if we reach the total timeout so it makes no sense to continue with the rest of the beaconSets
         return;
       }
       if (!shouldUpdate) {
