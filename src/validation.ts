@@ -243,6 +243,10 @@ export const configSchema = z
   .superRefine(validateDataFeedUpdatesReferences);
 export const encodedValueSchema = z.string().regex(/^0x[a-fA-F0-9]{64}$/);
 export const signatureSchema = z.string().regex(/^0x[a-fA-F0-9]{130}$/);
+export const signedDataSchemaLegacy = z.object({
+  data: z.object({ timestamp: z.string(), value: encodedValueSchema }),
+  signature: signatureSchema,
+});
 export const signedDataSchema = z.object({
   timestamp: z.string(),
   encodedValue: encodedValueSchema,

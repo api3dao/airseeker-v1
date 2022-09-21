@@ -100,6 +100,70 @@ describe('makeSignedDataGatewayRequests', () => {
     );
   });
 
+  it('makes requests and resolves even for legacy responses', async () => {
+    const mockedAxios = (axios as any as jest.Mock)
+      .mockImplementationOnce(() => {
+        throw new Error('timeout error');
+      })
+      .mockReturnValueOnce({
+        data: {
+          timestamp: 'invalid',
+          encodedValue: '0x000000000000000000000000000000000000000000000000000000000invalid',
+          signature: 'invalid signature',
+        },
+      })
+      .mockReturnValueOnce({
+        data: {
+          data: { timestamp: validSignedData.timestamp, value: validSignedData.encodedValue },
+          signature: validSignedData.signature,
+        },
+      });
+    jest.spyOn(logger, 'info');
+    jest.spyOn(logger, 'warn');
+
+    const response = await makeSignedDataGatewayRequests(
+      [
+        { apiKey: 'api-key-1', url: 'https://gateway-1.com/' },
+        { apiKey: 'api-key-2', url: 'https://gateway-2.com/' },
+        { apiKey: 'api-key-3', url: 'https://gateway-3.com/' },
+      ],
+      { parameters: '0x123456789', endpointId: 'endpoint', id: templateId }
+    );
+
+    expect(response).toEqual(validSignedData);
+    expect(mockedAxios).toHaveBeenCalledTimes(3);
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Failed to make signed data gateway request for gateway: "https://gateway-1.com/endpoint". Error: "Error: timeout error"',
+      { meta: { 'Template-ID': templateId } }
+    );
+    const zodErrors = [
+      {
+        validation: 'regex',
+        code: 'invalid_string',
+        message: 'Invalid',
+        path: ['encodedValue'],
+      },
+      {
+        validation: 'regex',
+        code: 'invalid_string',
+        message: 'Invalid',
+        path: ['signature'],
+      },
+    ];
+    expect(logger.warn).toHaveBeenCalledWith(
+      `Failed to parse signed data response for gateway: "https://gateway-2.com/endpoint". Error: "${JSON.stringify(
+        zodErrors,
+        null,
+        2
+      )}"`,
+      { meta: { 'Template-ID': templateId } }
+    );
+    expect(logger.info).toBeCalledWith(
+      `Using the following signed data response: "${JSON.stringify(validSignedData)}"`,
+      { meta: { 'Template-ID': templateId } }
+    );
+  });
+
   it('handles a case when all gateways error out', async () => {
     const mockedAxios = (axios as any as jest.Mock)
       .mockImplementationOnce(() => {
