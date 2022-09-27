@@ -20,9 +20,10 @@ build
 # Log files
 *.log
 
-airseeker.json
+# Config files
+airseeker*.json
 *.env
-!*.example.env
+!*.example.*
 
 # Hardhat files
 cache
