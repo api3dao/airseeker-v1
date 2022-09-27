@@ -1,8 +1,8 @@
 import { Api3ServerV1__factory as Api3ServerV1Factory } from '@api3/airnode-protocol-v1';
 import { ethers } from 'ethers';
+import { initializeProviders } from './providers';
 import * as state from './state';
 import * as api from './update-data-feeds';
-import { initializeProviders } from './providers';
 import { BeaconSetUpdate, BeaconUpdate, Config } from './validation';
 import { initializeWallets } from './wallets';
 import { buildGatewayLimiters, buildApiLimiters } from './state';
@@ -315,28 +315,42 @@ describe('updateBeaconSets', () => {
     txCountSpy.mockResolvedValueOnce(212);
 
     const timestamp = 1649664085;
-    const dataFeedsSpy = jest
-      .fn()
-      .mockReturnValueOnce(Promise.resolve({ timestamp: timestamp - 25, value: ethers.BigNumber.from(40000000000) }))
-      .mockReturnValueOnce(
-        Promise.resolve({
-          timestamp: timestamp - 30,
-          value: ethers.BigNumber.from(41000000000),
-        })
-      );
+    const dataFeedsMock = jest.fn().mockReturnValueOnce(
+      Promise.resolve({
+        timestamp: timestamp - 30,
+        value: ethers.BigNumber.from(41000000000),
+      })
+    );
 
-    const updateBeaconSetWithBeaconsSpy = jest.fn();
-    const updateBeaconSetWithBeaconsMock = updateBeaconSetWithBeaconsSpy.mockImplementation(async () => ({
-      hash: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
-    }));
+    const tryMulticallMock = jest
+      .fn()
+      .mockReturnValueOnce({ hash: ethers.utils.hexlify(ethers.utils.randomBytes(32)) });
+    const callStaticTryMulticallMock = jest.fn().mockReturnValueOnce({
+      successes: [true],
+      returndata: [
+        ethers.utils.defaultAbiCoder.encode(['int224', 'uint32'], [ethers.BigNumber.from(40000000000), timestamp - 25]),
+      ],
+    });
     jest.spyOn(Api3ServerV1Factory, 'connect').mockImplementation(
-      (_api3ServerV1Address, _provider) =>
+      (_dapiServerAddress, _provider) =>
         ({
           connect(_signerOrProvider: ethers.Signer | ethers.providers.Provider | string) {
             return this;
           },
-          updateBeaconSetWithBeacons: updateBeaconSetWithBeaconsMock,
-          dataFeeds: dataFeedsSpy,
+          tryMulticall: tryMulticallMock,
+          dataFeeds: dataFeedsMock,
+          interface: {
+            encodeFunctionData: (functionFragment: string, _values: [any]): string => {
+              if (functionFragment === 'dataFeeds')
+                return '0x67a7cfb741c3d6e0ee82ae3d33356c4dceb84e98d1a0b361db0f51081fc5a2541ae51683';
+
+              if (functionFragment === 'updateBeaconSetWithBeacons')
+                return '0x00aae33f00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000002924b5d4cb3ec6366ae4302a1ca6aec035594ea3ea48a102d160b50b0c43ebfb5bf7ce55d109fd196de2a8bf1515d166c56c9decbe9cb473656bbca30d5743990';
+
+              return '';
+            },
+          },
+          callStatic: { tryMulticall: callStaticTryMulticallMock },
         } as any)
     );
 
@@ -344,20 +358,9 @@ describe('updateBeaconSets', () => {
 
     await api.updateBeaconSets(groups[0], Date.now());
 
-    expect(dataFeedsSpy).toHaveBeenCalled();
-    expect(updateBeaconSetWithBeaconsSpy).toHaveBeenCalledWith(
-      [
-        '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c',
-        '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2',
-        '0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469beabcdabcd',
-      ],
-      expect.objectContaining({
-        gasLimit: expect.any(ethers.BigNumber),
-        gasPrice: expect.any(ethers.BigNumber),
-        nonce: 212,
-        type: 0,
-      })
-    );
+    expect(dataFeedsMock).toHaveBeenCalledTimes(1);
+    expect(callStaticTryMulticallMock).toHaveBeenCalledTimes(1);
+    expect(tryMulticallMock).toHaveBeenCalledTimes(1);
   });
 });
 
