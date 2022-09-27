@@ -1,16 +1,16 @@
 import { DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol-v1';
-import { go } from '@api3/promise-utils';
 import { getGasPrice } from '@api3/airnode-utilities';
+import { go } from '@api3/promise-utils';
 import { ethers } from 'ethers';
-import { isEmpty, isNil } from 'lodash';
+import { chunk, isEmpty, isNil } from 'lodash';
 import { calculateMedian } from './calculations';
 import {
   checkBeaconSetSignedDataFreshness,
-  checkOnchainDataFreshness,
   checkBeaconSignedDataFreshness,
+  checkOnchainDataFreshness,
   checkUpdateCondition,
 } from './check-condition';
-import { INT224_MAX, INT224_MIN, NO_DATA_FEEDS_EXIT_CODE } from './constants';
+import { BEACON_UPDATE_BATCH_SIZE, INT224_MAX, INT224_MIN, NO_DATA_FEEDS_EXIT_CODE } from './constants';
 import { logger } from './logging';
 import { getState, Provider } from './state';
 import { getTransactionCount } from './transaction-count';
@@ -151,8 +151,8 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
     initialUpdateData;
   const { chainId } = provider;
 
-  // Process beacon updates
-  let nonce: number | undefined;
+  // Process beacon update calldatas
+  const calldatas: string[] = [];
 
   for (const beacon of beacons) {
     const logOptionsBeaconId = {
@@ -226,6 +226,27 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
       logger.info(`Deviation threshold reached. Updating.`, logOptionsBeaconId);
     }
 
+    // eslint-disable-next-line functional/immutable-data
+    calldatas.push(
+      contract.interface.encodeFunctionData('updateDataFeedWithSignedData', [
+        [
+          ethers.utils.defaultAbiCoder.encode(
+            ['address', 'bytes32', 'uint256', 'bytes', 'bytes'],
+            [
+              beaconUpdateData.airnode,
+              beaconUpdateData.templateId,
+              newBeaconResponse.timestamp,
+              newBeaconResponse.encodedValue,
+              newBeaconResponse.signature,
+            ]
+          ),
+        ],
+      ])
+    );
+  }
+
+  let nonce: number | undefined;
+  for (const batch of chunk(calldatas, BEACON_UPDATE_BATCH_SIZE)) {
     // Get transaction count only first time when update condition satisfied
     if (!nonce) {
       const transactionCount = await getTransactionCount(
@@ -234,7 +255,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
         prepareGoOptions(startTime, totalTimeout)
       );
       if (isNil(transactionCount)) {
-        logger.warn(`Unable to fetch transaction count`, logOptionsBeaconId);
+        logger.warn(`Unable to fetch transaction count`, logOptions);
         return;
       }
       nonce = transactionCount;
@@ -243,50 +264,19 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
     // Get the latest gas price
     const [logs, gasTarget] = await getGasPrice(provider.rpcProvider, config.chains[chainId].options);
     logs.forEach((log) =>
-      log.level === 'ERROR'
-        ? logger.error(log.message, null, logOptionsBeaconId)
-        : logger.info(log.message, logOptionsBeaconId)
+      log.level === 'ERROR' ? logger.error(log.message, null, logOptions) : logger.info(log.message, logOptions)
     );
 
-    // Update beacon
-    const tx = await go(
-      () =>
-        contract
-          .connect(sponsorWallet)
-          .updateDataFeedWithSignedData(
-            [
-              ethers.utils.defaultAbiCoder.encode(
-                ['address', 'bytes32', 'uint256', 'bytes', 'bytes'],
-                [
-                  beaconUpdateData.airnode,
-                  beaconUpdateData.templateId,
-                  newBeaconResponse.timestamp,
-                  newBeaconResponse.encodedValue,
-                  newBeaconResponse.signature,
-                ]
-              ),
-            ],
-            {
-              nonce,
-              ...gasTarget,
-            }
-          ),
-      {
-        ...prepareGoOptions(startTime, totalTimeout),
-        onAttemptError: (goError) =>
-          logger.warn(`Failed attempt to update beacon. Error ${goError.error}`, logOptionsBeaconId),
-      }
-    );
-
+    // TODO: switch to tryMulticall when it is implemented in airnode-protocol-v1
+    const tx = await go(() => contract.connect(sponsorWallet).multicall(batch, { nonce, ...gasTarget }), {
+      ...prepareGoOptions(startTime, totalTimeout),
+      onAttemptError: (goError) => logger.warn(`Failed attempt to update beacon. Error ${goError.error}`, logOptions),
+    });
     if (!tx.success) {
-      logger.warn(`Unable to update beacon with nonce ${nonce}. Error: ${tx.error}`, logOptionsBeaconId);
+      logger.warn(`Unable to update beacons with nonce ${nonce}. Error: ${tx.error}`, logOptions);
       return;
     }
-
-    logger.info(
-      `Beacon successfully updated with value ${newBeaconValue} and nonce ${nonce}. Tx hash ${tx.data.hash}.`,
-      logOptionsBeaconId
-    );
+    logger.info(`Beacons successfully updated with nonce ${nonce}. Tx hash ${tx.data.hash}.`, logOptions);
     nonce++;
   }
 };
