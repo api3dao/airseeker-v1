@@ -8,12 +8,20 @@
     "0xbc80cbd7a8b8180e11d189a8334814a44a69c4d083b31305ecf67a3a3ea0fd9a": {
       "airnode": "0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace",
       "templateId": "0x5fadf775c50d6ec9641b9d07ab3a9ca9d92aaf64d27ea54529fb7d8ebc72e713",
-      "fetchInterval": 20
+      "fetchInterval": 20,
+      "method": "v0.6.5"
     },
     "0x717d60cb328ef7ea138ae1b31c78a03fe6caa1a05568b1649e89cd924321b732": {
       "airnode": "0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace",
       "templateId": "0x32ee5c344877c40260b6010bb91f85f39b5a9a0f6690d4c6888af90f5613d854",
-      "fetchInterval": 20
+      "fetchInterval": 20,
+      "method": "v0.9.0"
+    },
+    "0x924b5d4cb3ec6366ae4302a1ca6aec035594ea3ea48a102d160b50b0c43ebfb5": {
+      "airnode": "0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace",
+      "templateId": "0xea30f92923ece1a97af69d450a8418db31be5a26a886540a13c09c739ba8eaaa",
+      "fetchInterval": 20,
+      "method": "direct"
     }
   },
   "beaconSets": {
@@ -109,6 +117,16 @@
     "0x32ee5c344877c40260b6010bb91f85f39b5a9a0f6690d4c6888af90f5613d854": {
       "endpointId": "0x18a60ee2138d98b5f968b7177a8a537515e3db46d0712b8dd311625e6c2335c4",
       "parameters": "0x317373737373730000000000000000000000000000000000000000000000000070616972000000000000000000000000000000000000000000000000000000006574685f757364000000000000000000000000000000000000000000000000005f706174680000000000000000000000000000000000000000000000000000007061796c6f61642e7677617000000000000000000000000000000000000000005f74797065000000000000000000000000000000000000000000000000000000696e7432353600000000000000000000000000000000000000000000000000005f74696d6573000000000000000000000000000000000000000000000000000031303030303030303030303030303030303030000000000000000000000000006c6f6f6b6261636b506572696f640000000000000000000000000000000000003500000000000000000000000000000000000000000000000000000000000000696e636c75646543726f737352617465730000000000000000000000000000007472756500000000000000000000000000000000000000000000000000000000"
+    },
+    "0xea30f92923ece1a97af69d450a8418db31be5a26a886540a13c09c739ba8eaaa": {
+      "endpointId": "0x13dea3311fe0d6b84f4daeab831befbc49e19e6494c41e9e065a09c3c68f43b6",
+      "parameters": "0x3173737373730000000000000000000000000000000000000000000000000000746f00000000000000000000000000000000000000000000000000000000000055534400000000000000000000000000000000000000000000000000000000005f74797065000000000000000000000000000000000000000000000000000000696e7432353600000000000000000000000000000000000000000000000000005f70617468000000000000000000000000000000000000000000000000000000726573756c7400000000000000000000000000000000000000000000000000005f74696d65730000000000000000000000000000000000000000000000000000313030303030300000000000000000000000000000000000000000000000000066726f6d000000000000000000000000000000000000000000000000000000004554480000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  "endpoints": {
+    "0x13dea3311fe0d6b84f4daeab831befbc49e19e6494c41e9e065a09c3c68f43b6": {
+      "oisTitle": "Currency Converter API",
+      "endpointName": "convertToUSD"
     }
   },
   "triggers": {
@@ -151,5 +169,108 @@
         }
       }
     }
-  }
+  },
+  "ois": [
+    {
+      "oisFormat": "1.1.1",
+      "version": "1.2.3",
+      "title": "Currency Converter API",
+      "apiSpecifications": {
+        "servers": [
+          {
+            "url": "http://localhost:5000"
+          }
+        ],
+        "paths": {
+          "/convert": {
+            "get": {
+              "parameters": [
+                {
+                  "in": "query",
+                  "name": "from"
+                },
+                {
+                  "in": "query",
+                  "name": "to"
+                },
+                {
+                  "in": "query",
+                  "name": "amount"
+                }
+              ]
+            }
+          }
+        },
+        "components": {
+          "securitySchemes": {
+            "Currency Converter Security Scheme": {
+              "in": "query",
+              "type": "apiKey",
+              "name": "access_key"
+            }
+          }
+        },
+        "security": {
+          "Currency Converter Security Scheme": []
+        }
+      },
+      "endpoints": [
+        {
+          "name": "convertToUSD",
+          "operation": {
+            "method": "get",
+            "path": "/convert"
+          },
+          "fixedOperationParameters": [
+            {
+              "operationParameter": {
+                "in": "query",
+                "name": "to"
+              },
+              "value": "USD"
+            }
+          ],
+          "reservedParameters": [
+            {
+              "name": "_type",
+              "fixed": "int256"
+            },
+            {
+              "name": "_path",
+              "fixed": "result"
+            },
+            {
+              "name": "_times",
+              "default": "1000000"
+            }
+          ],
+          "parameters": [
+            {
+              "name": "from",
+              "default": "EUR",
+              "operationParameter": {
+                "in": "query",
+                "name": "from"
+              }
+            },
+            {
+              "name": "amount",
+              "default": "1",
+              "operationParameter": {
+                "name": "amount",
+                "in": "query"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "apiCredentials": [
+    {
+      "oisTitle": "Currency Converter API",
+      "securitySchemeName": "Currency Converter Security Scheme",
+      "securitySchemeValue": "${SS_CURRENCY_CONVERTER_API_KEY}"
+    }
+  ]
 }

@@ -2,7 +2,7 @@ import { isEmpty, uniq } from 'lodash';
 import { go } from '@api3/promise-utils';
 import { logger } from './logging';
 import { getState, updateState } from './state';
-import { makeSignedDataGatewayRequests } from './make-request';
+import { makeSignedDataGatewayRequests, makeDirectRequest } from './make-request';
 import { sleep } from './utils';
 import {
   GATEWAY_TIMEOUT_MS,
@@ -65,25 +65,52 @@ export const fetchBeaconData = async (beaconId: string) => {
   logger.debug('Fetching beacon data', logOptionsBeaconId);
   const { config } = getState();
 
-  const { fetchInterval, airnode, templateId } = config.beacons[beaconId];
-  const gateway = config.gateways[airnode];
+  const { fetchInterval, airnode, templateId, method } = config.beacons[beaconId];
   const template = config.templates[templateId];
+  
+  switch (method) {
+    case 'direct': {
+      const goRes = await go(() => makeDirectRequest({ ...template, id: templateId }), {
+        attemptTimeoutMs: GATEWAY_TIMEOUT_MS,
+        retries: INFINITE_RETRIES,
+        delay: { type: 'random', minDelayMs: RANDOM_BACKOFF_MIN_MS, maxDelayMs: RANDOM_BACKOFF_MAX_MS },
+        totalTimeoutMs: fetchInterval * 1_000,
+        onAttemptError: (goError) =>
+          logger.warn(`Failed attempt to make direct call. Error: ${goError.error}`, logOptionsBeaconId),
+      });
+      if (!goRes.success) {
+        logger.warn(`Unable to make direct call. Error: "${goRes.error}"`, logOptionsBeaconId);
+        return;
+      }
 
-  const goRes = await go(() => makeSignedDataGatewayRequests(gateway, { ...template, id: templateId }), {
-    attemptTimeoutMs: GATEWAY_TIMEOUT_MS,
-    retries: INFINITE_RETRIES,
-    delay: { type: 'random', minDelayMs: RANDOM_BACKOFF_MIN_MS, maxDelayMs: RANDOM_BACKOFF_MAX_MS },
-    totalTimeoutMs: fetchInterval * 1_000,
-    onAttemptError: (goError) =>
-      logger.warn(`Failed attempt to call signed data gateway. Error: ${goError.error}`, logOptionsBeaconId),
-  });
-  if (!goRes.success) {
-    logger.warn(`Unable to call signed data gateway. Error: "${goRes.error}"`, logOptionsBeaconId);
-    return;
-  }
+      const { data } = goRes;
+      if (data) {
+        updateState((state) => ({ ...state, beaconValues: { ...state.beaconValues, [beaconId]: data } }));
+      }
+      break;
+    }
+    case 'v0.6.5':
+    case 'v0.9.0': {
+      const gateway = config.gateways[airnode];
+      const goRes = await go(() => makeSignedDataGatewayRequests(gateway, { ...template, id: templateId }), {
+        attemptTimeoutMs: GATEWAY_TIMEOUT_MS,
+        retries: INFINITE_RETRIES,
+        delay: { type: 'random', minDelayMs: RANDOM_BACKOFF_MIN_MS, maxDelayMs: RANDOM_BACKOFF_MAX_MS },
+        totalTimeoutMs: fetchInterval * 1_000,
+        onAttemptError: (goError) =>
+          logger.warn(`Failed attempt to call signed data gateway. Error: ${goError.error}`, logOptionsBeaconId),
+      });
+      if (!goRes.success) {
+        logger.warn(`Unable to call signed data gateway. Error: "${goRes.error}"`, logOptionsBeaconId);
+        return;
+      }
 
-  const { data } = goRes;
-  if (data) {
-    updateState((state) => ({ ...state, beaconValues: { ...state.beaconValues, [beaconId]: data } }));
+      const { data } = goRes;
+      if (data) {
+        updateState((state) => ({ ...state, beaconValues: { ...state.beaconValues, [beaconId]: data } }));
+      }
+      break;
+    }
   }
+  
 };
