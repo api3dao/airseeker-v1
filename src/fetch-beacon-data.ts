@@ -67,7 +67,7 @@ export const fetchBeaconData = async (beaconId: string) => {
 
   const { fetchInterval, airnode, templateId, method } = config.beacons[beaconId];
   const template = config.templates[templateId];
-  
+
   switch (method) {
     case 'direct': {
       const goRes = await go(() => makeDirectRequest({ ...template, id: templateId }), {
@@ -112,5 +112,4 @@ export const fetchBeaconData = async (beaconId: string) => {
       break;
     }
   }
-  
 };

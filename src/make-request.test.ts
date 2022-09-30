@@ -255,7 +255,6 @@ describe('makeDirectRequest', () => {
   };
 
   it('make succesful call', async () => {
-
     jest.spyOn(state, 'getState').mockImplementation(() => {
       return {
         airseekerWallet: ethers.Wallet.fromMnemonic(
@@ -307,7 +306,6 @@ describe('makeDirectRequest', () => {
   });
 
   it('handle the case where API call failed', async () => {
-
     jest.spyOn(state, 'getState').mockImplementation(() => {
       return {
         airseekerWallet: ethers.Wallet.fromMnemonic(
@@ -341,7 +339,6 @@ describe('makeDirectRequest', () => {
       { meta: { 'Template-ID': template.id } }
     );
   });
-
 
   it('handle the case where signing encodedValue failed because improper signer wallet', async () => {
     jest.spyOn(state, 'getState').mockImplementation(() => {
@@ -379,6 +376,5 @@ describe('makeDirectRequest', () => {
       `Failed to sign data while making direct request for the endpoint [Mock Ois] Mock Endpoint Name. Error: "TypeError: Cannot read property 'signMessage' of undefined"`,
       { meta: { 'Template-ID': template.id } }
     );
-
   });
 });

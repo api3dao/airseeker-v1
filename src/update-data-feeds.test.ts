@@ -8,7 +8,6 @@ import { BeaconSetUpdate, BeaconUpdate, Config } from './validation';
 import { initializeWallets } from './wallets';
 import { validSignedData } from '../test/fixtures';
 
-
 // Jest version 27 has a bug where jest.setTimeout does not work correctly inside describe or test blocks
 // https://github.com/facebook/jest/issues/11607
 jest.setTimeout(15_000);
