@@ -108,7 +108,7 @@ export const initializeUpdateCycle = async (
   dataFeedType: DataFeedType,
   startTime: number
 ) => {
-  const { config, beaconValues } = getState();
+  const { config, beaconValues,sponsorWallets } = getState();
   const { provider, updateInterval, sponsorAddress, beacons, beaconSets } = providerSponsorDataFeeds;
   const { rpcProvider, chainId, providerName } = provider;
   const logOptions = {
@@ -136,10 +136,7 @@ export const initializeUpdateCycle = async (
     return null;
   }
 
-  // Derive sponsor wallet address
-  const sponsorWallet = node.evm
-    .deriveSponsorWalletFromMnemonic(config.airseekerWalletMnemonic, sponsorAddress, protocol.PROTOCOL_IDS.AIRSEEKER)
-    .connect(rpcProvider);
+  const sponsorWallet = sponsorWallets[sponsorAddress].connect(rpcProvider);
 
   // Get transaction count
   const transactionCount = await getTransactionCount(
