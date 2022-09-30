@@ -12,6 +12,7 @@ const envVariables = {
   CP_INFURA_ROPSTEN_URL: 'https://some.influra.ropsten.url',
   HTTP_SIGNED_DATA_GATEWAY_KEY: '18e06827-8544-4b0f-a639-33df3b5bc62f',
   HTTP_SIGNED_DATA_GATEWAY_URL: 'https://some.http.signed.data.gateway.url/',
+  SS_CURRENCY_CONVERTER_API_KEY: '164mTCl3fzd7VcIDQMHtq5'
 };
 
 it('successfully parses example configuration', () => {
@@ -111,7 +112,7 @@ it('fails if beacons.<beaconId>.airnode is not defined in gateways', () => {
   expect(() => configSchema.parse(interpolatedConfig)).toThrow(
     new ZodError(
       Object.entries(config.beacons)
-        .filter(([_, beacon]) => beacon.airnode === gatewayId)
+        .filter(([_, beacon]) => beacon.method !== 'direct' && beacon.airnode === gatewayId)
         .map(([beaconId, beacon]) => ({
           code: 'custom',
           message: `Gateway "${beacon.airnode}" is not defined in the config.gateways object`,
