@@ -224,3 +224,45 @@ it('fails if triggers.dataFeedUpdates.<chainId>.<sponsorAddress>.beaconSets.<bea
     ])
   );
 });
+
+it('fails if endpoints.<entpointId>.oisTitle is not defined in ois[any].title', () => {
+  const config: Config = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '..', 'config', 'airseeker.example.json'), 'utf8')
+  );
+
+  // Empty ois object
+  const newConfig = { ...config, ois: [] };
+  const interpolatedConfig = interpolateSecrets(newConfig, envVariables);
+  const firstEndpointId = Object.keys(config.endpoints)[0];
+
+  expect(() => configSchema.parse(interpolatedConfig)).toThrow(
+    new ZodError([
+      {
+        code: 'custom',
+        message: `OIS titled "${config.endpoints[firstEndpointId].oisTitle}" is not defined in the config.ois object`,
+        path: ['endpoints', firstEndpointId, 'oisTitle'],
+      },
+    ])
+  );
+});
+
+it('fails if endpoints.<entpointId>.endpointName is not defined in ois[idx(endpoints.<endpointId>.oisTitle)].endpoints[any].name', () => {
+  const config: Config = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '..', 'config', 'airseeker.example.json'), 'utf8')
+  );
+
+  // Create ois object with empty endpoints
+  const newConfig = { ...config, ois: [{ ...config.ois[0], endpoints: [] }] };
+  const interpolatedConfig = interpolateSecrets(newConfig, envVariables);
+  const firstEndpointId = Object.keys(config.endpoints)[0];
+
+  expect(() => configSchema.parse(interpolatedConfig)).toThrow(
+    new ZodError([
+      {
+        code: 'custom',
+        message: `OIS titled "${config.endpoints[firstEndpointId].oisTitle}" doesn't have referenced endpoint ${config.endpoints[firstEndpointId].endpointName}`,
+        path: ['endpoints', firstEndpointId, 'endpointName'],
+      },
+    ])
+  );
+});

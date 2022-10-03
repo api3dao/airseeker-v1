@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import { SuperRefinement, z } from 'zod';
-import * as airnodeOis from '@api3/ois';
+import { oisSchema, OIS, Endpoint as oisEndpoint } from '@api3/ois';
 import { config } from '@api3/airnode-validator';
 import isNil from 'lodash/isNil';
 
@@ -175,6 +175,32 @@ const validateTemplatesReferences: SuperRefinement<{ beacons: Beacons; templates
   });
 };
 
+const validateOisReferences: SuperRefinement<{ ois: OIS[]; endpoints: Endpoints }> = (config, ctx) => {
+  Object.entries(config.endpoints).forEach(([endpointId, { oisTitle, endpointName }]) => {
+    // Check existence of OIS related with oisTitle
+    const oises = config.ois.filter(({ title }) => title === oisTitle);
+    if (oises.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `OIS titled "${oisTitle}" is not defined in the config.ois object`,
+        path: ['endpoints', endpointId, 'oisTitle'],
+      });
+      return;
+    }
+    // Take first OIS fits the filter rule, then check specific endpoint existence
+    const ois = oises[0];
+    const endpoints = ois.endpoints.filter(({ name }: oisEndpoint) => name === endpointName);
+
+    if (endpoints.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `OIS titled "${oisTitle}" doesn't have referenced endpoint ${endpointName}`,
+        path: ['endpoints', endpointId, 'endpointName'],
+      });
+    }
+  });
+};
+
 const validateBeaconsReferences: SuperRefinement<{ beacons: Beacons; gateways: Gateways; templates: Templates }> = (
   config,
   ctx
@@ -277,7 +303,7 @@ export const configSchema = z
     gateways: gatewaysSchema,
     templates: templatesSchema,
     triggers: triggersSchema,
-    ois: z.array(airnodeOis.oisSchema),
+    ois: z.array(oisSchema),
     apiCredentials: z.array(config.apiCredentialsSchema),
     endpoints: endpointsSchema,
   })
@@ -285,6 +311,7 @@ export const configSchema = z
   .superRefine(validateBeaconsReferences)
   .superRefine(validateBeaconSetsReferences)
   .superRefine(validateTemplatesReferences)
+  .superRefine(validateOisReferences)
   .superRefine(validateDataFeedUpdatesReferences);
 export const encodedValueSchema = z.string().regex(/^0x[a-fA-F0-9]{64}$/);
 export const signatureSchema = z.string().regex(/^0x[a-fA-F0-9]{130}$/);
