@@ -6,6 +6,10 @@ import { interpolateSecrets } from '../../src/config';
 import { Template } from '../../src/validation';
 import { initializeWallets } from '../../src/wallets';
 
+// Jest version 27 has a bug where jest.setTimeout does not work correctly inside describe or test blocks
+// https://github.com/facebook/jest/issues/11607
+jest.setTimeout(15_000);
+
 const mockedSignedDataGateway = {
   apiKey: 'some-api-key',
   url: 'http://localhost:5432/signed-data-gateway',

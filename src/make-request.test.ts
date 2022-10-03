@@ -294,15 +294,15 @@ describe('makeDirectRequest', () => {
       signature:
         '0x598c29e74e799dbfce393208ad698bf1f4787c46afa0ac1608d0a02d440d092012000d1fad42ebd3b76c88aa16368af28aed88489ae017b48d91e77fad10a8301c',
     });
-    expect(abi.decode).lastCalledWith(template.parameters);
-    expect(abi.decode).lastReturnedWith({
+    expect(abi.decode).toHaveBeenLastCalledWith(template.parameters);
+    expect(abi.decode).toHaveLastReturnedWith({
       symbol: 'aave_eth',
       _path: 'price',
       _type: 'int256',
       _times: '1000000000000000000',
     });
-    expect(logger.info).toBeCalledTimes(0);
-    expect(logger.warn).toBeCalledTimes(0);
+    expect(logger.info).toHaveBeenCalledTimes(0);
+    expect(logger.warn).toHaveBeenCalledTimes(0);
   });
 
   it('handle the case where API call failed', async () => {
