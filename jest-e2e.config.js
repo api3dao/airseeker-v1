@@ -4,5 +4,5 @@ const config = require('./jest.config');
 module.exports = {
   ...config,
   displayName: 'e2e',
-  testMatch: ['**/?(*.)+(feature).[tj]s?(x)'],
+  testMatch: ['**/?(*.)+(feature).[t]s?(x)'],
 };

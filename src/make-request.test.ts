@@ -96,7 +96,7 @@ describe('makeSignedDataGatewayRequests', () => {
       )}"`,
       { meta: { 'Template-ID': templateId } }
     );
-    expect(logger.info).toBeCalledWith(
+    expect(logger.info).toHaveBeenCalledWith(
       `Using the following signed data response: "${JSON.stringify(validSignedData)}"`,
       { meta: { 'Template-ID': templateId } }
     );
@@ -160,7 +160,7 @@ describe('makeSignedDataGatewayRequests', () => {
       )}"`,
       { meta: { 'Template-ID': templateId } }
     );
-    expect(logger.info).toBeCalledWith(
+    expect(logger.info).toHaveBeenCalledWith(
       `Using the following signed data response: "${JSON.stringify(validSignedData)}"`,
       { meta: { 'Template-ID': templateId } }
     );
@@ -213,7 +213,7 @@ describe('makeSignedDataGatewayRequests', () => {
       )}"`,
       { meta: { 'Template-ID': templateId } }
     );
-    expect(logger.warn).toBeCalledWith(`All gateway requests have failed with an error. No response to be used`, {
+    expect(logger.warn).toHaveBeenCalledWith(`All gateway requests have failed with an error. No response to be used`, {
       meta: { 'Template-ID': templateId },
     });
   });
