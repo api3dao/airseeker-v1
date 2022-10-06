@@ -1,5 +1,5 @@
 import { setLogOptions, randomHexString } from '@api3/airnode-utilities';
-import { ethers, Wallet } from 'ethers';
+import { ethers } from 'ethers';
 import { BeaconId, Config, SignedData } from './validation';
 
 export type Id<T> = T & {
@@ -15,15 +15,15 @@ export type Provider = {
 // chainId => Provider[]
 export type Providers = Record<string, Provider[]>;
 // sponsorAddress => sponsorWallet
-export type SponsorWallets = Record<string, Wallet>;
+export type SponsorWalletsPrivateKey = Record<string, string>;
 
 export interface State {
   config: Config;
   stopSignalReceived: boolean;
   beaconValues: BeaconValueStorage;
   providers: Providers;
-  airseekerWallet: Wallet;
-  sponsorWallets: SponsorWallets;
+  airseekerWalletPrivateKey: string;
+  sponsorWalletsPrivateKey: SponsorWalletsPrivateKey;
 }
 
 // TODO: Freeze the state in development mode
@@ -44,8 +44,8 @@ export const getInitialState = (config: Config) => {
     stopSignalReceived: false,
     beaconValues: {},
     providers: {},
-    airseekerWallet: {} as Wallet,
-    sponsorWallets: {},
+    airseekerWalletPrivateKey: '',
+    sponsorWalletsPrivateKey: {},
   };
 };
 

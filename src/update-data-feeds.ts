@@ -106,7 +106,7 @@ export const initializeUpdateCycle = async (
   dataFeedType: DataFeedType,
   startTime: number
 ) => {
-  const { config, beaconValues, sponsorWallets } = getState();
+  const { config, beaconValues, sponsorWalletsPrivateKey } = getState();
   const { provider, updateInterval, sponsorAddress, beacons, beaconSets } = providerSponsorDataFeeds;
   const { rpcProvider, chainId, providerName } = provider;
   const logOptions = {
@@ -134,7 +134,7 @@ export const initializeUpdateCycle = async (
     return null;
   }
 
-  const sponsorWallet = sponsorWallets[sponsorAddress].connect(rpcProvider);
+  const sponsorWallet = new ethers.Wallet(sponsorWalletsPrivateKey[sponsorAddress]).connect(rpcProvider);
 
   // Get transaction count
   const transactionCount = await getTransactionCount(

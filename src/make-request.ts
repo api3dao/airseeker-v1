@@ -18,9 +18,9 @@ export const urlJoin = (baseUrl: string, endpointId: string) => {
 };
 
 export function signWithTemplateId(templateId: string, timestamp: string, data: string) {
-  const { airseekerWallet } = getState();
+  const { airseekerWalletPrivateKey } = getState();
 
-  return airseekerWallet.signMessage(
+  return new ethers.Wallet(airseekerWalletPrivateKey).signMessage(
     ethers.utils.arrayify(
       ethers.utils.keccak256(
         ethers.utils.solidityPack(['bytes32', 'uint256', 'bytes'], [templateId, timestamp, data || '0x'])

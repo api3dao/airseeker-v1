@@ -222,9 +222,9 @@ describe('makeSignedDataGatewayRequests', () => {
 it('signWithTemplateId creates valid signature', async () => {
   jest.spyOn(state, 'getState').mockImplementation(() => {
     return {
-      airseekerWallet: ethers.Wallet.fromMnemonic(
+      airseekerWalletPrivateKey: ethers.Wallet.fromMnemonic(
         'achieve climb couple wait accident symbol spy blouse reduce foil echo label'
-      ),
+      ).privateKey,
     } as state.State;
   });
   const data = await signWithTemplateId(
@@ -257,9 +257,9 @@ describe('makeDirectRequest', () => {
   it('make succesful call', async () => {
     jest.spyOn(state, 'getState').mockImplementation(() => {
       return {
-        airseekerWallet: ethers.Wallet.fromMnemonic(
+        airseekerWalletPrivateKey: ethers.Wallet.fromMnemonic(
           'achieve climb couple wait accident symbol spy blouse reduce foil echo label'
-        ),
+        ).privateKey,
         config: {
           endpoints: {
             '0x57ec49db18ff1164c921592ab3b10804e468de892575efe2037d48b7c07c2d28': {
@@ -308,9 +308,9 @@ describe('makeDirectRequest', () => {
   it('handle the case where API call failed', async () => {
     jest.spyOn(state, 'getState').mockImplementation(() => {
       return {
-        airseekerWallet: ethers.Wallet.fromMnemonic(
+        airseekerWalletPrivateKey: ethers.Wallet.fromMnemonic(
           'achieve climb couple wait accident symbol spy blouse reduce foil echo label'
-        ),
+        ).privateKey,
         config: {
           endpoints: {
             '0x57ec49db18ff1164c921592ab3b10804e468de892575efe2037d48b7c07c2d28': {
@@ -372,9 +372,6 @@ describe('makeDirectRequest', () => {
     });
 
     await expect(makeDirectRequest(template)).rejects.toThrow();
-    expect(logger.warn).toHaveBeenCalledWith(
-      `Failed to sign data while making direct request for the endpoint [Mock Ois] Mock Endpoint Name. Error: "TypeError: Cannot read property 'signMessage' of undefined"`,
-      { meta: { 'Template-ID': template.id } }
-    );
+    expect(logger.warn).toHaveBeenCalledTimes(1);
   });
 });

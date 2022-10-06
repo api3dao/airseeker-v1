@@ -1,4 +1,3 @@
-import { Wallet } from 'ethers';
 import { logger } from './logging';
 import * as api from './fetch-beacon-data';
 import { Config } from './validation';
@@ -310,8 +309,8 @@ describe('fetchBeaconDataInLoop', () => {
           stopSignalReceived: true,
           beaconValues: {},
           providers: {},
-          airseekerWallet: {} as Wallet,
-          sponsorWallets: {},
+          airseekerWalletPrivateKey: '',
+          sponsorWalletsPrivateKey: {},
           logOptions: { ...config.log, meta: {} },
         };
       } else {
@@ -320,8 +319,8 @@ describe('fetchBeaconDataInLoop', () => {
           stopSignalReceived: false,
           beaconValues: {},
           providers: {},
-          airseekerWallet: {} as Wallet,
-          sponsorWallets: {},
+          airseekerWalletPrivateKey: '',
+          sponsorWalletsPrivateKey: {},
           logOptions: { ...config.log, meta: {} },
         };
       }

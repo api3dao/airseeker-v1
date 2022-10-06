@@ -258,7 +258,7 @@ describe('initiateDataFeedUpdates', () => {
 
 describe('updateDataFeedsInLoop', () => {
   it('calls updateBeacons and updateBeaconSets in a loop', async () => {
-    const { airseekerWallet, sponsorWallets } = state.getState();
+    const { airseekerWalletPrivateKey, sponsorWalletsPrivateKey } = state.getState();
     const groups = api.groupDataFeedsByProviderSponsor();
     let requestCount = 0;
     jest.spyOn(api, 'updateBeacons').mockImplementation(async () => {
@@ -272,8 +272,8 @@ describe('updateDataFeedsInLoop', () => {
           stopSignalReceived: true,
           beaconValues: {},
           providers: {},
-          airseekerWallet: airseekerWallet,
-          sponsorWallets: sponsorWallets,
+          airseekerWalletPrivateKey: airseekerWalletPrivateKey,
+          sponsorWalletsPrivateKey: sponsorWalletsPrivateKey,
           logOptions: { ...config.log, meta: {} },
         };
       } else {
@@ -282,8 +282,8 @@ describe('updateDataFeedsInLoop', () => {
           stopSignalReceived: false,
           beaconValues: {},
           providers: {},
-          airseekerWallet: airseekerWallet,
-          sponsorWallets: sponsorWallets,
+          airseekerWalletPrivateKey: airseekerWalletPrivateKey,
+          sponsorWalletsPrivateKey: sponsorWalletsPrivateKey,
           logOptions: { ...config.log, meta: {} },
         };
       }
