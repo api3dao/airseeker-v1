@@ -3,6 +3,5 @@
   "compilerOptions": {
     "downlevelIteration": true,
     "noEmit": true
-  },
-  "include": ["./**/*.ts"]
+  }
 }
