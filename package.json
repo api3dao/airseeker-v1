@@ -21,6 +21,7 @@
     "clean": "rimraf -rf ./build ./dist *.tgz",
     "compile": "tsc --build tsconfig.json",
     "dev:create-local-config": "ts-node scripts/create-local-config.js",
+    "dev:create-operations-config": "ts-node scripts/create-airseeker-config.js",
     "dev:setup-local-node": "hardhat run scripts/setup-local-node.js",
     "dev:api": "ts-node test/server/server.ts",
     "dev:eth-node": "hardhat node",
