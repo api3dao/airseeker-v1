@@ -307,9 +307,6 @@ describe('updateBeaconSets', () => {
       },
     }));
 
-    const getBlockNumberSpy = jest.spyOn(ethers.providers.StaticJsonRpcProvider.prototype, 'getBlockNumber');
-    getBlockNumberSpy.mockResolvedValueOnce(12);
-
     const txCountSpy = jest.spyOn(ethers.providers.StaticJsonRpcProvider.prototype, 'getTransactionCount');
     txCountSpy.mockResolvedValueOnce(212);
 
@@ -396,9 +393,6 @@ describe('initializeUpdateCycle', () => {
       },
     }));
 
-    const getBlockNumberSpy = jest.spyOn(ethers.providers.StaticJsonRpcProvider.prototype, 'getBlockNumber');
-    getBlockNumberSpy.mockResolvedValueOnce(12);
-
     const txCountSpy = jest.spyOn(ethers.providers.StaticJsonRpcProvider.prototype, 'getTransactionCount');
     txCountSpy.mockResolvedValueOnce(212);
 
@@ -437,17 +431,9 @@ describe('initializeUpdateCycle', () => {
     expect(provider).toEqual(groups[0].provider);
   });
 
-  it(`returns null if current block can't be retrieved`, async () => {
-    const getBlockNumberSpy = jest.spyOn(ethers.providers.StaticJsonRpcProvider.prototype, 'getBlockNumber');
-    getBlockNumberSpy.mockRejectedValueOnce('Error');
-
-    const groups = api.groupDataFeedsByProviderSponsor();
-    expect(await api.initializeUpdateCycle(groups[0], api.DataFeedType.Beacon, Date.now())).toBeNull();
-  });
-
   it(`returns null if transaction count can't be retrieved`, async () => {
-    const getBlockNumberSpy = jest.spyOn(ethers.providers.StaticJsonRpcProvider.prototype, 'getTransactionCount');
-    getBlockNumberSpy.mockRejectedValueOnce('Error');
+    const getTransactionCountSpy = jest.spyOn(ethers.providers.StaticJsonRpcProvider.prototype, 'getTransactionCount');
+    getTransactionCountSpy.mockRejectedValueOnce('Error');
 
     const groups = api.groupDataFeedsByProviderSponsor();
     expect(await api.initializeUpdateCycle(groups[0], api.DataFeedType.Beacon, Date.now())).toBeNull();
