@@ -100,6 +100,27 @@ it('fails if derived templateId is different to templates.<templateId>', () => {
   );
 });
 
+it('fails if derived endpointId is different to endpoints.<endpointId>', () => {
+  const config: Config = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '..', 'config', 'airseeker.example.json'), 'utf8')
+  );
+  const [_, firstEndpointValues] = Object.entries(config.endpoints)[0];
+  const randomEndpointId = ethers.utils.hexlify(ethers.utils.randomBytes(32));
+  config.endpoints = { ...config.endpoints, [randomEndpointId]: firstEndpointValues };
+
+  const interpolatedConfig = interpolateSecrets(config, envVariables);
+
+  expect(() => configSchema.parse(interpolatedConfig)).toThrow(
+    new ZodError([
+      {
+        code: 'custom',
+        message: `Endpoint ID "${randomEndpointId}" is invalid`,
+        path: ['endpoints', randomEndpointId],
+      },
+    ])
+  );
+});
+
 it('fails if beacons.<beaconId>.airnode is not defined in gateways', () => {
   const config: Config = JSON.parse(
     fs.readFileSync(path.join(__dirname, '..', 'config', 'airseeker.example.json'), 'utf8')

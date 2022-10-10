@@ -111,7 +111,24 @@ export const endpointSchema = z.object({
   endpointName: z.string(),
 });
 
-export const endpointsSchema = z.record(endpointSchema);
+export const endpointsSchema = z.record(endpointSchema).superRefine((endpoints, ctx) => {
+  Object.entries(endpoints).forEach(([endpointId, endpoint]) => {
+    // Verify that config.endpoints.<endpointId> is valid
+    // by deriving the hash of the oisTitle and endpointName
+
+    const derivedEndpointId = ethers.utils.keccak256(
+      ethers.utils.defaultAbiCoder.encode(['string', 'string'], [endpoint.oisTitle, endpoint.endpointName])
+    );
+
+    if (derivedEndpointId !== endpointId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Endpoint ID "${endpointId}" is invalid`,
+        path: [endpointId],
+      });
+    }
+  });
+});
 
 export const baseBeaconUpdateSchema = z.object({
   deviationThreshold: z.number(),
@@ -160,13 +177,13 @@ const validateTemplatesReferences: SuperRefinement<{ beacons: Beacons; templates
     if (
       Object.values(config.beacons).some(({ templateId: tId, method }) => method === 'direct' && tId === templateId)
     ) {
-    const endpoint = config.endpoints[template.endpointId];
-    if (isNil(endpoint)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `Endpoint "${template.endpointId}" is not defined in the config.endpoints object`,
-        path: ['templates', templateId, 'endpointId'],
-      });
+      const endpoint = config.endpoints[template.endpointId];
+      if (isNil(endpoint)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Endpoint "${template.endpointId}" is not defined in the config.endpoints object`,
+          path: ['templates', templateId, 'endpointId'],
+        });
       }
     }
   });
