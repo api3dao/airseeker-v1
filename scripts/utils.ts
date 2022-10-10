@@ -2,7 +2,6 @@ import { writeFileSync } from 'fs';
 import * as protocol from '@api3/airnode-protocol-v1';
 import { format } from 'prettier';
 import { ethers } from 'ethers';
-import { formatInTimeZone } from 'date-fns-tz';
 
 const PRETTIER_CONFIG = {
   bracketSpacing: true,
@@ -21,8 +20,6 @@ const PRETTIER_CONFIG = {
     },
   ],
 } as any;
-
-export const getFormattedUtcTimestamp = () => formatInTimeZone(Date.now(), 'UTC', 'yyMMdd-HHmm');
 
 export const runAndHandleErrors = (fn: () => Promise<unknown>) => {
   try {

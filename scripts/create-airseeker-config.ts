@@ -1,21 +1,35 @@
 import { join } from 'path';
 import { AirnodeRrpAddresses } from '@api3/airnode-protocol';
 import prompts, { PromptObject, Choice } from 'prompts';
-import { Api, Beacon, OperationsRepository, BeaconSet } from '@api3/operations/dist/types';
+import { Api, Beacon, BeaconSet } from '@api3/operations/dist/types';
 import { readOperationsRepository } from '@api3/operations/dist/utils/read-operations';
 import { runAndHandleErrors, writeJsonFile } from './utils';
 import { Beacons, BeaconSets, Gateways, Templates, Triggers } from '../src/validation';
 import { sanitiseFilename } from './utils';
-import { getFormattedUtcTimestamp } from './utils';
 
-const questions = (beaconChoices: Choice[], beaconSetChoices: Choice[]): PromptObject[] => {
+const directoryQuestions = (): PromptObject[] => {
   return [
     {
-      type: 'text',
-      name: 'name',
-      message: 'What is the Airseeker configuration name?',
-      initial: getFormattedUtcTimestamp(),
+      type: 'select',
+      name: 'dataType',
+      message: 'Do you want to use Operations repository or use local data?',
+      choices: [
+        { title: 'Operations Repository', value: 'operations', selected: true },
+        { title: 'Local', value: 'local' },
+      ],
     },
+    {
+      type: (prev, values) => (values.dataType.includes('local') ? 'confirm' : null),
+      name: 'localConfirm',
+      message:
+        'To use the scripts locally make sure your data is structured similar to the operations repository and is placed in "/scripts/data"',
+      initial: true,
+    },
+  ];
+};
+
+const beaconSetQuestions = (beaconChoices: Choice[], beaconSetChoices: Choice[]): PromptObject[] => {
+  return [
     {
       type: 'autocompleteMultiselect',
       name: 'selectedBeacons',
@@ -37,8 +51,16 @@ const questions = (beaconChoices: Choice[], beaconSetChoices: Choice[]): PromptO
   ];
 };
 
-const main = async (operationRepositoryTarget?: string) => {
-  const operationsRepository = readOperationsRepository(operationRepositoryTarget);
+const main = async () => {
+  const directoryResponse = await prompts(directoryQuestions(), {
+    onCancel: () => {
+      throw new Error('Aborted by the user');
+    },
+  });
+
+  const operationsRepository = readOperationsRepository(
+    directoryResponse.dataType.includes('local') ? join(__dirname, 'data') : undefined
+  );
 
   const beaconChoices = Object.values(operationsRepository.apis).flatMap((api) =>
     Object.values(api.beacons).map((beacon) => ({
@@ -54,7 +76,7 @@ const main = async (operationRepositoryTarget?: string) => {
     selected: true,
   }));
 
-  const response = await prompts(questions(beaconChoices, beaconSetChoices), {
+  const response = await prompts(beaconSetQuestions(beaconChoices, beaconSetChoices), {
     onCancel: () => {
       throw new Error('Aborted by the user');
     },
@@ -125,13 +147,27 @@ const main = async (operationRepositoryTarget?: string) => {
             },
           })).reduce((r, c) => Object.assign(r, c), {}),
           options: {
-            txType: 'eip1559' as const,
-            priorityFee: {
-              value: 3.12,
-              unit: 'gwei' as const,
-            },
-            baseFeeMultiplier: 2,
             fulfillmentGasLimit: 500000,
+            gasPriceOracle: [
+              {
+                gasPriceStrategy: 'latestBlockPercentileGasPrice',
+                percentile: 60,
+                minTransactionCount: 20,
+                pastToCompareInBlocks: 20,
+                maxDeviationMultiplier: 2,
+              },
+              {
+                gasPriceStrategy: 'providerRecommendedGasPrice',
+                recommendedGasPriceMultiplier: 1.2,
+              },
+              {
+                gasPriceStrategy: 'constantGasPrice',
+                gasPrice: {
+                  value: 10,
+                  unit: 'gwei',
+                },
+              },
+            ],
           },
         },
       };
@@ -271,21 +307,6 @@ const main = async (operationRepositoryTarget?: string) => {
   const secrets = {
     filename: '.env',
     content: secretsArray.join('\n'),
-  };
-
-  //// Create the deployment directory ////
-  const updatedOpsData: OperationsRepository = {
-    ...operationsRepository,
-    api3: {
-      ...operationsRepository.api3,
-      airseeker: {
-        ...operationsRepository.api3?.airseeker,
-        [response.name]: {
-          airseeker,
-          secrets,
-        },
-      },
-    },
   };
 
   writeJsonFile(join(__dirname, '..', 'config', 'airseeker.json'), airseeker);
