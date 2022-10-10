@@ -102,11 +102,13 @@ export const makeSignedDataGatewayRequests = async (
 };
 
 export const makeDirectRequest = async (template: Id<Template>): Promise<SignedData> => {
-  const { config } = getState();
+  const {
+    config: { endpoints, ois, apiCredentials },
+  } = getState();
   const logOptionsTemplateId = { meta: { 'Template-ID': template.id } };
 
   const parameters: node.ApiCallParameters = abi.decode(template.parameters);
-  const endpoint: Endpoint = config.endpoints[template.endpointId];
+  const endpoint: Endpoint = endpoints[template.endpointId];
 
   const aggregatedApiCall: node.BaseAggregatedApiCall = {
     parameters,
@@ -114,7 +116,7 @@ export const makeDirectRequest = async (template: Id<Template>): Promise<SignedD
   };
   const [_, apiCallResponse] = await node.api.callApi({
     type: 'http-gateway',
-    config,
+    config: { ois, apiCredentials },
     aggregatedApiCall,
   });
 

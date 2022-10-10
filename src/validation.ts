@@ -158,12 +158,8 @@ const validateTemplatesReferences: SuperRefinement<{ beacons: Beacons; templates
 
     // Only verify for `direct` call endpoints
     if (
-      Object.values(config.beacons).filter(({ templateId: tId, method }) => method === 'direct' && tId === templateId)
-        .length === 0
+      Object.values(config.beacons).some(({ templateId: tId, method }) => method === 'direct' && tId === templateId)
     ) {
-      return;
-    }
-
     const endpoint = config.endpoints[template.endpointId];
     if (isNil(endpoint)) {
       ctx.addIssue({
@@ -171,6 +167,7 @@ const validateTemplatesReferences: SuperRefinement<{ beacons: Beacons; templates
         message: `Endpoint "${template.endpointId}" is not defined in the config.endpoints object`,
         path: ['templates', templateId, 'endpointId'],
       });
+      }
     }
   });
 };

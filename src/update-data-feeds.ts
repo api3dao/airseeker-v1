@@ -258,8 +258,8 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
     const [logs, gasTarget] = await getGasPrice(provider.rpcProvider, config.chains[chainId].options);
     logs.forEach((log) =>
       log.level === 'ERROR'
-        ? logger.error(`${log.message}-${provider.providerName}`)
-        : logger.info(`${log.message}-${provider.providerName}`)
+        ? logger.error(log.message, null, logOptionsBeaconId)
+        : logger.info(log.message, logOptionsBeaconId)
     );
 
     // Update beacon
