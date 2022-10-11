@@ -5,7 +5,6 @@ import { go } from '@api3/promise-utils';
 import { getGasPrice } from '@api3/airnode-utilities';
 import { ethers } from 'ethers';
 import { isEmpty } from 'lodash';
-import { getCurrentBlockNumber } from './block-number';
 import { calculateMedian } from './calculations';
 import {
   checkBeaconSetSignedDataFreshness,
@@ -129,13 +128,6 @@ export const initializeUpdateCycle = async (
   const contractAddress = config.chains[chainId].contracts['DapiServer'];
   const contract = DapiServerFactory.connect(contractAddress, rpcProvider);
 
-  // Get current block number
-  const blockNumber = await getCurrentBlockNumber(provider, prepareGoOptions(startTime, totalTimeout));
-  if (blockNumber === null) {
-    logger.warn(`Unable to obtain block number`, logOptions);
-    return null;
-  }
-
   // Derive sponsor wallet address
   const sponsorWallet = node.evm
     .deriveSponsorWalletFromMnemonic(config.airseekerWalletMnemonic, sponsorAddress, protocol.PROTOCOL_IDS.AIRSEEKER)
@@ -145,7 +137,6 @@ export const initializeUpdateCycle = async (
   const transactionCount = await getTransactionCount(
     provider,
     sponsorWallet.address,
-    blockNumber,
     prepareGoOptions(startTime, totalTimeout)
   );
   if (transactionCount === null) {

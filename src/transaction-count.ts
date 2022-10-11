@@ -6,7 +6,6 @@ import { shortenAddress } from './utils';
 export const getTransactionCount = async (
   provider: Provider,
   sponsorWalletAddress: string,
-  currentBlockNumber: number,
   goOptions: GoAsyncOptions
 ): Promise<number | null> => {
   const { chainId, rpcProvider, providerName } = provider;
@@ -14,7 +13,7 @@ export const getTransactionCount = async (
     meta: { 'Chain-ID': chainId, Provider: providerName, 'Sponsor-Wallet': shortenAddress(sponsorWalletAddress) },
   };
 
-  const goTransactionCount = await go(() => rpcProvider.getTransactionCount(sponsorWalletAddress, currentBlockNumber), {
+  const goTransactionCount = await go(() => rpcProvider.getTransactionCount(sponsorWalletAddress), {
     ...goOptions,
     onAttemptError: (goError) =>
       logger.warn(`Failed attempt to get transaction count. Error ${goError.error}`, logOptionsSponsorWallet),
