@@ -229,8 +229,8 @@ describe('Airseeker', () => {
     const makeSignedDataGatewayRequestsSpy = jest.spyOn(makeRequest, 'makeSignedDataGatewayRequests');
     makeSignedDataGatewayRequestsSpy.mockRejectedValueOnce(new Error('Gateway call failed'));
 
-    const makeDirectRequestSpy = jest.spyOn(makeRequest, 'makeDirectRequest');
-    makeDirectRequestSpy.mockRejectedValueOnce(new Error('Direct API call failed'));
+    const makeApiRequestSpy = jest.spyOn(makeRequest, 'makeApiRequest');
+    makeApiRequestSpy.mockRejectedValueOnce(new Error('Direct API call failed'));
 
     await main().then(async () => {
       // Wait for Airseeker cycles to finish

@@ -9,19 +9,19 @@
       "airnode": "0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace",
       "templateId": "0x5fadf775c50d6ec9641b9d07ab3a9ca9d92aaf64d27ea54529fb7d8ebc72e713",
       "fetchInterval": 20,
-      "method": "v0.6.5"
+      "fetchMethod": "gateway-old"
     },
     "0x717d60cb328ef7ea138ae1b31c78a03fe6caa1a05568b1649e89cd924321b732": {
       "airnode": "0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace",
       "templateId": "0x32ee5c344877c40260b6010bb91f85f39b5a9a0f6690d4c6888af90f5613d854",
       "fetchInterval": 20,
-      "method": "v0.9.0"
+      "fetchMethod": "gateway"
     },
     "0x924b5d4cb3ec6366ae4302a1ca6aec035594ea3ea48a102d160b50b0c43ebfb5": {
       "airnode": "0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace",
       "templateId": "0xea30f92923ece1a97af69d450a8418db31be5a26a886540a13c09c739ba8eaaa",
       "fetchInterval": 20,
-      "method": "direct"
+      "fetchMethod": "api"
     }
   },
   "beaconSets": {
