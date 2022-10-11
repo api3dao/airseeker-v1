@@ -9,7 +9,7 @@ export const buildAirseekerConfig = () => ({
       airnode: '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
       templateId: '0xea30f92923ece1a97af69d450a8418db31be5a26a886540a13c09c739ba8eaaa',
       fetchInterval: 15,
-      fetchMethod: 'gateway-old',
+      fetchMethod: 'gateway',
     },
     '0xbf7ce55d109fd196de2a8bf1515d166c56c9decbe9cb473656bbca30d5743990': {
       airnode: '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',

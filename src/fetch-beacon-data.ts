@@ -78,7 +78,6 @@ export const fetchBeaconData = async (beaconId: string) => {
         logger.warn(`Failed attempt to make direct API call. Error: ${goError.error}`, logOptionsBeaconId);
       break;
     }
-    case 'gateway-old':
     case 'gateway': {
       const gateway = config.gateways[airnode];
       fetchFn = () => makeSignedDataGatewayRequests(gateway, { ...template, id: templateId });

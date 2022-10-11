@@ -9,7 +9,7 @@ export const logSchema = z.object({
   level: config.logLevelSchema,
 });
 
-export const fetchMethodSchema = z.union([z.literal('gateway-old'), z.literal('gateway'), z.literal('api')]);
+export const fetchMethodSchema = z.union([z.literal('gateway'), z.literal('api')]);
 
 export const beaconSchema = z
   .object({
