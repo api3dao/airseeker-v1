@@ -4,6 +4,7 @@ import { loadConfig } from './config';
 import { initiateFetchingBeaconData } from './fetch-beacon-data';
 import { initiateDataFeedUpdates } from './update-data-feeds';
 import { initializeProviders } from './providers';
+import { initializeWallets } from './wallets';
 import { initializeState, updateState } from './state';
 
 export const handleStopSignal = (signal: string) => {
@@ -22,7 +23,7 @@ export async function main() {
   process.on('SIGTERM', handleStopSignal);
 
   initializeProviders();
-
+  initializeWallets();
   initiateFetchingBeaconData();
   initiateDataFeedUpdates();
 }
