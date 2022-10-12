@@ -2,7 +2,7 @@ import { DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol
 import { go } from '@api3/promise-utils';
 import { getGasPrice } from '@api3/airnode-utilities';
 import { ethers } from 'ethers';
-import { isEmpty } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import { calculateMedian } from './calculations';
 import {
   checkBeaconSetSignedDataFreshness,
@@ -102,8 +102,7 @@ export const updateDataFeedsInLoop = async (providerSponsorDataFeeds: ProviderSp
 // This solution is not precise but since chain operations are the only ones that actually take some time this should be a good enough solution.
 export const initializeUpdateCycle = async (
   providerSponsorDataFeeds: ProviderSponsorDataFeeds,
-  dataFeedType: DataFeedType,
-  startTime: number
+  dataFeedType: DataFeedType
 ) => {
   const { config, beaconValues, sponsorWalletsPrivateKey } = getState();
   const { provider, updateInterval, sponsorAddress, beacons, beaconSets } = providerSponsorDataFeeds;
@@ -128,23 +127,11 @@ export const initializeUpdateCycle = async (
 
   const sponsorWallet = new ethers.Wallet(sponsorWalletsPrivateKey[sponsorAddress]).connect(rpcProvider);
 
-  // Get transaction count
-  const transactionCount = await getTransactionCount(
-    provider,
-    sponsorWallet.address,
-    prepareGoOptions(startTime, totalTimeout)
-  );
-  if (transactionCount === null) {
-    logger.warn(`Unable to fetch transaction count`, logOptions);
-    return null;
-  }
-
   const voidSigner = new ethers.VoidSigner(ethers.constants.AddressZero, rpcProvider);
 
   return {
     contract,
     sponsorWallet,
-    transactionCount,
     voidSigner,
     totalTimeout,
     logOptions,
@@ -159,12 +146,11 @@ export const initializeUpdateCycle = async (
 // We pass return value from `prepareGoOptions` (with calculated timeout) to every `go` call in the function to enforce the update cycle.
 // This solution is not precise but since chain operations are the only ones that actually take some time this should be a good enough solution.
 export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataFeeds, startTime: number) => {
-  const initialUpdateData = await initializeUpdateCycle(providerSponsorBeacons, DataFeedType.Beacon, startTime);
+  const initialUpdateData = await initializeUpdateCycle(providerSponsorBeacons, DataFeedType.Beacon);
   if (!initialUpdateData) return;
   const {
     contract,
     sponsorWallet,
-    transactionCount,
     voidSigner,
     totalTimeout,
     logOptions,
@@ -176,7 +162,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
   const { chainId } = provider;
 
   // Process beacon updates
-  let nonce = transactionCount;
+  let nonce: number | undefined;
 
   for (const beacon of beacons) {
     const logOptionsBeaconId = {
@@ -245,6 +231,20 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
       logger.info(`Deviation threshold reached. Updating.`, logOptionsBeaconId);
     }
 
+    // Get transaction count only first time when update condition satisfied
+    if (isNil(nonce)) {
+      const transactionCount = await getTransactionCount(
+        provider,
+        sponsorWallet.address,
+        prepareGoOptions(startTime, totalTimeout)
+      );
+      if (transactionCount === null) {
+        logger.warn(`Unable to fetch transaction count`, logOptions);
+        return;
+      }
+      nonce = transactionCount;
+    }
+    
     // Get the latest gas price
     const [logs, gasTarget] = await getGasPrice(provider.rpcProvider, config.chains[chainId].options);
     logs.forEach((log) =>
@@ -292,12 +292,11 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
 // We pass return value from `prepareGoOptions` (with calculated timeout) to every `go` call in the function to enforce the update cycle.
 // This solution is not precise but since chain operations are the only ones that actually take some time this should be a good enough solution.
 export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDataFeeds, startTime: number) => {
-  const initialUpdateData = await initializeUpdateCycle(providerSponsorBeacons, DataFeedType.BeaconSet, startTime);
+  const initialUpdateData = await initializeUpdateCycle(providerSponsorBeacons, DataFeedType.BeaconSet);
   if (!initialUpdateData) return;
   const {
     contract,
     sponsorWallet,
-    transactionCount,
     voidSigner,
     totalTimeout,
     logOptions,
@@ -308,7 +307,7 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
   } = initialUpdateData;
   const { chainId } = provider;
   // Process beacon set updates
-  let nonce = transactionCount;
+  let nonce: number | undefined;
 
   for (const beaconSet of beaconSets) {
     const logOptionsBeaconSetId = {
@@ -433,6 +432,20 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
       }
 
       logger.info(`Deviation threshold reached. Updating.`, logOptionsBeaconSetId);
+    }
+
+    // Get transaction count only first time when update condition satisfied
+    if (isNil(nonce)) {
+      const transactionCount = await getTransactionCount(
+        provider,
+        sponsorWallet.address,
+        prepareGoOptions(startTime, totalTimeout)
+      );
+      if (transactionCount === null) {
+        logger.warn(`Unable to fetch transaction count`, logOptions);
+        return;
+      }
+      nonce = transactionCount;
     }
 
     // Get the latest gas price
