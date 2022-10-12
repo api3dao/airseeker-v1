@@ -100,7 +100,7 @@ export const updateDataFeedsInLoop = async (providerSponsorDataFeeds: ProviderSp
 
 // We pass return value from `prepareGoOptions` (with calculated timeout) to every `go` call in the function to enforce the update cycle.
 // This solution is not precise but since chain operations are the only ones that actually take some time this should be a good enough solution.
-export const initializeUpdateCycle = async (
+export const initializeUpdateCycle = (
   providerSponsorDataFeeds: ProviderSponsorDataFeeds,
   dataFeedType: DataFeedType
 ) => {
@@ -146,19 +146,10 @@ export const initializeUpdateCycle = async (
 // We pass return value from `prepareGoOptions` (with calculated timeout) to every `go` call in the function to enforce the update cycle.
 // This solution is not precise but since chain operations are the only ones that actually take some time this should be a good enough solution.
 export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataFeeds, startTime: number) => {
-  const initialUpdateData = await initializeUpdateCycle(providerSponsorBeacons, DataFeedType.Beacon);
+  const initialUpdateData = initializeUpdateCycle(providerSponsorBeacons, DataFeedType.Beacon);
   if (!initialUpdateData) return;
-  const {
-    contract,
-    sponsorWallet,
-    voidSigner,
-    totalTimeout,
-    logOptions,
-    beaconValues,
-    beacons,
-    config,
-    provider,
-  } = initialUpdateData;
+  const { contract, sponsorWallet, voidSigner, totalTimeout, logOptions, beaconValues, beacons, config, provider } =
+    initialUpdateData;
   const { chainId } = provider;
 
   // Process beacon updates
@@ -244,7 +235,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
       }
       nonce = transactionCount;
     }
-    
+
     // Get the latest gas price
     const [logs, gasTarget] = await getGasPrice(provider.rpcProvider, config.chains[chainId].options);
     logs.forEach((log) =>
@@ -292,19 +283,10 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
 // We pass return value from `prepareGoOptions` (with calculated timeout) to every `go` call in the function to enforce the update cycle.
 // This solution is not precise but since chain operations are the only ones that actually take some time this should be a good enough solution.
 export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDataFeeds, startTime: number) => {
-  const initialUpdateData = await initializeUpdateCycle(providerSponsorBeacons, DataFeedType.BeaconSet);
+  const initialUpdateData = initializeUpdateCycle(providerSponsorBeacons, DataFeedType.BeaconSet);
   if (!initialUpdateData) return;
-  const {
-    contract,
-    sponsorWallet,
-    voidSigner,
-    totalTimeout,
-    logOptions,
-    beaconValues,
-    beaconSets,
-    config,
-    provider,
-  } = initialUpdateData;
+  const { contract, sponsorWallet, voidSigner, totalTimeout, logOptions, beaconValues, beaconSets, config, provider } =
+    initialUpdateData;
   const { chainId } = provider;
   // Process beacon set updates
   let nonce: number | undefined;
