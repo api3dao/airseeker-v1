@@ -9,19 +9,19 @@ export const buildAirseekerConfig = () => ({
       airnode: '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
       templateId: '0xea30f92923ece1a97af69d450a8418db31be5a26a886540a13c09c739ba8eaaa',
       fetchInterval: 15,
-      method: 'v0.6.5',
+      fetchMethod: 'gateway',
     },
     '0xbf7ce55d109fd196de2a8bf1515d166c56c9decbe9cb473656bbca30d5743990': {
       airnode: '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
       templateId: '0x0bbf5f2ec4b0e9faf5b89b4ddbed9bdad7a542cc258ffd7b106b523aeae039a6',
       fetchInterval: 15,
-      method: 'v0.9.0',
+      fetchMethod: 'gateway',
     },
     '0x9b5825decf1232f79d3408fb6f7eeb7050fd88037f6517a94914e7d01ccd0cef': {
       airnode: '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
       templateId: '0xc43a79e09e53edfdb601acef6b52000ecb7da353aee45255c518fb9d978d9283',
       fetchInterval: 15,
-      method: 'direct',
+      fetchMethod: 'api',
     },
   },
   beaconSets: {
@@ -288,7 +288,7 @@ export const buildLocalConfigBTC = () => ({
   threshold: 10,
 });
 
-// Config for LTC subscription (Direct call)
+// Config for LTC subscription (Direct API call)
 export const buildLocalConfigLTC = () => ({
   airnodeMnemonic: 'achieve climb couple wait accident symbol spy blouse reduce foil echo label',
   privateKeys: {

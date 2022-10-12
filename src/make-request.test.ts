@@ -3,7 +3,7 @@ import { ethers } from 'ethers';
 import * as node from '@api3/airnode-node';
 import * as abi from '@api3/airnode-abi';
 import { logger } from './logging';
-import { makeDirectRequest, makeSignedDataGatewayRequests, signWithTemplateId, urlJoin } from './make-request';
+import { makeApiRequest, makeSignedDataGatewayRequests, signWithTemplateId, urlJoin } from './make-request';
 import * as state from './state';
 import { validSignedData } from '../test/fixtures';
 
@@ -237,7 +237,7 @@ it('signWithTemplateId creates valid signature', async () => {
   );
 });
 
-describe('makeDirectRequest', () => {
+describe('makeApiRequest', () => {
   beforeEach(() => {
     jest.spyOn(abi, 'decode');
     jest.spyOn(Date, 'now').mockImplementation(() => 1664532188111);
@@ -286,7 +286,7 @@ describe('makeDirectRequest', () => {
       ];
     });
 
-    const data = await makeDirectRequest(template);
+    const data = await makeApiRequest(template);
 
     expect(data).toStrictEqual({
       timestamp: '1664532188',
@@ -333,9 +333,9 @@ describe('makeDirectRequest', () => {
       ];
     });
 
-    await expect(makeDirectRequest(template)).rejects.toThrow();
+    await expect(makeApiRequest(template)).rejects.toThrow();
     expect(logger.warn).toHaveBeenCalledWith(
-      `Failed to make direct request for the endpoint [Mock Ois] Mock Endpoint Name.`,
+      `Failed to make direct API request for the endpoint [Mock Ois] Mock Endpoint Name.`,
       { meta: { 'Template-ID': template.id } }
     );
   });
@@ -371,7 +371,7 @@ describe('makeDirectRequest', () => {
       ];
     });
 
-    await expect(makeDirectRequest(template)).rejects.toThrow();
+    await expect(makeApiRequest(template)).rejects.toThrow();
     expect(logger.warn).toHaveBeenCalledTimes(1);
   });
 });

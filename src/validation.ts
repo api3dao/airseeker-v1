@@ -9,14 +9,14 @@ export const logSchema = z.object({
   level: config.logLevelSchema,
 });
 
-export const methodSchema = z.union([z.literal('direct'), z.literal('v0.6.5'), z.literal('v0.9.0')]);
+export const fetchMethodSchema = z.union([z.literal('gateway'), z.literal('api')]);
 
 export const beaconSchema = z
   .object({
     airnode: config.evmAddressSchema,
     templateId: config.evmIdSchema,
     fetchInterval: z.number().int().positive(),
-    method: methodSchema,
+    fetchMethod: fetchMethodSchema,
   })
   .strict();
 
@@ -173,9 +173,11 @@ const validateTemplatesReferences: SuperRefinement<{ beacons: Beacons; templates
     // Verify that config.templates.<templateId>.endpointId is
     // referencing a valid config.endpoints.<endpointId> object
 
-    // Only verify for `direct` call endpoints
+    // Only verify for `api` call endpoints
     if (
-      Object.values(config.beacons).some(({ templateId: tId, method }) => method === 'direct' && tId === templateId)
+      Object.values(config.beacons).some(
+        ({ templateId: tId, fetchMethod }) => fetchMethod === 'api' && tId === templateId
+      )
     ) {
       const endpoint = config.endpoints[template.endpointId];
       if (isNil(endpoint)) {
@@ -220,10 +222,10 @@ const validateBeaconsReferences: SuperRefinement<{ beacons: Beacons; gateways: G
   ctx
 ) => {
   Object.entries(config.beacons).forEach(([beaconId, beacon]) => {
-    // Unless selected method is 'direct',
+    // Unless selected fetchMethod is 'api',
     // Verify that config.beacons.<beaconId>.airnode is
     // referencing a valid config.gateways.<airnode> object
-    if (beacon.method !== 'direct') {
+    if (beacon.fetchMethod !== 'api') {
       const airnode = config.gateways[beacon.airnode];
       if (isNil(airnode)) {
         ctx.addIssue({

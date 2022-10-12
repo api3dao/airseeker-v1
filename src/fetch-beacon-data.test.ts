@@ -19,26 +19,26 @@ const config: Config = {
       airnode: '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
       templateId: '0xea30f92923ece1a97af69d450a8418db31be5a26a886540a13c09c739ba8eaaa',
       fetchInterval: 25,
-      method: 'v0.6.5',
+      fetchMethod: 'gateway',
     },
     '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2': {
       airnode: '0x5656D3A378B1AAdFDDcF4196ea364A9d78617290',
       templateId: '0xea30f92923ece1a97af69d450a8418db31be5a26a886540a13c09c739ba8eaaa',
       // Artificially low interval to make the tests run fast without mocking
       fetchInterval: 0.5,
-      method: 'v0.6.5',
+      fetchMethod: 'gateway',
     },
     '0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469be4d6f214e': {
       airnode: '0x5656D3A378B1AAdFDDcF4196ea364A9d78617290',
       templateId: '0x9ec34b00a5019442dcd05a4860ff2bf015164b368cb83fcb756088fc6fbd6480',
       fetchInterval: 40,
-      method: 'v0.6.5',
+      fetchMethod: 'gateway',
     },
     '0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469beabcdabcd': {
       airnode: '0x5656D3A378B1AAdFDDcF4196ea364A9d78617290',
       templateId: '0x9ec34b00a5019442dcd05a4860ff2bf015164b368cb83fcb756088fcabcdabcd',
       fetchInterval: 0.5,
-      method: 'direct',
+      fetchMethod: 'api',
     },
   },
   beaconSets: {
@@ -230,8 +230,8 @@ describe('fetchBeaconData', () => {
     expect(state.updateState).not.toHaveBeenCalled();
   });
 
-  it('does nothing if direct call fails', async () => {
-    jest.spyOn(makeRequestApi, 'makeDirectRequest').mockImplementation(async () => {
+  it('does nothing if direct api call fails', async () => {
+    jest.spyOn(makeRequestApi, 'makeApiRequest').mockImplementation(async () => {
       throw new Error('API timeout');
     });
     jest.spyOn(logger, 'log');
@@ -255,8 +255,8 @@ describe('fetchBeaconData', () => {
     expect(makeRequestApi.makeSignedDataGatewayRequests).toHaveBeenCalledTimes(3);
   });
 
-  it('updates retries multiple times for direct call', async () => {
-    jest.spyOn(makeRequestApi, 'makeDirectRequest').mockImplementation(async () => {
+  it('updates retries multiple times for direct api call', async () => {
+    jest.spyOn(makeRequestApi, 'makeApiRequest').mockImplementation(async () => {
       throw new Error('some error');
     });
     // 0.08 * 2_500 (max wait time) = 200 (actual wait time)
@@ -265,7 +265,7 @@ describe('fetchBeaconData', () => {
 
     await api.fetchBeaconData('0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469beabcdabcd');
 
-    expect(makeRequestApi.makeDirectRequest).toHaveBeenCalledTimes(3);
+    expect(makeRequestApi.makeApiRequest).toHaveBeenCalledTimes(3);
   });
 
   it('updates state with the api response value', async () => {
@@ -280,8 +280,8 @@ describe('fetchBeaconData', () => {
     });
   });
 
-  it('updates state with the api response value for direct call', async () => {
-    jest.spyOn(makeRequestApi, 'makeDirectRequest').mockImplementation(async () => {
+  it('updates state with the api response value for direct api call', async () => {
+    jest.spyOn(makeRequestApi, 'makeApiRequest').mockImplementation(async () => {
       return validSignedData;
     });
 

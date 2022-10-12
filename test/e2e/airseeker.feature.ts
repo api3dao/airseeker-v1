@@ -10,7 +10,7 @@ import * as makeRequest from '../../src/make-request';
 
 // Jest version 27 has a bug where jest.setTimeout does not work correctly inside describe or test blocks
 // https://github.com/facebook/jest/issues/11607
-jest.setTimeout(60_000);
+jest.setTimeout(100_000);
 
 const provider = new hre.ethers.providers.StaticJsonRpcProvider('http://127.0.0.1:8545');
 
@@ -229,8 +229,8 @@ describe('Airseeker', () => {
     const makeSignedDataGatewayRequestsSpy = jest.spyOn(makeRequest, 'makeSignedDataGatewayRequests');
     makeSignedDataGatewayRequestsSpy.mockRejectedValueOnce(new Error('Gateway call failed'));
 
-    const makeDirectRequestSpy = jest.spyOn(makeRequest, 'makeDirectRequest');
-    makeDirectRequestSpy.mockRejectedValueOnce(new Error('Direct API call failed'));
+    const makeApiRequestSpy = jest.spyOn(makeRequest, 'makeApiRequest');
+    makeApiRequestSpy.mockRejectedValueOnce(new Error('Direct API call failed'));
 
     await main().then(async () => {
       // Wait for Airseeker cycles to finish

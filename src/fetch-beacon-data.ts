@@ -2,7 +2,7 @@ import { isEmpty, uniq } from 'lodash';
 import { go, GoResultError } from '@api3/promise-utils';
 import { logger } from './logging';
 import { getState, updateState } from './state';
-import { makeSignedDataGatewayRequests, makeDirectRequest } from './make-request';
+import { makeSignedDataGatewayRequests, makeApiRequest } from './make-request';
 import { sleep } from './utils';
 import { SignedData } from './validation';
 import {
@@ -66,20 +66,19 @@ export const fetchBeaconData = async (beaconId: string) => {
   logger.debug('Fetching beacon data', logOptionsBeaconId);
   const { config } = getState();
 
-  const { fetchInterval, airnode, templateId, method } = config.beacons[beaconId];
+  const { fetchInterval, airnode, templateId, fetchMethod } = config.beacons[beaconId];
   const template = config.templates[templateId];
 
   let fetchFn: () => Promise<SignedData>;
   let onAttemptError: (goRes: GoResultError<Error>) => void;
-  switch (method) {
-    case 'direct': {
-      fetchFn = () => makeDirectRequest({ ...template, id: templateId });
+  switch (fetchMethod) {
+    case 'api': {
+      fetchFn = () => makeApiRequest({ ...template, id: templateId });
       onAttemptError = (goError: GoResultError<Error>) =>
-        logger.warn(`Failed attempt to make direct call. Error: ${goError.error}`, logOptionsBeaconId);
+        logger.warn(`Failed attempt to make direct API call. Error: ${goError.error}`, logOptionsBeaconId);
       break;
     }
-    case 'v0.6.5':
-    case 'v0.9.0': {
+    case 'gateway': {
       const gateway = config.gateways[airnode];
       fetchFn = () => makeSignedDataGatewayRequests(gateway, { ...template, id: templateId });
       onAttemptError = (goError: GoResultError<Error>) =>
@@ -87,7 +86,7 @@ export const fetchBeaconData = async (beaconId: string) => {
       break;
     }
     default:
-      logger.warn(`Invalid API value fetch method ${method}`, logOptionsBeaconId);
+      logger.warn(`Invalid API value fetch method ${fetchMethod}`, logOptionsBeaconId);
       return;
   }
 

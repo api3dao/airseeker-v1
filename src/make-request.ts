@@ -101,7 +101,7 @@ export const makeSignedDataGatewayRequests = async (
   return goResult.data;
 };
 
-export const makeDirectRequest = async (template: Id<Template>): Promise<SignedData> => {
+export const makeApiRequest = async (template: Id<Template>): Promise<SignedData> => {
   const {
     config: { endpoints, ois, apiCredentials },
   } = getState();
@@ -121,7 +121,7 @@ export const makeDirectRequest = async (template: Id<Template>): Promise<SignedD
   });
 
   if (!apiCallResponse.success) {
-    const message = `Failed to make direct request for the endpoint [${endpoint.oisTitle}] ${endpoint.endpointName}.`;
+    const message = `Failed to make direct API request for the endpoint [${endpoint.oisTitle}] ${endpoint.endpointName}.`;
     logger.warn(message, logOptionsTemplateId);
     throw new Error(message);
   }
@@ -132,7 +132,7 @@ export const makeDirectRequest = async (template: Id<Template>): Promise<SignedD
   const goSignWithTemplateId = await go(() => signWithTemplateId(template.id, timestamp, encodedValue));
 
   if (!goSignWithTemplateId.success) {
-    const message = `Failed to sign data while making direct request for the endpoint [${endpoint.oisTitle}] ${endpoint.endpointName}. Error: "${goSignWithTemplateId.error}"`;
+    const message = `Failed to sign data while making direct API request for the endpoint [${endpoint.oisTitle}] ${endpoint.endpointName}. Error: "${goSignWithTemplateId.error}"`;
     logger.warn(message, logOptionsTemplateId);
     throw new Error(message);
   }
