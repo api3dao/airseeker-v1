@@ -99,6 +99,20 @@
     yargs "^17.5.1"
     zod "^3.17.3"
 
+"@api3/airnode-validator@^0.9.0":
+  version "0.9.0"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-validator/-/airnode-validator-0.9.0.tgz#b3421fa0df7fc83dad64b20ea7785d82a6da8b9e"
+  integrity sha512-Ekb0jJUTsAahwj45+WOH83rJxQUslAh5YIxle57wbEH3fsg9A3haBAlh3pROHLYsQKNw7EV4dYcrjYJhSxLfWQ==
+  dependencies:
+    "@api3/ois" "1.2.0"
+    "@api3/promise-utils" "^0.3.0"
+    dotenv "^16.0.3"
+    ethers "^5.7.1"
+    lodash "^4.17.21"
+    ora "^5.4.1"
+    yargs "^17.6.0"
+    zod "^3.19.1"
+
 "@api3/ois@1.1.1":
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/@api3/ois/-/ois-1.1.1.tgz#8760c3d4d35435d68a4726ac9d4d17e91e0ac02e"
@@ -106,6 +120,14 @@
   dependencies:
     lodash "^4.17.21"
     zod "^3.17.3"
+
+"@api3/ois@1.2.0":
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/@api3/ois/-/ois-1.2.0.tgz#752894b7cd2968a53437b9abaa9aef07968359d3"
+  integrity sha512-K3d873YhmLCqL0L5op9LBtgPIgcGicC4pNq34olCjhACh3TaowNNk3mFvZrRgUj/TdapiAKvtPtPtvnj1KO2zw==
+  dependencies:
+    lodash "^4.17.21"
+    zod "^3.19.1"
 
 "@api3/promise-utils@^0.3.0":
   version "0.3.0"
@@ -2983,6 +3005,15 @@ cliui@^7.0.2:
   dependencies:
     string-width "^4.2.0"
     strip-ansi "^6.0.0"
+    wrap-ansi "^7.0.0"
+
+cliui@^8.0.1:
+  version "8.0.1"
+  resolved "https://registry.yarnpkg.com/cliui/-/cliui-8.0.1.tgz#0c04b075db02cbfe60dc8e6cf2f5486b1a3608aa"
+  integrity sha512-BSeNnyus75C4//NQ9gQt1/csTXyo/8Sb+afLAkzAptFuMsod9HFokGNudZpi/oQV73hnVK+sR+5PVRMd+Dr7YQ==
+  dependencies:
+    string-width "^4.2.0"
+    strip-ansi "^6.0.1"
     wrap-ansi "^7.0.0"
 
 clone-response@^1.0.2:
@@ -8702,12 +8733,12 @@ yargs@16.2.0:
     y18n "^5.0.5"
     yargs-parser "^20.2.2"
 
-yargs@^17.3.1, yargs@^17.5.1:
-  version "17.5.1"
-  resolved "https://registry.yarnpkg.com/yargs/-/yargs-17.5.1.tgz#e109900cab6fcb7fd44b1d8249166feb0b36e58e"
-  integrity sha512-t6YAJcxDkNX7NFYiVtKvWUz8l+PaKTLiL63mJYWR2GnHq2gjEWISzsLp9wg3aY36dY1j+gfIEL3pIF+XlJJfbA==
+yargs@^17.3.1, yargs@^17.5.1, yargs@^17.6.0:
+  version "17.6.0"
+  resolved "https://registry.yarnpkg.com/yargs/-/yargs-17.6.0.tgz#e134900fc1f218bc230192bdec06a0a5f973e46c"
+  integrity sha512-8H/wTDqlSwoSnScvV2N/JHfLWOKuh5MVla9hqLjK3nsfyy6Y4kDSYSvkU5YCUEPOSnRXfIyx3Sq+B/IWudTo4g==
   dependencies:
-    cliui "^7.0.2"
+    cliui "^8.0.1"
     escalade "^3.1.1"
     get-caller-file "^2.0.5"
     require-directory "^2.1.1"
@@ -8742,7 +8773,7 @@ zip-stream@^4.1.0:
     compress-commons "^4.1.0"
     readable-stream "^3.6.0"
 
-zod@^3.17.3:
+zod@^3.17.3, zod@^3.19.1:
   version "3.19.1"
   resolved "https://registry.yarnpkg.com/zod/-/zod-3.19.1.tgz#112f074a97b50bfc4772d4ad1576814bd8ac4473"
   integrity sha512-LYjZsEDhCdYET9ikFu6dVPGp2YH9DegXjdJToSzD9rO6fy4qiRYFoyEYwps88OseJlPyl2NOe2iJuhEhL7IpEA==
