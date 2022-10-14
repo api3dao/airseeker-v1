@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
 import { SuperRefinement, z } from 'zod';
+import { oisSchema, OIS, Endpoint as oisEndpoint } from '@api3/ois';
 import { config } from '@api3/airnode-validator';
 import isNil from 'lodash/isNil';
 
@@ -8,11 +9,14 @@ export const logSchema = z.object({
   level: config.logLevelSchema,
 });
 
+export const fetchMethodSchema = z.union([z.literal('gateway'), z.literal('api')]);
+
 export const beaconSchema = z
   .object({
     airnode: config.evmAddressSchema,
     templateId: config.evmIdSchema,
     fetchInterval: z.number().int().positive(),
+    fetchMethod: fetchMethodSchema,
   })
   .strict();
 
@@ -102,6 +106,30 @@ export const templatesSchema = z.record(config.evmIdSchema, templateSchema).supe
   });
 });
 
+export const endpointSchema = z.object({
+  oisTitle: z.string(),
+  endpointName: z.string(),
+});
+
+export const endpointsSchema = z.record(endpointSchema).superRefine((endpoints, ctx) => {
+  Object.entries(endpoints).forEach(([endpointId, endpoint]) => {
+    // Verify that config.endpoints.<endpointId> is valid
+    // by deriving the hash of the oisTitle and endpointName
+
+    const derivedEndpointId = ethers.utils.keccak256(
+      ethers.utils.defaultAbiCoder.encode(['string', 'string'], [endpoint.oisTitle, endpoint.endpointName])
+    );
+
+    if (derivedEndpointId !== endpointId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Endpoint ID "${endpointId}" is invalid`,
+        path: [endpointId],
+      });
+    }
+  });
+});
+
 export const baseBeaconUpdateSchema = z.object({
   deviationThreshold: z.number(),
   heartbeatInterval: z.number().int(),
@@ -137,20 +165,75 @@ export const triggersSchema = z.object({
   dataFeedUpdates: dataFeedUpdatesSchema,
 });
 
+const validateTemplatesReferences: SuperRefinement<{ beacons: Beacons; templates: Templates; endpoints: Endpoints }> = (
+  config,
+  ctx
+) => {
+  Object.entries(config.templates).forEach(([templateId, template]) => {
+    // Verify that config.templates.<templateId>.endpointId is
+    // referencing a valid config.endpoints.<endpointId> object
+
+    // Only verify for `api` call endpoints
+    if (
+      Object.values(config.beacons).some(
+        ({ templateId: tId, fetchMethod }) => fetchMethod === 'api' && tId === templateId
+      )
+    ) {
+      const endpoint = config.endpoints[template.endpointId];
+      if (isNil(endpoint)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Endpoint "${template.endpointId}" is not defined in the config.endpoints object`,
+          path: ['templates', templateId, 'endpointId'],
+        });
+      }
+    }
+  });
+};
+
+const validateOisReferences: SuperRefinement<{ ois: OIS[]; endpoints: Endpoints }> = (config, ctx) => {
+  Object.entries(config.endpoints).forEach(([endpointId, { oisTitle, endpointName }]) => {
+    // Check existence of OIS related with oisTitle
+    const oises = config.ois.filter(({ title }) => title === oisTitle);
+    if (oises.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `OIS titled "${oisTitle}" is not defined in the config.ois object`,
+        path: ['endpoints', endpointId, 'oisTitle'],
+      });
+      return;
+    }
+    // Take first OIS fits the filter rule, then check specific endpoint existence
+    const ois = oises[0];
+    const endpoints = ois.endpoints.filter(({ name }: oisEndpoint) => name === endpointName);
+
+    if (endpoints.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `OIS titled "${oisTitle}" doesn't have referenced endpoint ${endpointName}`,
+        path: ['endpoints', endpointId, 'endpointName'],
+      });
+    }
+  });
+};
+
 const validateBeaconsReferences: SuperRefinement<{ beacons: Beacons; gateways: Gateways; templates: Templates }> = (
   config,
   ctx
 ) => {
   Object.entries(config.beacons).forEach(([beaconId, beacon]) => {
+    // Unless selected fetchMethod is 'api',
     // Verify that config.beacons.<beaconId>.airnode is
     // referencing a valid config.gateways.<airnode> object
-    const airnode = config.gateways[beacon.airnode];
-    if (isNil(airnode)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `Gateway "${beacon.airnode}" is not defined in the config.gateways object`,
-        path: ['beacons', beaconId, 'airnode'],
-      });
+    if (beacon.fetchMethod !== 'api') {
+      const airnode = config.gateways[beacon.airnode];
+      if (isNil(airnode)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Gateway "${beacon.airnode}" is not defined in the config.gateways object`,
+          path: ['beacons', beaconId, 'airnode'],
+        });
+      }
     }
 
     // Verify that config.beacons.<beaconId>.templateId is
@@ -236,10 +319,15 @@ export const configSchema = z
     gateways: gatewaysSchema,
     templates: templatesSchema,
     triggers: triggersSchema,
+    ois: z.array(oisSchema),
+    apiCredentials: z.array(config.apiCredentialsSchema),
+    endpoints: endpointsSchema,
   })
   .strict()
   .superRefine(validateBeaconsReferences)
   .superRefine(validateBeaconSetsReferences)
+  .superRefine(validateTemplatesReferences)
+  .superRefine(validateOisReferences)
   .superRefine(validateDataFeedUpdatesReferences);
 export const encodedValueSchema = z.string().regex(/^0x[a-fA-F0-9]{64}$/);
 export const signatureSchema = z.string().regex(/^0x[a-fA-F0-9]{130}$/);
@@ -272,3 +360,5 @@ export type BeaconId = z.infer<typeof config.evmIdSchema>;
 export type TemplateId = z.infer<typeof config.evmIdSchema>;
 export type EndpointId = z.infer<typeof config.evmIdSchema>;
 export type SignedData = z.infer<typeof signedDataSchema>;
+export type Endpoint = z.infer<typeof endpointSchema>;
+export type Endpoints = z.infer<typeof endpointsSchema>;
