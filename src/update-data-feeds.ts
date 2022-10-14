@@ -1,5 +1,3 @@
-import * as node from '@api3/airnode-node';
-import * as protocol from '@api3/airnode-protocol';
 import { DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol-v1';
 import { go } from '@api3/promise-utils';
 import { getGasPrice } from '@api3/airnode-utilities';
@@ -107,7 +105,7 @@ export const initializeUpdateCycle = async (
   dataFeedType: DataFeedType,
   startTime: number
 ) => {
-  const { config, beaconValues } = getState();
+  const { config, beaconValues, sponsorWalletsPrivateKey } = getState();
   const { provider, updateInterval, sponsorAddress, beacons, beaconSets } = providerSponsorDataFeeds;
   const { rpcProvider, chainId, providerName } = provider;
   const logOptions = {
@@ -128,10 +126,7 @@ export const initializeUpdateCycle = async (
   const contractAddress = config.chains[chainId].contracts['DapiServer'];
   const contract = DapiServerFactory.connect(contractAddress, rpcProvider);
 
-  // Derive sponsor wallet address
-  const sponsorWallet = node.evm
-    .deriveSponsorWalletFromMnemonic(config.airseekerWalletMnemonic, sponsorAddress, protocol.PROTOCOL_IDS.AIRSEEKER)
-    .connect(rpcProvider);
+  const sponsorWallet = new ethers.Wallet(sponsorWalletsPrivateKey[sponsorAddress]).connect(rpcProvider);
 
   // Get transaction count
   const transactionCount = await getTransactionCount(
@@ -252,7 +247,11 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
 
     // Get the latest gas price
     const [logs, gasTarget] = await getGasPrice(provider.rpcProvider, config.chains[chainId].options);
-    logs.forEach((log) => (log.level === 'ERROR' ? logger.error(log.message) : logger.info(log.message)));
+    logs.forEach((log) =>
+      log.level === 'ERROR'
+        ? logger.error(log.message, null, logOptionsBeaconId)
+        : logger.info(log.message, logOptionsBeaconId)
+    );
 
     // Update beacon
     const tx = await go(

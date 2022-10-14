@@ -33,6 +33,19 @@ const PORT = 5432;
 const app = express();
 app.use(express.json());
 
+// Mock API server
+app.get('/convert', (req, res) => {
+  const { from, to } = req.query;
+
+  if (from === 'LTC' && to === 'USD') {
+    res.status(200).send({ success: true, result: '54.85' });
+    return;
+  }
+
+  res.status(404).send({ success: false, error: 'Unknown price pair' });
+});
+
+// Mock signed data gateway
 app.post('/signed-data-gateway/:endpoint', async (req, res) => {
   const encodedParameters = req.body.encodedParameters;
   const decodedParameters = abi.decode(encodedParameters);

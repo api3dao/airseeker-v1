@@ -1,8 +1,10 @@
 import axios from 'axios';
 import { ethers } from 'ethers';
+import * as node from '@api3/airnode-node';
+import * as abi from '@api3/airnode-abi';
 import { logger } from './logging';
-import { makeSignedDataGatewayRequests, urlJoin } from './make-request';
-import { initializeState } from './state';
+import { makeApiRequest, makeSignedDataGatewayRequests, signWithTemplateId, urlJoin } from './make-request';
+import * as state from './state';
 import { validSignedData } from '../test/fixtures';
 
 const generateRandomBytes32 = () => {
@@ -36,7 +38,7 @@ describe('makeSignedDataGatewayRequests', () => {
   const templateId = generateRandomBytes32();
 
   beforeEach(() => {
-    initializeState({ log: { format: 'plain', level: 'INFO' } } as any); // We don't need airseeker.json file
+    state.initializeState({ log: { format: 'plain', level: 'INFO' } } as any); // We don't need airseeker.json file
   });
 
   it('makes requests to all gateways and resolves with the first successful value', async () => {
@@ -214,5 +216,162 @@ describe('makeSignedDataGatewayRequests', () => {
     expect(logger.warn).toHaveBeenCalledWith(`All gateway requests have failed with an error. No response to be used`, {
       meta: { 'Template-ID': templateId },
     });
+  });
+});
+
+it('signWithTemplateId creates valid signature', async () => {
+  jest.spyOn(state, 'getState').mockImplementation(() => {
+    return {
+      airseekerWalletPrivateKey: ethers.Wallet.fromMnemonic(
+        'achieve climb couple wait accident symbol spy blouse reduce foil echo label'
+      ).privateKey,
+    } as state.State;
+  });
+  const data = await signWithTemplateId(
+    '0x8f0e59a6cee0c2a31a87fbf228714ed7a65855aec64835aad20145fd2530415b',
+    '1664478526',
+    '0x00000000000000000000000000000000000000000000000000caafe9188031d6'
+  );
+  expect(data).toBe(
+    '0xa14306d784b25ae0556d7c74ba93c31a4221c4a9ebb55f98c5ccd582a40e9f053636708a772f4cc77274bc56b9e4719355b64215fff8ba25dd46fe451def2b701b'
+  );
+});
+
+describe('makeApiRequest', () => {
+  beforeEach(() => {
+    jest.spyOn(abi, 'decode');
+    jest.spyOn(Date, 'now').mockImplementation(() => 1664532188111);
+    jest.spyOn(logger, 'info');
+    jest.spyOn(logger, 'warn');
+  });
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+  const template = {
+    endpointId: '0x57ec49db18ff1164c921592ab3b10804e468de892575efe2037d48b7c07c2d28',
+    parameters:
+      '0x317373737300000000000000000000000000000000000000000000000000000073796d626f6c0000000000000000000000000000000000000000000000000000616176655f6574680000000000000000000000000000000000000000000000005f7061746800000000000000000000000000000000000000000000000000000070726963650000000000000000000000000000000000000000000000000000005f74797065000000000000000000000000000000000000000000000000000000696e7432353600000000000000000000000000000000000000000000000000005f74696d657300000000000000000000000000000000000000000000000000003130303030303030303030303030303030303000000000000000000000000000',
+    id: '0x8f0e59a6cee0c2a31a87fbf228714ed7a65855aec64835aad20145fd2530415b',
+  };
+
+  it('make succesful call', async () => {
+    jest.spyOn(state, 'getState').mockImplementation(() => {
+      return {
+        airseekerWalletPrivateKey: ethers.Wallet.fromMnemonic(
+          'achieve climb couple wait accident symbol spy blouse reduce foil echo label'
+        ).privateKey,
+        config: {
+          endpoints: {
+            '0x57ec49db18ff1164c921592ab3b10804e468de892575efe2037d48b7c07c2d28': {
+              oisTitle: 'Mock Ois',
+              endpointName: 'Mock Endpoint Name',
+            },
+          },
+          log: { format: 'plain', level: 'INFO' },
+        } as any,
+      } as state.State;
+    });
+
+    jest.spyOn(node.api, 'callApi').mockImplementation(async () => {
+      return [
+        [],
+        {
+          success: true,
+          data: {
+            encodedValue: '0x00000000000000000000000000000000000000000000000000cd698844eba65a',
+            rawValue: { symbol: 'aave_eth', price: 0.05781840421844745, timestamp: 1664532168158 },
+            values: ['57818404218447450'],
+          },
+        },
+      ];
+    });
+
+    const data = await makeApiRequest(template);
+
+    expect(data).toStrictEqual({
+      timestamp: '1664532188',
+      encodedValue: '0x00000000000000000000000000000000000000000000000000cd698844eba65a',
+      signature:
+        '0x598c29e74e799dbfce393208ad698bf1f4787c46afa0ac1608d0a02d440d092012000d1fad42ebd3b76c88aa16368af28aed88489ae017b48d91e77fad10a8301c',
+    });
+    expect(abi.decode).toHaveBeenLastCalledWith(template.parameters);
+    expect(abi.decode).toHaveLastReturnedWith({
+      symbol: 'aave_eth',
+      _path: 'price',
+      _type: 'int256',
+      _times: '1000000000000000000',
+    });
+    expect(logger.info).toHaveBeenCalledTimes(0);
+    expect(logger.warn).toHaveBeenCalledTimes(0);
+  });
+
+  it('handle the case where API call failed', async () => {
+    jest.spyOn(state, 'getState').mockImplementation(() => {
+      return {
+        airseekerWalletPrivateKey: ethers.Wallet.fromMnemonic(
+          'achieve climb couple wait accident symbol spy blouse reduce foil echo label'
+        ).privateKey,
+        config: {
+          endpoints: {
+            '0x57ec49db18ff1164c921592ab3b10804e468de892575efe2037d48b7c07c2d28': {
+              oisTitle: 'Mock Ois',
+              endpointName: 'Mock Endpoint Name',
+            },
+          },
+          log: { format: 'plain', level: 'INFO' },
+        } as any,
+      } as state.State;
+    });
+
+    jest.spyOn(node.api, 'callApi').mockImplementation(async () => {
+      return [
+        [],
+        {
+          success: false,
+          errorMessage: 'Mock error message',
+        },
+      ];
+    });
+
+    await expect(makeApiRequest(template)).rejects.toThrow();
+    expect(logger.warn).toHaveBeenCalledWith(
+      `Failed to make direct API request for the endpoint [Mock Ois] Mock Endpoint Name.`,
+      { meta: { 'Template-ID': template.id } }
+    );
+  });
+
+  it('handle the case where signing encodedValue failed because improper signer wallet', async () => {
+    jest.spyOn(state, 'getState').mockImplementation(() => {
+      return {
+        // Removed AirseekerWallet to make signer function fail
+        config: {
+          endpoints: {
+            '0x57ec49db18ff1164c921592ab3b10804e468de892575efe2037d48b7c07c2d28': {
+              oisTitle: 'Mock Ois',
+              endpointName: 'Mock Endpoint Name',
+            },
+          },
+          log: { format: 'plain', level: 'INFO' },
+        } as any,
+      } as state.State;
+    });
+
+    // Succesful API call
+    jest.spyOn(node.api, 'callApi').mockImplementation(async () => {
+      return [
+        [],
+        {
+          success: true,
+          data: {
+            encodedValue: '0x00000000000000000000000000000000000000000000000000cd698844eba65a',
+            rawValue: { symbol: 'aave_eth', price: 0.05781840421844745, timestamp: 1664532168158 },
+            values: ['57818404218447450'],
+          },
+        },
+      ];
+    });
+
+    await expect(makeApiRequest(template)).rejects.toThrow();
+    expect(logger.warn).toHaveBeenCalledTimes(1);
   });
 });

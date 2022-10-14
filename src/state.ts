@@ -14,12 +14,16 @@ export type Provider = {
 };
 // chainId => Provider[]
 export type Providers = Record<string, Provider[]>;
+// sponsorAddress => sponsorWallet
+export type SponsorWalletsPrivateKey = Record<string, string>;
 
 export interface State {
   config: Config;
   stopSignalReceived: boolean;
   beaconValues: BeaconValueStorage;
   providers: Providers;
+  airseekerWalletPrivateKey: string;
+  sponsorWalletsPrivateKey: SponsorWalletsPrivateKey;
 }
 
 // TODO: Freeze the state in development mode
@@ -40,6 +44,8 @@ export const getInitialState = (config: Config) => {
     stopSignalReceived: false,
     beaconValues: {},
     providers: {},
+    airseekerWalletPrivateKey: '',
+    sponsorWalletsPrivateKey: {},
   };
 };
 
