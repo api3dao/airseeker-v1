@@ -26,39 +26,47 @@
     ethers "^5.7.0"
     lodash "^4.17.21"
 
-"@api3/airnode-adapter@^0.8.0":
-  version "0.8.0"
-  resolved "https://registry.yarnpkg.com/@api3/airnode-adapter/-/airnode-adapter-0.8.0.tgz#516bd021bd24c941b783f1bf10b78ebd616a3dc3"
-  integrity sha512-RLnPvsvYo8kyMPkES+jn8kbFmBxjvRVkzy92l+amBo8sXhIQRnRZWPIQtjE8jrRC9xAYEl4ioGBJL6JynJHhdg==
+"@api3/airnode-abi@^0.9.0":
+  version "0.9.0"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-abi/-/airnode-abi-0.9.0.tgz#d36c575241ad3014c6a7f4a692875388ca7e2bd6"
+  integrity sha512-dPe1DvwWNvzOR7Yk5EnK+/IuriD0hhO8EFcRNvg+0idj6uFU5+0s90xT1+8+sUz4gEENvp848qDdZQ1pgIPSWA==
   dependencies:
-    "@api3/ois" "1.1.1"
+    ethers "^5.7.1"
+    lodash "^4.17.21"
+
+"@api3/airnode-adapter@^0.9.0":
+  version "0.9.0"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-adapter/-/airnode-adapter-0.9.0.tgz#4baf38c6f7ee987007918ce7b4e92b6ea9f81b71"
+  integrity sha512-i2a15y94WfQO4bk9eZTxGPDpNH8itGvZc9nQbxDd6aT9Jd6HoMMcSbXqvD6tUn+bSjZ11e9XJ0JL6rv6yESuyA==
+  dependencies:
+    "@api3/ois" "1.2.0"
     "@api3/promise-utils" "^0.3.0"
     axios "^0.27.2"
     bignumber.js "^9.1.0"
-    ethers "^5.7.0"
+    ethers "^5.7.1"
     lodash "^4.17.21"
 
-"@api3/airnode-node@^0.8.0":
-  version "0.8.0"
-  resolved "https://registry.yarnpkg.com/@api3/airnode-node/-/airnode-node-0.8.0.tgz#01e61c1e14eb6cde4b282faf578c34e1fff6ba09"
-  integrity sha512-kvSAs72jvzRjl0hUBOUP3gc02/eeIaca3gsL3GKSIFPJl9glLq+0KfZxJvID3aVWh4Y7/RQseMhfpwsLsem0HQ==
+"@api3/airnode-node@^0.9.0":
+  version "0.9.0"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-node/-/airnode-node-0.9.0.tgz#ceb8a54e956bd6bfa9a19db7098a484e01977d1e"
+  integrity sha512-ms8VE4h/f4n1bdHDsLE1asFtzPTqklV5Fxvp0XrPiMSuEbjiFYtau+RbsqD93D10y5ABI5kLUZaN/0WvxpcRFw==
   dependencies:
-    "@api3/airnode-abi" "^0.8.0"
-    "@api3/airnode-adapter" "^0.8.0"
-    "@api3/airnode-protocol" "^0.8.0"
-    "@api3/airnode-utilities" "^0.8.0"
-    "@api3/airnode-validator" "^0.8.0"
-    "@api3/ois" "1.1.1"
+    "@api3/airnode-abi" "^0.9.0"
+    "@api3/airnode-adapter" "^0.9.0"
+    "@api3/airnode-protocol" "^0.9.0"
+    "@api3/airnode-utilities" "^0.9.0"
+    "@api3/airnode-validator" "^0.9.0"
+    "@api3/ois" "1.2.0"
     "@api3/promise-utils" "^0.3.0"
-    aws-sdk "^2.1209.0"
+    aws-sdk "^2.1228.0"
     body-parser "^1.20.0"
-    dotenv "^16.0.2"
-    ethers "^5.7.0"
+    dotenv "^16.0.3"
+    ethers "^5.7.1"
     express "^4.18.1"
-    google-auth-library "^8.5.1"
+    google-auth-library "^8.5.2"
     lodash "^4.17.21"
-    yargs "^17.5.1"
-    zod "^3.17.3"
+    yargs "^17.6.0"
+    zod "^3.19.1"
 
 "@api3/airnode-protocol-v1@^0.7.0":
   version "0.7.0"
@@ -75,6 +83,15 @@
     "@openzeppelin/contracts" "4.4.2"
     ethers "^5.7.0"
 
+"@api3/airnode-protocol@^0.9.0":
+  version "0.9.0"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-protocol/-/airnode-protocol-0.9.0.tgz#b5703e532d03b89dce6ef868f269312f36cdede2"
+  integrity sha512-d3oslTj69GRlV09yBI2LI5QxLrGXBPRTxEwgckkkQyJi4aS+OIcy9YkZWwdDHjml3Rq6EtXSxoHesdFY0dzpPg==
+  dependencies:
+    "@api3/airnode-utilities" "^0.9.0"
+    "@openzeppelin/contracts" "4.4.2"
+    ethers "^5.7.1"
+
 "@api3/airnode-utilities@^0.8.0":
   version "0.8.0"
   resolved "https://registry.yarnpkg.com/@api3/airnode-utilities/-/airnode-utilities-0.8.0.tgz#f5e1d285e8d7850f06774ed97f8daf6abbe38d3e"
@@ -84,6 +101,16 @@
     "@api3/promise-utils" "^0.3.0"
     date-fns "^2.29.2"
     ethers "^5.7.0"
+
+"@api3/airnode-utilities@^0.9.0":
+  version "0.9.0"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-utilities/-/airnode-utilities-0.9.0.tgz#cbfdf80350548054045539a9ae25afaaae9c2f93"
+  integrity sha512-suGuAGIjySIHnTYPTEidKV37l72rtIDEob6a18vnpa0NIJeUUZ6G2dfcWmQ+PmBPWJSheO3/e+DzXPQ9OwCzMg==
+  dependencies:
+    "@api3/airnode-validator" "^0.9.0"
+    "@api3/promise-utils" "^0.3.0"
+    date-fns "^2.29.3"
+    ethers "^5.7.1"
 
 "@api3/airnode-validator@^0.8.0":
   version "0.8.0"
@@ -2491,10 +2518,10 @@ available-typed-arrays@^1.0.5:
   resolved "https://registry.yarnpkg.com/available-typed-arrays/-/available-typed-arrays-1.0.5.tgz#92f95616501069d07d10edb2fc37d3e1c65123b7"
   integrity sha512-DMD0KiN46eipeziST1LPP/STfDU0sufISXmjSgvVsoU2tqxctQeASejWcfNtxYKqETM1UxQ8sp2OrSBWpHY6sw==
 
-aws-sdk@^2.1209.0, aws-sdk@^2.1231.0:
-  version "2.1231.0"
-  resolved "https://registry.yarnpkg.com/aws-sdk/-/aws-sdk-2.1231.0.tgz#c02e83b095211d9f6dfb540fd47fa69190af9c0d"
-  integrity sha512-ONBuRsOxsu0zL8u/Vmz49tPWi9D4ls2pjb6szdfSx9VQef7bOnWe9gJpWoA94OTzcjOWsvjsG7UgjvQJkIuPBg==
+aws-sdk@^2.1228.0, aws-sdk@^2.1231.0:
+  version "2.1232.0"
+  resolved "https://registry.yarnpkg.com/aws-sdk/-/aws-sdk-2.1232.0.tgz#11d38fda396e020000f69c502433bd8d004f6c68"
+  integrity sha512-hpWsIdfyIK8uVWzCAHAqa3V2P/pkDy5SHy2QytpY/HylT2TnMT9NNd5hblfpvttfoIKoArnYQzVKtC20H/+yUg==
   dependencies:
     buffer "4.9.2"
     events "1.1.1"
@@ -3365,7 +3392,7 @@ data-uri-to-buffer@3:
   resolved "https://registry.yarnpkg.com/data-uri-to-buffer/-/data-uri-to-buffer-3.0.1.tgz#594b8973938c5bc2c33046535785341abc4f3636"
   integrity sha512-WboRycPNsVw3B3TL559F7kuBUM4d8CgMEvk6xEJlOp7OBPjt6G7z8WMWlD2rOFZLk6OYfFIUGsCOWzcQH9K2og==
 
-date-fns@^2.29.2:
+date-fns@^2.29.2, date-fns@^2.29.3:
   version "2.29.3"
   resolved "https://registry.yarnpkg.com/date-fns/-/date-fns-2.29.3.tgz#27402d2fc67eb442b511b70bbdf98e6411cd68a8"
   integrity sha512-dDCnyH2WnnKusqvZZ6+jA1O51Ibt8ZMRNkDZdyAyK4YfbDwa/cEmuztzG5pk6hqlp9aSBPYcjOlktquahGwGeA==
@@ -4827,10 +4854,10 @@ globby@^11.1.0:
     merge2 "^1.4.1"
     slash "^3.0.0"
 
-google-auth-library@^8.5.1:
-  version "8.5.1"
-  resolved "https://registry.yarnpkg.com/google-auth-library/-/google-auth-library-8.5.1.tgz#83f78f93833e62f41c885bea601c4a5654934dd9"
-  integrity sha512-7jNMDRhenfw2HLfL9m0ZP/Jw5hzXygfSprzBdypG3rZ+q2gIUbVC/osrFB7y/Z5dkrUr1mnLoDNlerF+p6VXZA==
+google-auth-library@^8.5.2:
+  version "8.5.2"
+  resolved "https://registry.yarnpkg.com/google-auth-library/-/google-auth-library-8.5.2.tgz#bcdced8f7b475b80bf0e9c109c7c7e930866947b"
+  integrity sha512-FPfOSaI8n2TVXFHTP8/vAVFCXhyALj7w9/Rgefux3oeKZ/nQDNmfNTJ+lIKcoYT1cKkvMllp1Eood7Y5L+TP+A==
   dependencies:
     arrify "^2.0.0"
     base64-js "^1.3.0"
