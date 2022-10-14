@@ -26,6 +26,14 @@
     ethers "^5.7.0"
     lodash "^4.17.21"
 
+"@api3/airnode-abi@^0.9.0":
+  version "0.9.0"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-abi/-/airnode-abi-0.9.0.tgz#d36c575241ad3014c6a7f4a692875388ca7e2bd6"
+  integrity sha512-dPe1DvwWNvzOR7Yk5EnK+/IuriD0hhO8EFcRNvg+0idj6uFU5+0s90xT1+8+sUz4gEENvp848qDdZQ1pgIPSWA==
+  dependencies:
+    ethers "^5.7.1"
+    lodash "^4.17.21"
+
 "@api3/airnode-adapter@^0.8.0":
   version "0.8.0"
   resolved "https://registry.yarnpkg.com/@api3/airnode-adapter/-/airnode-adapter-0.8.0.tgz#516bd021bd24c941b783f1bf10b78ebd616a3dc3"
