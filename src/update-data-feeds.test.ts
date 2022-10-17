@@ -3,6 +3,7 @@ import { ethers } from 'ethers';
 import * as state from './state';
 import * as api from './update-data-feeds';
 import * as readDataFeedModule from './read-data-feed-with-id';
+import { logger } from './logging';
 import { initializeProviders } from './providers';
 import { BeaconSetUpdate, BeaconUpdate, Config } from './validation';
 import { initializeWallets } from './wallets';
@@ -361,6 +362,33 @@ describe('updateBeaconSets', () => {
         type: 0,
       })
     );
+  });
+
+  it(`returns undefined if transaction count can't be retrieved`, async () => {
+    state.updateState((currentState) => ({
+      ...currentState,
+      beaconValues: {
+        '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c': validSignedData,
+        '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2': validSignedData,
+        '0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469beabcdabcd': validSignedData,
+      },
+    }));
+    jest.spyOn(logger, 'warn');
+
+    const txCountSpy = jest.spyOn(ethers.providers.StaticJsonRpcProvider.prototype, 'getTransactionCount');
+    txCountSpy.mockRejectedValue(new Error('cannot fetch transaction count'));
+
+    // For reading on-chain data that causes to update beaconSet
+    const timestamp = 1649664085;
+    const readOnChainBeaconDataSpy = jest
+      .spyOn(readDataFeedModule, 'readDataFeedWithId')
+      .mockReturnValueOnce(Promise.resolve({ timestamp: timestamp - 25, value: ethers.BigNumber.from(40000000000) }));
+
+    const groups = api.groupDataFeedsByProviderSponsor();
+
+    expect(await api.updateBeaconSets(groups[0], Date.now())).toBeUndefined();
+    expect(logger.warn).toHaveBeenCalledWith(`Unable to fetch transaction count`, { meta: expect.anything() });
+    expect(readOnChainBeaconDataSpy).toHaveBeenCalledTimes(1);
   });
 });
 
