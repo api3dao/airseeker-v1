@@ -223,14 +223,14 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
     }
 
     // Get transaction count only first time when update condition satisfied
-    if (isNil(nonce)) {
+    if (!nonce) {
       const transactionCount = await getTransactionCount(
         provider,
         sponsorWallet.address,
         prepareGoOptions(startTime, totalTimeout)
       );
-      if (transactionCount === null) {
-        logger.warn(`Unable to fetch transaction count`, logOptions);
+      if (isNil(transactionCount)) {
+        logger.warn(`Unable to fetch transaction count`, logOptionsBeaconId);
         return;
       }
       nonce = transactionCount;
@@ -417,13 +417,13 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
     }
 
     // Get transaction count only first time when update condition satisfied
-    if (isNil(nonce)) {
+    if (!nonce) {
       const transactionCount = await getTransactionCount(
         provider,
         sponsorWallet.address,
         prepareGoOptions(startTime, totalTimeout)
       );
-      if (transactionCount === null) {
+      if (isNil(transactionCount)) {
         logger.warn(`Unable to fetch transaction count`, logOptionsBeaconSetId);
         return;
       }
