@@ -60,10 +60,10 @@
     yargs "^17.5.1"
     zod "^3.17.3"
 
-"@api3/airnode-protocol-v1@^0.7.0":
-  version "0.7.0"
-  resolved "https://registry.yarnpkg.com/@api3/airnode-protocol-v1/-/airnode-protocol-v1-0.7.0.tgz#da94129db775382d29e38fe16fda5437e9cc4cfd"
-  integrity sha512-A1K+4R7xKQXpVjkGv2ip7ULtgGd3bwcuiJTjl4G7RHSRuRjmqPS12tGeYwWnB+V5ZhsD3RRWrbb0F6x45QNqgg==
+"@api3/airnode-protocol-v1@^0.8.0":
+  version "0.8.0"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-protocol-v1/-/airnode-protocol-v1-0.8.0.tgz#0e073d3f3f38316bedf6578dd28ab3731797c539"
+  integrity sha512-EVfjg+iyA082PAGt3BI1DU+Yc1GPBJYR9S2EaGf+0XXTxYxB6cvOIiG1tcr1MVyG3Bt2IGH9r4IYnJR+bx8RiQ==
   dependencies:
     "@openzeppelin/contracts" "^4.4.2"
 
