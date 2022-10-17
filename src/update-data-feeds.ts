@@ -424,7 +424,7 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
         prepareGoOptions(startTime, totalTimeout)
       );
       if (transactionCount === null) {
-        logger.warn(`Unable to fetch transaction count`, logOptions);
+        logger.warn(`Unable to fetch transaction count`, logOptionsBeaconSetId);
         return;
       }
       nonce = transactionCount;
