@@ -10,7 +10,7 @@ import * as makeRequest from '../../src/make-request';
 
 // Jest version 27 has a bug where jest.setTimeout does not work correctly inside describe or test blocks
 // https://github.com/facebook/jest/issues/11607
-jest.setTimeout(100_000);
+jest.setTimeout(70_000);
 
 const provider = new hre.ethers.providers.StaticJsonRpcProvider('http://127.0.0.1:8545');
 
@@ -75,7 +75,7 @@ describe('Airseeker', () => {
       // Stop Airseeker
       handleStopSignal('stop');
       // Wait for last cycle to finish
-      await sleep(10_000);
+      await sleep(20_000);
     });
 
     const beaconValueETHNew = await dapiServer.readDataFeedValueWithId(deployment.beaconIdETH);
@@ -145,7 +145,7 @@ describe('Airseeker', () => {
       // Stop Airseeker
       handleStopSignal('stop');
       // Wait for last cycle to finish
-      await sleep(10_000);
+      await sleep(20_000);
     });
 
     const beaconValueETHNew = await dapiServer.readDataFeedValueWithId(deployment.beaconIdETH);
@@ -206,7 +206,7 @@ describe('Airseeker', () => {
       // Stop Airseeker
       handleStopSignal('stop');
       // Wait for last cycle to finish
-      await sleep(10_000);
+      await sleep(20_000);
     });
 
     const voidSigner = new hre.ethers.VoidSigner(hre.ethers.constants.AddressZero, provider);
@@ -238,7 +238,7 @@ describe('Airseeker', () => {
       // Stop Airseeker
       handleStopSignal('stop');
       // Wait for last cycle to finish
-      await sleep(10_000);
+      await sleep(20_000);
     });
 
     const voidSigner = new hre.ethers.VoidSigner(hre.ethers.constants.AddressZero, provider);
@@ -307,7 +307,7 @@ describe('Airseeker', () => {
       // Stop Airseeker
       handleStopSignal('stop');
       // Wait for last cycle to finish
-      await sleep(10_000);
+      await sleep(20_000);
     });
 
     const voidSigner = new hre.ethers.VoidSigner(hre.ethers.constants.AddressZero, provider);
