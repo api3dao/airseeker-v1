@@ -1,9 +1,10 @@
 import { isEmpty, uniq } from 'lodash';
-import { go } from '@api3/promise-utils';
+import { go, GoResultError } from '@api3/promise-utils';
 import { logger } from './logging';
 import { getState, updateState } from './state';
-import { makeSignedDataGatewayRequests } from './make-request';
+import { makeSignedDataGatewayRequests, makeApiRequest } from './make-request';
 import { sleep } from './utils';
+import { SignedData } from './validation';
 import {
   GATEWAY_TIMEOUT_MS,
   INFINITE_RETRIES,
@@ -65,20 +66,39 @@ export const fetchBeaconData = async (beaconId: string) => {
   logger.debug('Fetching beacon data', logOptionsBeaconId);
   const { config } = getState();
 
-  const { fetchInterval, airnode, templateId } = config.beacons[beaconId];
-  const gateway = config.gateways[airnode];
+  const { fetchInterval, airnode, templateId, fetchMethod } = config.beacons[beaconId];
   const template = config.templates[templateId];
 
-  const goRes = await go(() => makeSignedDataGatewayRequests(gateway, { ...template, id: templateId }), {
+  let fetchFn: () => Promise<SignedData>;
+  let onAttemptError: (goRes: GoResultError<Error>) => void;
+  switch (fetchMethod) {
+    case 'api': {
+      fetchFn = () => makeApiRequest({ ...template, id: templateId });
+      onAttemptError = (goError: GoResultError<Error>) =>
+        logger.warn(`Failed attempt to make direct API call. Error: ${goError.error}`, logOptionsBeaconId);
+      break;
+    }
+    case 'gateway': {
+      const gateway = config.gateways[airnode];
+      fetchFn = () => makeSignedDataGatewayRequests(gateway, { ...template, id: templateId });
+      onAttemptError = (goError: GoResultError<Error>) =>
+        logger.warn(`Failed attempt to call signed data gateway. Error: ${goError.error}`, logOptionsBeaconId);
+      break;
+    }
+    default:
+      logger.warn(`Invalid API value fetch method ${fetchMethod}`, logOptionsBeaconId);
+      return;
+  }
+
+  const goRes = await go(fetchFn, {
     attemptTimeoutMs: GATEWAY_TIMEOUT_MS,
     retries: INFINITE_RETRIES,
     delay: { type: 'random', minDelayMs: RANDOM_BACKOFF_MIN_MS, maxDelayMs: RANDOM_BACKOFF_MAX_MS },
     totalTimeoutMs: fetchInterval * 1_000,
-    onAttemptError: (goError) =>
-      logger.warn(`Failed attempt to call signed data gateway. Error: ${goError.error}`, logOptionsBeaconId),
+    onAttemptError,
   });
   if (!goRes.success) {
-    logger.warn(`Unable to call signed data gateway. Error: "${goRes.error}"`, logOptionsBeaconId);
+    logger.warn(`Unable to fetch beacon data. Error: "${goRes.error}"`, logOptionsBeaconId);
     return;
   }
 

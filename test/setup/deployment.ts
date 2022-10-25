@@ -9,10 +9,11 @@ import {
   AirnodeProtocol__factory as AirnodeProtocolFactory,
   DapiServer__factory as DapiServerFactory,
 } from '@api3/airnode-protocol-v1';
-import { buildLocalConfigETH, buildLocalConfigBTC } from '../fixtures/config';
+import { buildLocalConfigETH, buildLocalConfigBTC, buildLocalConfigLTC } from '../fixtures/config';
 
 const subscriptionIdETH = '0xc1ed31de05a9aa74410c24bccd6aa40235006f9063f1c65d47401e97ad04560e';
 const subscriptionIdBTC = '0xb4c3cea3b78c384eb4409df1497bb2f1fd872f1928a218f8907c38fe0d66ffea';
+const subscriptionIdLTC = '0x74d8547ed2a09b41eb376455f65996a21b2e22fd832534d126639e3eec3a5c13';
 const provider = new hre.ethers.providers.StaticJsonRpcProvider('http://127.0.0.1:8545');
 const localConfigETH = buildLocalConfigETH();
 
@@ -214,14 +215,56 @@ export const deployAndUpdateSubscriptions = async () => {
       roles.sponsor.address
     );
 
+  // Setup LTC Subscription
+  const localConfigLTC = buildLocalConfigLTC();
+  // Templates
+  const endpointIdLTC = hre.ethers.utils.keccak256(
+    hre.ethers.utils.defaultAbiCoder.encode(
+      ['string', 'string'],
+      [localConfigLTC.endpoint.oisTitle, localConfigLTC.endpoint.endpointName]
+    )
+  );
+  const parametersLTC = abi.encode(localConfigLTC.templateParameters);
+  const templateIdLTC = hre.ethers.utils.solidityKeccak256(['bytes32', 'bytes'], [endpointIdLTC, parametersLTC]);
+
+  // Subscriptions
+  const thresholdLTC = (await dapiServer.HUNDRED_PERCENT()).div(localConfigLTC.threshold); // Update threshold %
+  const beaconUpdateSubscriptionConditionParameters3 = hre.ethers.utils.defaultAbiCoder.encode(
+    ['uint256'],
+    [thresholdLTC]
+  );
+  const beaconUpdateSubscriptionConditionsLTC = [
+    {
+      type: 'bytes32',
+      name: '_conditionFunctionId',
+      value: hre.ethers.utils.defaultAbiCoder.encode(
+        ['bytes4'],
+        [dapiServer.interface.getSighash('conditionPspBeaconUpdate')]
+      ),
+    },
+    { type: 'bytes', name: '_conditionParameters', value: beaconUpdateSubscriptionConditionParameters3 },
+  ];
+  const encodedBeaconUpdateSubscriptionConditionsLTC = abi.encode(beaconUpdateSubscriptionConditionsLTC);
+  await dapiServer
+    .connect(roles.randomPerson)
+    .registerBeaconUpdateSubscription(
+      airnodeWallet.address,
+      templateIdLTC,
+      encodedBeaconUpdateSubscriptionConditionsLTC,
+      airnodeWallet.address,
+      roles.sponsor.address
+    );
+
   // Update beacons with starting values
   const apiValueETH = Math.floor(723.39202 * 1_000_000);
   const apiValueBTC = Math.floor(41_091.12345 * 1_000_000);
+  const apiValueLTC = Math.floor(51.42 * 1_000_000);
   // ETH subscription
   await updateBeacon(dapiServer, airnodePspSponsorWallet, airnodeWallet, subscriptionIdETH, apiValueETH);
   // BTC subscription
   await updateBeacon(dapiServer, airnodePspSponsorWallet, airnodeWallet, subscriptionIdBTC, apiValueBTC);
-
+  // LTC subscription
+  await updateBeacon(dapiServer, airnodePspSponsorWallet, airnodeWallet, subscriptionIdLTC, apiValueLTC);
   const signedDataValue = '0x000000000000000000000000000000000000000000000000000000002bff42b7';
   const { timestamp: signedDataTimestamp, signature: signedDataSignature } = await signData(
     airnodeWallet,
@@ -239,6 +282,9 @@ export const deployAndUpdateSubscriptions = async () => {
   );
   const beaconIdBTC = hre.ethers.utils.keccak256(
     hre.ethers.utils.solidityPack(['address', 'bytes32'], ['0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace', templateIdBTC])
+  );
+  const beaconIdLTC = hre.ethers.utils.keccak256(
+    hre.ethers.utils.solidityPack(['address', 'bytes32'], ['0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace', templateIdLTC])
   );
 
   // BeaconSet update
@@ -267,6 +313,7 @@ export const deployAndUpdateSubscriptions = async () => {
     signedData,
     beaconIdETH,
     beaconIdBTC,
+    beaconIdLTC,
     beaconSetId,
   };
 };

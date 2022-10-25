@@ -11,27 +11,34 @@ const config: Config = {
     format: 'plain',
     level: 'INFO',
   },
+  endpoints: {},
+  ois: [],
+  apiCredentials: [],
   beacons: {
     '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c': {
       airnode: '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
       templateId: '0xea30f92923ece1a97af69d450a8418db31be5a26a886540a13c09c739ba8eaaa',
       fetchInterval: 25,
+      fetchMethod: 'gateway',
     },
     '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2': {
       airnode: '0x5656D3A378B1AAdFDDcF4196ea364A9d78617290',
       templateId: '0xea30f92923ece1a97af69d450a8418db31be5a26a886540a13c09c739ba8eaaa',
       // Artificially low interval to make the tests run fast without mocking
       fetchInterval: 0.5,
+      fetchMethod: 'gateway',
     },
     '0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469be4d6f214e': {
       airnode: '0x5656D3A378B1AAdFDDcF4196ea364A9d78617290',
       templateId: '0x9ec34b00a5019442dcd05a4860ff2bf015164b368cb83fcb756088fc6fbd6480',
       fetchInterval: 40,
+      fetchMethod: 'gateway',
     },
     '0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469beabcdabcd': {
       airnode: '0x5656D3A378B1AAdFDDcF4196ea364A9d78617290',
       templateId: '0x9ec34b00a5019442dcd05a4860ff2bf015164b368cb83fcb756088fcabcdabcd',
-      fetchInterval: 40,
+      fetchInterval: 0.5,
+      fetchMethod: 'api',
     },
   },
   beaconSets: {
@@ -223,6 +230,18 @@ describe('fetchBeaconData', () => {
     expect(state.updateState).not.toHaveBeenCalled();
   });
 
+  it('does nothing if direct api call fails', async () => {
+    jest.spyOn(makeRequestApi, 'makeApiRequest').mockImplementation(async () => {
+      throw new Error('API timeout');
+    });
+    jest.spyOn(logger, 'log');
+    jest.spyOn(state, 'updateState');
+
+    await api.fetchBeaconData('0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469beabcdabcd');
+
+    expect(state.updateState).not.toHaveBeenCalled();
+  });
+
   it('updates retries multiple times', async () => {
     jest.spyOn(makeRequestApi, 'makeSignedDataGatewayRequests').mockImplementation(async () => {
       throw new Error('some error');
@@ -236,6 +255,19 @@ describe('fetchBeaconData', () => {
     expect(makeRequestApi.makeSignedDataGatewayRequests).toHaveBeenCalledTimes(3);
   });
 
+  it('updates retries multiple times for direct api call', async () => {
+    jest.spyOn(makeRequestApi, 'makeApiRequest').mockImplementation(async () => {
+      throw new Error('some error');
+    });
+    // 0.08 * 2_500 (max wait time) = 200 (actual wait time)
+    // This means that 2 retries should definitely be done in 500ms
+    jest.spyOn(global.Math, 'random').mockImplementation(() => 0.08);
+
+    await api.fetchBeaconData('0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469beabcdabcd');
+
+    expect(makeRequestApi.makeApiRequest).toHaveBeenCalledTimes(3);
+  });
+
   it('updates state with the api response value', async () => {
     jest.spyOn(makeRequestApi, 'makeSignedDataGatewayRequests').mockImplementation(async () => {
       return validSignedData;
@@ -245,6 +277,19 @@ describe('fetchBeaconData', () => {
 
     expect(state.getState().beaconValues).toEqual({
       '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2': validSignedData,
+    });
+  });
+
+  it('updates state with the api response value for direct api call', async () => {
+    jest.spyOn(makeRequestApi, 'makeApiRequest').mockImplementation(async () => {
+      return validSignedData;
+    });
+
+    await api.fetchBeaconData('0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469beabcdabcd');
+
+    expect(state.getState().beaconValues).toEqual({
+      '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2': validSignedData,
+      '0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469beabcdabcd': validSignedData,
     });
   });
 });
@@ -264,6 +309,8 @@ describe('fetchBeaconDataInLoop', () => {
           stopSignalReceived: true,
           beaconValues: {},
           providers: {},
+          airseekerWalletPrivateKey: '',
+          sponsorWalletsPrivateKey: {},
           logOptions: { ...config.log, meta: {} },
         };
       } else {
@@ -272,6 +319,8 @@ describe('fetchBeaconDataInLoop', () => {
           stopSignalReceived: false,
           beaconValues: {},
           providers: {},
+          airseekerWalletPrivateKey: '',
+          sponsorWalletsPrivateKey: {},
           logOptions: { ...config.log, meta: {} },
         };
       }

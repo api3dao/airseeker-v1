@@ -3,8 +3,10 @@ import { ethers } from 'ethers';
 import * as state from './state';
 import * as api from './update-data-feeds';
 import * as readDataFeedModule from './read-data-feed-with-id';
+import { logger } from './logging';
 import { initializeProviders } from './providers';
 import { BeaconSetUpdate, BeaconUpdate, Config } from './validation';
+import { initializeWallets } from './wallets';
 import { validSignedData } from '../test/fixtures';
 
 // Jest version 27 has a bug where jest.setTimeout does not work correctly inside describe or test blocks
@@ -17,27 +19,34 @@ const config: Config = {
     format: 'plain',
     level: 'DEBUG',
   },
+  endpoints: {},
+  ois: [],
+  apiCredentials: [],
   beacons: {
     '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c': {
       airnode: '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
       templateId: '0xea30f92923ece1a97af69d450a8418db31be5a26a886540a13c09c739ba8eaaa',
       fetchInterval: 25,
+      fetchMethod: 'gateway',
     },
     '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2': {
       airnode: '0x5656D3A378B1AAdFDDcF4196ea364A9d78617290',
       templateId: '0xea30f92923ece1a97af69d450a8418db31be5a26a886540a13c09c739ba8eaaa',
       // Artificially low interval to make the tests run fast without mocking
       fetchInterval: 0.5,
+      fetchMethod: 'gateway',
     },
     '0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469be4d6f214e': {
       airnode: '0x5656D3A378B1AAdFDDcF4196ea364A9d78617290',
       templateId: '0x9ec34b00a5019442dcd05a4860ff2bf015164b368cb83fcb756088fc6fbd6480',
       fetchInterval: 40,
+      fetchMethod: 'gateway',
     },
     '0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469beabcdabcd': {
       airnode: '0x5656D3A378B1AAdFDDcF4196ea364A9d78617290',
       templateId: '0x9ec34b00a5019442dcd05a4860ff2bf015164b368cb83fcb756088fcabcdabcd',
       fetchInterval: 40,
+      fetchMethod: 'gateway',
     },
   },
   beaconSets: {
@@ -183,6 +192,7 @@ const config: Config = {
 };
 state.initializeState(config);
 initializeProviders();
+initializeWallets();
 
 // Can't compare RPC provider instances so comparing groups where the provider is represented by its URL
 type ComparableProviderSponsorDataFeeds = {
@@ -249,6 +259,7 @@ describe('initiateDataFeedUpdates', () => {
 
 describe('updateDataFeedsInLoop', () => {
   it('calls updateBeacons and updateBeaconSets in a loop', async () => {
+    const { airseekerWalletPrivateKey, sponsorWalletsPrivateKey } = state.getState();
     const groups = api.groupDataFeedsByProviderSponsor();
     let requestCount = 0;
     jest.spyOn(api, 'updateBeacons').mockImplementation(async () => {
@@ -262,6 +273,8 @@ describe('updateDataFeedsInLoop', () => {
           stopSignalReceived: true,
           beaconValues: {},
           providers: {},
+          airseekerWalletPrivateKey: airseekerWalletPrivateKey,
+          sponsorWalletsPrivateKey: sponsorWalletsPrivateKey,
           logOptions: { ...config.log, meta: {} },
         };
       } else {
@@ -270,6 +283,8 @@ describe('updateDataFeedsInLoop', () => {
           stopSignalReceived: false,
           beaconValues: {},
           providers: {},
+          airseekerWalletPrivateKey: airseekerWalletPrivateKey,
+          sponsorWalletsPrivateKey: sponsorWalletsPrivateKey,
           logOptions: { ...config.log, meta: {} },
         };
       }
@@ -348,6 +363,33 @@ describe('updateBeaconSets', () => {
       })
     );
   });
+
+  it(`returns undefined if transaction count can't be retrieved`, async () => {
+    state.updateState((currentState) => ({
+      ...currentState,
+      beaconValues: {
+        '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c': validSignedData,
+        '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2': validSignedData,
+        '0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469beabcdabcd': validSignedData,
+      },
+    }));
+    jest.spyOn(logger, 'warn');
+
+    const txCountSpy = jest.spyOn(ethers.providers.StaticJsonRpcProvider.prototype, 'getTransactionCount');
+    txCountSpy.mockRejectedValue(new Error('cannot fetch transaction count'));
+
+    // For reading on-chain data that causes to update beaconSet
+    const timestamp = 1649664085;
+    const readOnChainBeaconDataSpy = jest
+      .spyOn(readDataFeedModule, 'readDataFeedWithId')
+      .mockReturnValueOnce(Promise.resolve({ timestamp: timestamp - 25, value: ethers.BigNumber.from(40000000000) }));
+
+    const groups = api.groupDataFeedsByProviderSponsor();
+
+    expect(await api.updateBeaconSets(groups[0], Date.now())).toBeUndefined();
+    expect(logger.warn).toHaveBeenCalledWith(`Unable to fetch transaction count`, { meta: expect.anything() });
+    expect(readOnChainBeaconDataSpy).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('decodeBeaconValue', () => {
@@ -379,15 +421,11 @@ describe('initializeUpdateCycle', () => {
       },
     }));
 
-    const txCountSpy = jest.spyOn(ethers.providers.StaticJsonRpcProvider.prototype, 'getTransactionCount');
-    txCountSpy.mockResolvedValueOnce(212);
-
     const groups = api.groupDataFeedsByProviderSponsor();
-    const initialUpdateData = await api.initializeUpdateCycle(groups[0], api.DataFeedType.Beacon, Date.now());
+    const initialUpdateData = await api.initializeUpdateCycle(groups[0], api.DataFeedType.Beacon);
     const {
       contract,
       sponsorWallet,
-      transactionCount,
       voidSigner,
       totalTimeout,
       logOptions,
@@ -400,7 +438,6 @@ describe('initializeUpdateCycle', () => {
 
     expect(contract.address).toEqual('0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0');
     expect(sponsorWallet.address).toEqual('0x1129eEDf4996cF133e0e9555d4c9d305c9918EC5');
-    expect(transactionCount).toEqual(212);
     expect(voidSigner.address).toEqual(ethers.constants.AddressZero);
     expect(totalTimeout).toEqual(1_000);
     expect(logOptions).toEqual({
@@ -415,13 +452,5 @@ describe('initializeUpdateCycle', () => {
     expect(beaconSets).toEqual(groups[0].beaconSets);
     expect(initConfig).toEqual(config);
     expect(provider).toEqual(groups[0].provider);
-  });
-
-  it(`returns null if transaction count can't be retrieved`, async () => {
-    const getTransactionCountSpy = jest.spyOn(ethers.providers.StaticJsonRpcProvider.prototype, 'getTransactionCount');
-    getTransactionCountSpy.mockRejectedValueOnce('Error');
-
-    const groups = api.groupDataFeedsByProviderSponsor();
-    expect(await api.initializeUpdateCycle(groups[0], api.DataFeedType.Beacon, Date.now())).toBeNull();
   });
 });

@@ -12,6 +12,7 @@ const envVariables = {
   CP_INFURA_ROPSTEN_URL: 'https://some.influra.ropsten.url',
   HTTP_SIGNED_DATA_GATEWAY_KEY: '18e06827-8544-4b0f-a639-33df3b5bc62f',
   HTTP_SIGNED_DATA_GATEWAY_URL: 'https://some.http.signed.data.gateway.url/',
+  SS_CURRENCY_CONVERTER_API_KEY: '164mTCl3fzd7VcIDQMHtq5',
 };
 
 it('successfully parses example configuration', () => {
@@ -99,6 +100,27 @@ it('fails if derived templateId is different to templates.<templateId>', () => {
   );
 });
 
+it('fails if derived endpointId is different to endpoints.<endpointId>', () => {
+  const config: Config = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '..', 'config', 'airseeker.example.json'), 'utf8')
+  );
+  const [_, firstEndpointValues] = Object.entries(config.endpoints)[0];
+  const randomEndpointId = ethers.utils.hexlify(ethers.utils.randomBytes(32));
+  config.endpoints = { ...config.endpoints, [randomEndpointId]: firstEndpointValues };
+
+  const interpolatedConfig = interpolateSecrets(config, envVariables);
+
+  expect(() => configSchema.parse(interpolatedConfig)).toThrow(
+    new ZodError([
+      {
+        code: 'custom',
+        message: `Endpoint ID "${randomEndpointId}" is invalid`,
+        path: ['endpoints', randomEndpointId],
+      },
+    ])
+  );
+});
+
 it('fails if beacons.<beaconId>.airnode is not defined in gateways', () => {
   const config: Config = JSON.parse(
     fs.readFileSync(path.join(__dirname, '..', 'config', 'airseeker.example.json'), 'utf8')
@@ -111,7 +133,7 @@ it('fails if beacons.<beaconId>.airnode is not defined in gateways', () => {
   expect(() => configSchema.parse(interpolatedConfig)).toThrow(
     new ZodError(
       Object.entries(config.beacons)
-        .filter(([_, beacon]) => beacon.airnode === gatewayId)
+        .filter(([_, beacon]) => beacon.fetchMethod !== 'api' && beacon.airnode === gatewayId)
         .map(([beaconId, beacon]) => ({
           code: 'custom',
           message: `Gateway "${beacon.airnode}" is not defined in the config.gateways object`,
@@ -219,6 +241,48 @@ it('fails if triggers.dataFeedUpdates.<chainId>.<sponsorAddress>.beaconSets.<bea
         code: 'custom',
         message: `BeaconSet ID "${randomBeaconSetId}" is not defined in the config.beaconSets object`,
         path: ['triggers', 'dataFeedUpdates', firstChainId, firstSponsorAddress, 'beaconSets', 0],
+      },
+    ])
+  );
+});
+
+it('fails if endpoints.<entpointId>.oisTitle is not defined in ois[any].title', () => {
+  const config: Config = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '..', 'config', 'airseeker.example.json'), 'utf8')
+  );
+
+  // Empty ois object
+  const newConfig = { ...config, ois: [] };
+  const interpolatedConfig = interpolateSecrets(newConfig, envVariables);
+  const firstEndpointId = Object.keys(config.endpoints)[0];
+
+  expect(() => configSchema.parse(interpolatedConfig)).toThrow(
+    new ZodError([
+      {
+        code: 'custom',
+        message: `OIS titled "${config.endpoints[firstEndpointId].oisTitle}" is not defined in the config.ois object`,
+        path: ['endpoints', firstEndpointId, 'oisTitle'],
+      },
+    ])
+  );
+});
+
+it('fails if endpoints.<entpointId>.endpointName is not defined in ois[idx(endpoints.<endpointId>.oisTitle)].endpoints[any].name', () => {
+  const config: Config = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '..', 'config', 'airseeker.example.json'), 'utf8')
+  );
+
+  // Create ois object with empty endpoints
+  const newConfig = { ...config, ois: [{ ...config.ois[0], endpoints: [] }] };
+  const interpolatedConfig = interpolateSecrets(newConfig, envVariables);
+  const firstEndpointId = Object.keys(config.endpoints)[0];
+
+  expect(() => configSchema.parse(interpolatedConfig)).toThrow(
+    new ZodError([
+      {
+        code: 'custom',
+        message: `OIS titled "${config.endpoints[firstEndpointId].oisTitle}" doesn't have referenced endpoint ${config.endpoints[firstEndpointId].endpointName}`,
+        path: ['endpoints', firstEndpointId, 'endpointName'],
       },
     ])
   );

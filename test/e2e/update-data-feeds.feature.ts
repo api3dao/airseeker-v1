@@ -9,6 +9,7 @@ import { deployAndUpdateSubscriptions } from '../setup/deployment';
 import { buildAirseekerConfig, buildLocalSecrets } from '../fixtures/config';
 import { SignedData } from '../../src/validation';
 import { parseConfigWithSecrets } from '../../src/config';
+import { initializeWallets } from '../../src/wallets';
 
 // Jest version 27 has a bug where jest.setTimeout does not work correctly inside describe or test blocks
 // https://github.com/facebook/jest/issues/11607
@@ -39,7 +40,7 @@ describe('updateDataFeeds', () => {
     }
     state.initializeState(config.data);
     initializeProviders();
-
+    initializeWallets();
     const beaconValues1 = {
       '0x924b5d4cb3ec6366ae4302a1ca6aec035594ea3ea48a102d160b50b0c43ebfb5': signedData,
     };
