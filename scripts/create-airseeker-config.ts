@@ -119,6 +119,7 @@ const main = async () => {
               .map((chain) => chain.airseekerConfig!.updateInterval)
           ) / 2
         ),
+        fetchMethod: 'gateway',
       },
     }),
     {} as Beacons
@@ -279,8 +280,10 @@ const main = async () => {
     gateways: airseekerGateways,
     templates: aiseekerTemplates,
     triggers: airseekerTriggers,
+    endpoints: {},
+    ois: [],
+    apiCredentials: [],
   };
-
   //// Build secrets.env ////
 
   const gatewaySecrets = apis.flatMap((api) => [
