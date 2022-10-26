@@ -4007,14 +4007,15 @@ eslint-module-utils@^2.7.3:
     debug "^3.2.7"
     find-up "^2.1.0"
 
-eslint-plugin-functional@^4.2.2:
-  version "4.2.2"
-  resolved "https://registry.yarnpkg.com/eslint-plugin-functional/-/eslint-plugin-functional-4.2.2.tgz#d4c10fec0f45db892590255a03f2f9ad06eddd24"
-  integrity sha512-sDz61AoXnR5dIipurwqoxvZ/CHzF1FHVGR5bUR+vJjqYiRNp+Y/m2SXEpyDqYwv8zSdZpBP77g8WR3+ZiJdZpw==
+eslint-plugin-functional@^4.4.1:
+  version "4.4.1"
+  resolved "https://registry.yarnpkg.com/eslint-plugin-functional/-/eslint-plugin-functional-4.4.1.tgz#de967e2a307387281ff78466ab66967f17ff9e99"
+  integrity sha512-YhSfHS52Si62Sn126g9wGx+XnWMoWhwEt6ctVXfcJj+xMUiggjOqUVMca7fuLNzX8jYiNBIeU1Y0teHGePZ3NA==
   dependencies:
     "@typescript-eslint/utils" "^5.10.2"
     deepmerge-ts "^4.0.3"
     escape-string-regexp "^4.0.0"
+    semver "^7.3.7"
 
 eslint-plugin-import@^2.26.0:
   version "2.26.0"
