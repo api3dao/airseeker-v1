@@ -12,7 +12,7 @@ const generateRandomBytes32 = () => {
 };
 
 // Mock the axios library for the whole module
-jest.mock('axios', () => jest.fn());
+jest.mock('axios', jest.fn);
 
 it('urlJoin creates a valid gateway URL', () => {
   expect(

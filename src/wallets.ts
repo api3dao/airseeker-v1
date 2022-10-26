@@ -18,7 +18,7 @@ export const initializeSponsorWallets = () => {
 
   // Derive sponsor wallets
   const groupSponsorsByChain = Object.values(config.triggers.dataFeedUpdates);
-  const uniqueSponsors = uniq(groupSponsorsByChain.flatMap((sponsorDict) => Object.keys(sponsorDict)));
+  const uniqueSponsors = uniq(groupSponsorsByChain.flatMap(Object.keys));
 
   const sponsorWalletsPrivateKey: SponsorWalletsPrivateKey = Object.fromEntries(
     uniqueSponsors.map((sponsorAddress) => [
