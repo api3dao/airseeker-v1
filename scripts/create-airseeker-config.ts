@@ -4,7 +4,7 @@ import prompts, { PromptObject, Choice } from 'prompts';
 import { Api, Beacon, BeaconSet } from '@api3/operations/dist/types';
 import { readOperationsRepository } from '@api3/operations/dist/utils/read-operations';
 import { runAndHandleErrors, writeJsonFile } from './utils';
-import { Beacons, BeaconSets, Gateways, Templates, Triggers } from '../src/validation';
+import { Beacons, BeaconSets, FetchMethod, Gateways, Templates, Triggers } from '../src/validation';
 import { sanitiseFilename } from './utils';
 
 const directoryQuestions = (): PromptObject[] => {
@@ -119,7 +119,7 @@ const main = async () => {
               .map((chain) => chain.airseekerConfig!.updateInterval)
           ) / 2
         ),
-        fetchMethod: 'gateway',
+        fetchMethod: 'gateway' as FetchMethod,
       },
     }),
     {} as Beacons
