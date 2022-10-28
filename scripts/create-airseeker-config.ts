@@ -45,8 +45,9 @@ const beaconSetQuestions = (beaconChoices: Choice[], beaconSetChoices: Choice[])
     {
       type: 'number',
       name: 'numberOfProviders',
-      message: 'How many RPC provider (per chain) you want to use in the configuration?',
-      validate: (value) => (value < 0 ? 'Non-negative values are not allowed!' : true),
+      message: 'How many RPC providers (per chain) do you want to use in the configuration? (default: 3)',
+      initial: 3,
+      min: 1,
     },
   ];
 };
