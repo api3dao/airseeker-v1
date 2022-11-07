@@ -4,7 +4,7 @@ import prompts, { PromptObject, Choice } from 'prompts';
 import { Api, Beacon, BeaconSet } from '@api3/operations/dist/types';
 import { readOperationsRepository } from '@api3/operations/dist/utils/read-operations';
 import { runAndHandleErrors, writeJsonFile } from './utils';
-import { Beacons, BeaconSets, Gateways, Templates, Triggers } from '../src/validation';
+import { Beacons, BeaconSets, FetchMethod, Gateways, Templates, Triggers } from '../src/validation';
 import { sanitiseFilename } from './utils';
 
 const directoryQuestions = (): PromptObject[] => {
@@ -45,8 +45,9 @@ const beaconSetQuestions = (beaconChoices: Choice[], beaconSetChoices: Choice[])
     {
       type: 'number',
       name: 'numberOfProviders',
-      message: 'How many RPC provider (per chain) you want to use in the configuration?',
-      validate: (value) => (value < 0 ? 'Non-negative values are not allowed!' : true),
+      message: 'How many RPC providers (per chain) do you want to use in the configuration? (default: 3)',
+      initial: 3,
+      min: 1,
     },
   ];
 };
@@ -119,7 +120,7 @@ const main = async () => {
               .map((chain) => chain.airseekerConfig!.updateInterval)
           ) / 2
         ),
-        fetchMethod: 'gateway',
+        fetchMethod: 'gateway' as FetchMethod,
       },
     }),
     {} as Beacons
