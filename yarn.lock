@@ -196,9 +196,9 @@
     zod "^3.19.1"
 
 "@api3/operations@^0.0.1-3aab393e33bda1f02a58538f8427e38cbb9d526e":
-  version "0.0.1-3aab393e33bda1f02a58538f8427e38cbb9d526e"
-  resolved "https://registry.yarnpkg.com/@api3/operations/-/operations-0.0.1-3aab393e33bda1f02a58538f8427e38cbb9d526e.tgz#81917430ef15c8cfdeea2709355dacf531cee23c"
-  integrity sha512-DAuCXCDi0WdyrVTktSY/7gP6HpTdzjFfiGR9XuOTUJlvPydKUVdfL8e1ujk1JcLfqOKyLPcGrslTCUMJclaXew==
+  version "0.0.1-3bd7c9d51d4020468d5d85409b6a23d81284e3e1"
+  resolved "https://registry.yarnpkg.com/@api3/operations/-/operations-0.0.1-3bd7c9d51d4020468d5d85409b6a23d81284e3e1.tgz#b9b44f4bbd9864583788d8bedf86d1b1ffb87c03"
+  integrity sha512-MiwuK7lqLhOfx9nGOhLrfx+v64iChYZP2dRTlXA5QTjXABMSlGPVlE+Qd8udcY23RR5VEChTvuUwcCL00ZveQA==
   dependencies:
     "@api3/airnode-admin" "^0.7.2"
     "@api3/airnode-validator" "^0.7.2"
