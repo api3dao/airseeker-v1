@@ -33,3 +33,5 @@ logs
 # Ignore Serverless directories
 .serverless
 .build
+
+ncc

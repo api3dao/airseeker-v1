@@ -25,3 +25,5 @@ secrets.env
 # Ignore Serverless directories
 .serverless
 .build
+
+ncc
