@@ -55,7 +55,6 @@
     "zod": "^3.17.3"
   },
   "devDependencies": {
-    "@api3/operations": "^0.0.1-3aab393e33bda1f02a58538f8427e38cbb9d526e",
     "@api3/airnode-admin": "0.8.0",
     "@nomiclabs/hardhat-ethers": "^2.2.0",
     "@types/express": "^4.17.13",
