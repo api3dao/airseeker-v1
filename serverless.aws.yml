@@ -3,8 +3,8 @@ service: airseeker
 package:
   patterns:
     - '!./**'
-    - 'ncc/**'
-    - 'package.json'
+    - './ncc/**'
+    - './package.json'
     - ./config/airseeker.json
 
 provider:
