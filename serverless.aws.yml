@@ -19,7 +19,7 @@ provider:
 
 functions:
   airseeker:
-    handler: ./ncc/serverless.handler
+    handler: ./ncc/index.handler
     maximumRetryAttempts: 0
     maximumEventAge: 60
     timeout: 900
