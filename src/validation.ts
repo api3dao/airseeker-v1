@@ -72,7 +72,7 @@ export const chainsSchema = z.record(chainSchema);
 
 export const gatewaySchema = z
   .object({
-    apiKey: z.string(),
+    apiKey: z.string().optional(),
     url: z.string().url(),
   })
   .strict();
