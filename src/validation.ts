@@ -362,3 +362,4 @@ export type EndpointId = z.infer<typeof config.evmIdSchema>;
 export type SignedData = z.infer<typeof signedDataSchema>;
 export type Endpoint = z.infer<typeof endpointSchema>;
 export type Endpoints = z.infer<typeof endpointsSchema>;
+export type FetchMethod = z.infer<typeof fetchMethodSchema>;
