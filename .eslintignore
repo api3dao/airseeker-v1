@@ -29,4 +29,5 @@ secrets.env
 .serverless
 .build
 
+# Vercel ncc build files
 ncc
