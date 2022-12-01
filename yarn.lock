@@ -89,6 +89,15 @@
     "@openzeppelin/contracts" "4.4.2"
     ethers "^5.7.0"
 
+"@api3/airnode-protocol@^0.9.1":
+  version "0.9.1"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-protocol/-/airnode-protocol-0.9.1.tgz#80ee48e0923432baa4f5c9f5e001b7bd7bfeb4a2"
+  integrity sha512-MpaceWfONhVNQ+9yC8C5ruwrjK5k1i75lgxFO7LfPaFFCVD5VWjDQYwY3UVRZmvJdJdxQ9wDNejHYIqG2PKZ8Q==
+  dependencies:
+    "@api3/airnode-utilities" "^0.9.1"
+    "@openzeppelin/contracts" "4.4.2"
+    ethers "^5.7.1"
+
 "@api3/airnode-utilities@^0.8.0":
   version "0.8.0"
   resolved "https://registry.yarnpkg.com/@api3/airnode-utilities/-/airnode-utilities-0.8.0.tgz#f5e1d285e8d7850f06774ed97f8daf6abbe38d3e"
@@ -98,6 +107,16 @@
     "@api3/promise-utils" "^0.3.0"
     date-fns "^2.29.2"
     ethers "^5.7.0"
+
+"@api3/airnode-utilities@^0.9.1":
+  version "0.9.1"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-utilities/-/airnode-utilities-0.9.1.tgz#20213cbad8278884e62a29dd38a01270ca8a346d"
+  integrity sha512-V0P65eCHF3XSi+PCpRQZgx2LFbQkJvtmD4RaDLsieF/jhtogXRwWQM+qEAegbUgGRYXxgAKtZJabxGwO4V4wxg==
+  dependencies:
+    "@api3/airnode-validator" "^0.9.1"
+    "@api3/promise-utils" "^0.3.0"
+    date-fns "^2.29.3"
+    ethers "^5.7.1"
 
 "@api3/airnode-validator@^0.8.0":
   version "0.8.0"
@@ -117,6 +136,20 @@
   version "0.9.0"
   resolved "https://registry.yarnpkg.com/@api3/airnode-validator/-/airnode-validator-0.9.0.tgz#b3421fa0df7fc83dad64b20ea7785d82a6da8b9e"
   integrity sha512-Ekb0jJUTsAahwj45+WOH83rJxQUslAh5YIxle57wbEH3fsg9A3haBAlh3pROHLYsQKNw7EV4dYcrjYJhSxLfWQ==
+  dependencies:
+    "@api3/ois" "1.2.0"
+    "@api3/promise-utils" "^0.3.0"
+    dotenv "^16.0.3"
+    ethers "^5.7.1"
+    lodash "^4.17.21"
+    ora "^5.4.1"
+    yargs "^17.6.0"
+    zod "^3.19.1"
+
+"@api3/airnode-validator@^0.9.1":
+  version "0.9.1"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-validator/-/airnode-validator-0.9.1.tgz#5f7c3c8e39f207d25092baf3a8adb81e8d9a69fa"
+  integrity sha512-La6r/oOaxIjIvMD6dOsiTBijqsgni2DCMMaS9nhJQXiR6XqsYpUfbIsuvfEgOv933otJRuH85doLyCWvtT2Ojg==
   dependencies:
     "@api3/ois" "1.2.0"
     "@api3/promise-utils" "^0.3.0"
@@ -3440,7 +3473,7 @@ data-uri-to-buffer@3:
   resolved "https://registry.yarnpkg.com/data-uri-to-buffer/-/data-uri-to-buffer-3.0.1.tgz#594b8973938c5bc2c33046535785341abc4f3636"
   integrity sha512-WboRycPNsVw3B3TL559F7kuBUM4d8CgMEvk6xEJlOp7OBPjt6G7z8WMWlD2rOFZLk6OYfFIUGsCOWzcQH9K2og==
 
-date-fns@^2.29.2:
+date-fns@^2.29.2, date-fns@^2.29.3:
   version "2.29.3"
   resolved "https://registry.yarnpkg.com/date-fns/-/date-fns-2.29.3.tgz#27402d2fc67eb442b511b70bbdf98e6411cd68a8"
   integrity sha512-dDCnyH2WnnKusqvZZ6+jA1O51Ibt8ZMRNkDZdyAyK4YfbDwa/cEmuztzG5pk6hqlp9aSBPYcjOlktquahGwGeA==
