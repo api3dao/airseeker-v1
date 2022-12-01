@@ -2,9 +2,10 @@ service: airseeker
 
 package:
   patterns:
+    - '!./**'
+    - './ncc/**'
+    - './package.json'
     - ./config/airseeker.json
-    - '!src'
-    - '!.*'
 
 provider:
   name: aws
@@ -18,7 +19,7 @@ provider:
 
 functions:
   airseeker:
-    handler: dist/serverless.handler
+    handler: ./ncc/index.handler
     maximumRetryAttempts: 0
     maximumEventAge: 60
     timeout: 900

@@ -28,3 +28,6 @@ secrets.env
 # Ignore Serverless directories
 .serverless
 .build
+
+# Vercel ncc build files
+ncc
