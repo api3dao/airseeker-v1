@@ -298,7 +298,7 @@ describe('updateDataFeedsInLoop', () => {
 });
 
 describe('updateBeaconSets', () => {
-  it('calls updateBeaconSetWithSignedData in DapiServer contract', async () => {
+  it('calls updateDataFeedWithSignedData in DapiServer contract', async () => {
     state.updateState((currentState) => ({
       ...currentState,
       beaconValues: {
@@ -322,8 +322,8 @@ describe('updateBeaconSets', () => {
         })
       );
 
-    const updateBeaconSetWithSignedDataSpy = jest.fn();
-    const updateBeaconSetWithSignedDataMock = updateBeaconSetWithSignedDataSpy.mockImplementation(async () => ({
+    const updateDataFeedWithSignedDataSpy = jest.fn();
+    const updateDataFeedWithSignedDataMock = updateDataFeedWithSignedDataSpy.mockImplementation(async () => ({
       hash: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
     }));
     jest.spyOn(DapiServerFactory, 'connect').mockImplementation(
@@ -332,7 +332,7 @@ describe('updateBeaconSets', () => {
           connect(_signerOrProvider: ethers.Signer | ethers.providers.Provider | string) {
             return this;
           },
-          updateBeaconSetWithSignedData: updateBeaconSetWithSignedDataMock,
+          updateDataFeedWithSignedData: updateDataFeedWithSignedDataMock,
         } as any)
     );
 
@@ -341,20 +341,39 @@ describe('updateBeaconSets', () => {
     await api.updateBeaconSets(groups[0], Date.now());
 
     expect(readOnChainBeaconDataSpy).toHaveBeenCalled();
-    expect(updateBeaconSetWithSignedDataSpy).toHaveBeenCalledWith(
+    expect(updateDataFeedWithSignedDataSpy).toHaveBeenCalledWith(
       [
-        '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
-        '0x5656D3A378B1AAdFDDcF4196ea364A9d78617290',
-        '0x5656D3A378B1AAdFDDcF4196ea364A9d78617290',
+        ethers.utils.defaultAbiCoder.encode(
+          ['address', 'bytes32', 'uint256', 'bytes', 'bytes'],
+          [
+            '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
+            '0xea30f92923ece1a97af69d450a8418db31be5a26a886540a13c09c739ba8eaaa',
+            validSignedData.timestamp,
+            validSignedData.encodedValue,
+            validSignedData.signature,
+          ]
+        ),
+        ethers.utils.defaultAbiCoder.encode(
+          ['address', 'bytes32', 'uint256', 'bytes', 'bytes'],
+          [
+            '0x5656D3A378B1AAdFDDcF4196ea364A9d78617290',
+            '0xea30f92923ece1a97af69d450a8418db31be5a26a886540a13c09c739ba8eaaa',
+            timestamp - 30,
+            '0x',
+            '0x',
+          ]
+        ),
+        ethers.utils.defaultAbiCoder.encode(
+          ['address', 'bytes32', 'uint256', 'bytes', 'bytes'],
+          [
+            '0x5656D3A378B1AAdFDDcF4196ea364A9d78617290',
+            '0x9ec34b00a5019442dcd05a4860ff2bf015164b368cb83fcb756088fcabcdabcd',
+            validSignedData.timestamp,
+            validSignedData.encodedValue,
+            validSignedData.signature,
+          ]
+        ),
       ],
-      [
-        '0xea30f92923ece1a97af69d450a8418db31be5a26a886540a13c09c739ba8eaaa',
-        '0xea30f92923ece1a97af69d450a8418db31be5a26a886540a13c09c739ba8eaaa',
-        '0x9ec34b00a5019442dcd05a4860ff2bf015164b368cb83fcb756088fcabcdabcd',
-      ],
-      [validSignedData.timestamp, expect.any(String), validSignedData.timestamp],
-      [validSignedData.encodedValue, '0x', validSignedData.encodedValue],
-      [validSignedData.signature, expect.any(String), validSignedData.signature],
       expect.objectContaining({
         gasLimit: expect.any(ethers.BigNumber),
         gasPrice: expect.any(ethers.BigNumber),

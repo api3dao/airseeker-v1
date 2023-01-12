@@ -57,15 +57,15 @@ describe('Airseeker', () => {
     const dapiServer = deployment.dapiServer.connect(voidSigner);
 
     // Check that initial values are updated
-    const beaconValueETH = await dapiServer.readDataFeedValueWithId(deployment.beaconIdETH);
-    const beaconValueBTC = await dapiServer.readDataFeedValueWithId(deployment.beaconIdBTC);
-    const beaconValueLTC = await dapiServer.readDataFeedValueWithId(deployment.beaconIdLTC);
-    const beaconSetValue = await dapiServer.readDataFeedValueWithId(deployment.beaconSetId);
+    const beaconValueETH = await dapiServer.dataFeeds(deployment.beaconIdETH);
+    const beaconValueBTC = await dapiServer.dataFeeds(deployment.beaconIdBTC);
+    const beaconValueLTC = await dapiServer.dataFeeds(deployment.beaconIdLTC);
+    const beaconSetValue = await dapiServer.dataFeeds(deployment.beaconSetId);
 
-    expect(beaconValueETH).toEqual(hre.ethers.BigNumber.from(723.39202 * 1_000_000));
-    expect(beaconValueBTC).toEqual(hre.ethers.BigNumber.from(41_091.12345 * 1_000_000));
-    expect(beaconValueLTC).toEqual(hre.ethers.BigNumber.from(51.42 * 1_000_000));
-    expect(beaconSetValue).toEqual(hre.ethers.BigNumber.from(20_907.257735 * 1_000_000));
+    expect(beaconValueETH.value).toEqual(hre.ethers.BigNumber.from(723.39202 * 1_000_000));
+    expect(beaconValueBTC.value).toEqual(hre.ethers.BigNumber.from(41_091.12345 * 1_000_000));
+    expect(beaconValueLTC.value).toEqual(hre.ethers.BigNumber.from(51.42 * 1_000_000));
+    expect(beaconSetValue.value).toEqual(hre.ethers.BigNumber.from(20_907.257735 * 1_000_000));
 
     mockReadFileSync('airseeker.json', JSON.stringify(airseekerConfig));
 
@@ -78,15 +78,15 @@ describe('Airseeker', () => {
       await sleep(20_000);
     });
 
-    const beaconValueETHNew = await dapiServer.readDataFeedValueWithId(deployment.beaconIdETH);
-    const beaconValueBTCNew = await dapiServer.readDataFeedValueWithId(deployment.beaconIdBTC);
-    const beaconValueLTCNew = await dapiServer.readDataFeedValueWithId(deployment.beaconIdLTC);
-    const beaconSetValueNew = await dapiServer.readDataFeedValueWithId(deployment.beaconSetId);
+    const beaconValueETHNew = await dapiServer.dataFeeds(deployment.beaconIdETH);
+    const beaconValueBTCNew = await dapiServer.dataFeeds(deployment.beaconIdBTC);
+    const beaconValueLTCNew = await dapiServer.dataFeeds(deployment.beaconIdLTC);
+    const beaconSetValueNew = await dapiServer.dataFeeds(deployment.beaconSetId);
 
-    expect(beaconValueETHNew).toEqual(hre.ethers.BigNumber.from(800 * 1_000_000));
-    expect(beaconValueBTCNew).toEqual(hre.ethers.BigNumber.from(43_000 * 1_000_000));
-    expect(beaconValueLTCNew).toEqual(hre.ethers.BigNumber.from(54.85 * 1_000_000));
-    expect(beaconSetValueNew).toEqual(hre.ethers.BigNumber.from(21_900 * 1_000_000));
+    expect(beaconValueETHNew.value).toEqual(hre.ethers.BigNumber.from(800 * 1_000_000));
+    expect(beaconValueBTCNew.value).toEqual(hre.ethers.BigNumber.from(43_000 * 1_000_000));
+    expect(beaconValueLTCNew.value).toEqual(hre.ethers.BigNumber.from(54.85 * 1_000_000));
+    expect(beaconSetValueNew.value).toEqual(hre.ethers.BigNumber.from(21_900 * 1_000_000));
   });
 
   it('does not update if the condition check fails', async () => {
@@ -94,10 +94,10 @@ describe('Airseeker', () => {
     const dapiServer = deployment.dapiServer.connect(voidSigner);
 
     // Check that initial values are updated
-    const beaconValueETH = await dapiServer.readDataFeedValueWithId(deployment.beaconIdETH);
-    const beaconValueBTC = await dapiServer.readDataFeedValueWithId(deployment.beaconIdBTC);
-    const beaconValueLTC = await dapiServer.readDataFeedValueWithId(deployment.beaconIdLTC);
-    const beaconSetValue = await dapiServer.readDataFeedValueWithId(deployment.beaconSetId);
+    const beaconValueETH = await dapiServer.dataFeeds(deployment.beaconIdETH);
+    const beaconValueBTC = await dapiServer.dataFeeds(deployment.beaconIdBTC);
+    const beaconValueLTC = await dapiServer.dataFeeds(deployment.beaconIdLTC);
+    const beaconSetValue = await dapiServer.dataFeeds(deployment.beaconSetId);
 
     mockReadFileSync(
       'airseeker.json',
@@ -148,15 +148,15 @@ describe('Airseeker', () => {
       await sleep(20_000);
     });
 
-    const beaconValueETHNew = await dapiServer.readDataFeedValueWithId(deployment.beaconIdETH);
-    const beaconValueBTCNew = await dapiServer.readDataFeedValueWithId(deployment.beaconIdBTC);
-    const beaconValueLTCNew = await dapiServer.readDataFeedValueWithId(deployment.beaconIdLTC);
-    const beaconSetValueNew = await dapiServer.readDataFeedValueWithId(deployment.beaconSetId);
+    const beaconValueETHNew = await dapiServer.dataFeeds(deployment.beaconIdETH);
+    const beaconValueBTCNew = await dapiServer.dataFeeds(deployment.beaconIdBTC);
+    const beaconValueLTCNew = await dapiServer.dataFeeds(deployment.beaconIdLTC);
+    const beaconSetValueNew = await dapiServer.dataFeeds(deployment.beaconSetId);
 
-    expect(beaconValueETHNew).toEqual(hre.ethers.BigNumber.from(beaconValueETH));
-    expect(beaconValueBTCNew).toEqual(hre.ethers.BigNumber.from(beaconValueBTC));
-    expect(beaconValueLTCNew).toEqual(hre.ethers.BigNumber.from(beaconValueLTC));
-    expect(beaconSetValueNew).toEqual(hre.ethers.BigNumber.from(beaconSetValue));
+    expect(beaconValueETHNew.value).toEqual(hre.ethers.BigNumber.from(beaconValueETH.value));
+    expect(beaconValueBTCNew.value).toEqual(hre.ethers.BigNumber.from(beaconValueBTC.value));
+    expect(beaconValueLTCNew.value).toEqual(hre.ethers.BigNumber.from(beaconValueLTC.value));
+    expect(beaconSetValueNew.value).toEqual(hre.ethers.BigNumber.from(beaconSetValue.value));
   });
 
   it('updates if the DapiServer timestamp is older than heartbeatInterval', async () => {
@@ -212,15 +212,15 @@ describe('Airseeker', () => {
     const voidSigner = new hre.ethers.VoidSigner(hre.ethers.constants.AddressZero, provider);
     const dapiServer = deployment.dapiServer.connect(voidSigner);
 
-    const beaconValueETHNew = await dapiServer.readDataFeedValueWithId(deployment.beaconIdETH);
-    const beaconValueBTCNew = await dapiServer.readDataFeedValueWithId(deployment.beaconIdBTC);
-    const beaconValueLTCNew = await dapiServer.readDataFeedValueWithId(deployment.beaconIdLTC);
-    const beaconSetValueNew = await dapiServer.readDataFeedValueWithId(deployment.beaconSetId);
+    const beaconValueETHNew = await dapiServer.dataFeeds(deployment.beaconIdETH);
+    const beaconValueBTCNew = await dapiServer.dataFeeds(deployment.beaconIdBTC);
+    const beaconValueLTCNew = await dapiServer.dataFeeds(deployment.beaconIdLTC);
+    const beaconSetValueNew = await dapiServer.dataFeeds(deployment.beaconSetId);
 
-    expect(beaconValueETHNew).toEqual(hre.ethers.BigNumber.from(800 * 1_000_000));
-    expect(beaconValueBTCNew).toEqual(hre.ethers.BigNumber.from(43_000 * 1_000_000));
-    expect(beaconValueLTCNew).toEqual(hre.ethers.BigNumber.from(54.85 * 1_000_000));
-    expect(beaconSetValueNew).toEqual(hre.ethers.BigNumber.from(21_900 * 1_000_000));
+    expect(beaconValueETHNew.value).toEqual(hre.ethers.BigNumber.from(800 * 1_000_000));
+    expect(beaconValueBTCNew.value).toEqual(hre.ethers.BigNumber.from(43_000 * 1_000_000));
+    expect(beaconValueLTCNew.value).toEqual(hre.ethers.BigNumber.from(54.85 * 1_000_000));
+    expect(beaconSetValueNew.value).toEqual(hre.ethers.BigNumber.from(21_900 * 1_000_000));
   });
 
   it('updates successfully after retrying a failed api call', async () => {
@@ -244,15 +244,15 @@ describe('Airseeker', () => {
     const voidSigner = new hre.ethers.VoidSigner(hre.ethers.constants.AddressZero, provider);
     const dapiServer = deployment.dapiServer.connect(voidSigner);
 
-    const beaconValueETHNew = await dapiServer.readDataFeedValueWithId(deployment.beaconIdETH);
-    const beaconValueBTCNew = await dapiServer.readDataFeedValueWithId(deployment.beaconIdBTC);
-    const beaconValueLTCNew = await dapiServer.readDataFeedValueWithId(deployment.beaconIdLTC);
-    const beaconSetValueNew = await dapiServer.readDataFeedValueWithId(deployment.beaconSetId);
+    const beaconValueETHNew = await dapiServer.dataFeeds(deployment.beaconIdETH);
+    const beaconValueBTCNew = await dapiServer.dataFeeds(deployment.beaconIdBTC);
+    const beaconValueLTCNew = await dapiServer.dataFeeds(deployment.beaconIdLTC);
+    const beaconSetValueNew = await dapiServer.dataFeeds(deployment.beaconSetId);
 
-    expect(beaconValueETHNew).toEqual(hre.ethers.BigNumber.from(800 * 1_000_000));
-    expect(beaconValueBTCNew).toEqual(hre.ethers.BigNumber.from(43_000 * 1_000_000));
-    expect(beaconValueLTCNew).toEqual(hre.ethers.BigNumber.from(54.85 * 1_000_000));
-    expect(beaconSetValueNew).toEqual(hre.ethers.BigNumber.from(21_900 * 1_000_000));
+    expect(beaconValueETHNew.value).toEqual(hre.ethers.BigNumber.from(800 * 1_000_000));
+    expect(beaconValueBTCNew.value).toEqual(hre.ethers.BigNumber.from(43_000 * 1_000_000));
+    expect(beaconValueLTCNew.value).toEqual(hre.ethers.BigNumber.from(54.85 * 1_000_000));
+    expect(beaconSetValueNew.value).toEqual(hre.ethers.BigNumber.from(21_900 * 1_000_000));
   });
 
   it('updates successfully with one invalid provider present', async () => {
@@ -313,15 +313,15 @@ describe('Airseeker', () => {
     const voidSigner = new hre.ethers.VoidSigner(hre.ethers.constants.AddressZero, provider);
     const dapiServer = deployment.dapiServer.connect(voidSigner);
 
-    const beaconValueETHNew = await dapiServer.readDataFeedValueWithId(deployment.beaconIdETH);
-    const beaconValueBTCNew = await dapiServer.readDataFeedValueWithId(deployment.beaconIdBTC);
-    const beaconValueLTCNew = await dapiServer.readDataFeedValueWithId(deployment.beaconIdLTC);
-    const beaconSetValueNew = await dapiServer.readDataFeedValueWithId(deployment.beaconSetId);
+    const beaconValueETHNew = await dapiServer.dataFeeds(deployment.beaconIdETH);
+    const beaconValueBTCNew = await dapiServer.dataFeeds(deployment.beaconIdBTC);
+    const beaconValueLTCNew = await dapiServer.dataFeeds(deployment.beaconIdLTC);
+    const beaconSetValueNew = await dapiServer.dataFeeds(deployment.beaconSetId);
 
-    expect(beaconValueETHNew).toEqual(hre.ethers.BigNumber.from(800 * 1_000_000));
-    expect(beaconValueBTCNew).toEqual(hre.ethers.BigNumber.from(43_000 * 1_000_000));
-    expect(beaconValueLTCNew).toEqual(hre.ethers.BigNumber.from(54.85 * 1_000_000));
-    expect(beaconSetValueNew).toEqual(hre.ethers.BigNumber.from(21_900 * 1_000_000));
+    expect(beaconValueETHNew.value).toEqual(hre.ethers.BigNumber.from(800 * 1_000_000));
+    expect(beaconValueBTCNew.value).toEqual(hre.ethers.BigNumber.from(43_000 * 1_000_000));
+    expect(beaconValueLTCNew.value).toEqual(hre.ethers.BigNumber.from(54.85 * 1_000_000));
+    expect(beaconSetValueNew.value).toEqual(hre.ethers.BigNumber.from(21_900 * 1_000_000));
   });
 
   it('throws on invalid airseeker config', async () => {
