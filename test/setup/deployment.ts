@@ -108,7 +108,7 @@ export const deployAndUpdateSubscriptions = async () => {
   );
 
   // Access control
-  const managerRootRole = await accessControlRegistry.deriveRootRole(roles.manager.address);
+  const managerRootRole = hre.ethers.utils.solidityKeccak256(['address'], [roles.manager.address]);
   await accessControlRegistry
     .connect(roles.manager)
     .initializeRoleAndGrantToSender(managerRootRole, dapiServerAdminRoleDescription);
