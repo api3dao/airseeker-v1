@@ -267,16 +267,19 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
       log.level === 'ERROR' ? logger.error(log.message, null, logOptions) : logger.info(log.message, logOptions)
     );
 
-    // TODO: switch to tryMulticall when it is implemented in airnode-protocol-v1
-    const tx = await go(() => contract.connect(sponsorWallet).multicall(batch, { nonce, ...gasTarget }), {
+    const tx = await go(() => contract.connect(sponsorWallet).tryMulticall(batch, { nonce, ...gasTarget }), {
       ...prepareGoOptions(startTime, totalTimeout),
-      onAttemptError: (goError) => logger.warn(`Failed attempt to update beacon. Error ${goError.error}`, logOptions),
+      onAttemptError: (goError) =>
+        logger.warn(`Failed attempt to update beacon batch. Error ${goError.error}`, logOptions),
     });
     if (!tx.success) {
-      logger.warn(`Unable to update beacons with nonce ${nonce}. Error: ${tx.error}`, logOptions);
+      logger.warn(`Unable send beacon batch update transaction with nonce ${nonce}. Error: ${tx.error}`, logOptions);
       return;
     }
-    logger.info(`Beacons successfully updated with nonce ${nonce}. Tx hash ${tx.data.hash}.`, logOptions);
+    logger.info(
+      `Beacon batch update transaction was successfully sent with nonce ${nonce}. Tx hash ${tx.data.hash}.`,
+      logOptions
+    );
     nonce++;
   }
 };
