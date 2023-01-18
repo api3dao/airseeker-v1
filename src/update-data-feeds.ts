@@ -11,11 +11,11 @@ import {
   checkUpdateCondition,
 } from './check-condition';
 import { BEACON_UPDATE_BATCH_SIZE, INT224_MAX, INT224_MIN, NO_DATA_FEEDS_EXIT_CODE } from './constants';
-import { logger } from './logging';
+import { logger, LogOptionsOverride } from './logging';
 import { getState, Provider } from './state';
 import { getTransactionCount } from './transaction-count';
 import { prepareGoOptions, shortenAddress, sleep } from './utils';
-import { BeaconSetUpdate, BeaconUpdate, SignedData } from './validation';
+import { Beacon, BeaconSetUpdate, BeaconUpdate, SignedData } from './validation';
 
 type ProviderSponsorDataFeeds = {
   provider: Provider;
@@ -151,9 +151,18 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
     initialUpdateData;
   const { chainId } = provider;
 
-  // Process beacon update calldatas
-  const calldatas: string[] = [];
+  type BeaconUpdateData = {
+    logOptionsBeaconId: LogOptionsOverride;
+    beaconUpdateData: BeaconUpdate & Beacon;
+    newBeaconResponse: SignedData;
+    newBeaconValue: ethers.BigNumber;
+    calldata: string;
+  };
 
+  // Process beacon read calldatas
+  let beaconUpdates: BeaconUpdateData[] = [];
+
+  // Iterate over beacons listed under triggers section in config
   for (const beacon of beacons) {
     const logOptionsBeaconId = {
       ...logOptions,
@@ -164,10 +173,12 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
       },
     };
 
+    // Merge config.triggers.dataFeedUpdates.<chainId>.<sponsor>.beacons.<beacon> with config.beacons.<beaconId>
     const beaconUpdateData = { ...beacon, ...config.beacons[beacon.beaconId] };
 
     logger.debug(`Updating beacon`, logOptionsBeaconId);
-    // Check whether we have a value for given beacon
+
+    // Check whether we have a value from the provider API for given beacon
     const newBeaconResponse = beaconValues[beaconUpdateData.beaconId];
     if (!newBeaconResponse) {
       logger.warn(`No data available for beacon. Skipping.`, logOptionsBeaconId);
@@ -180,73 +191,117 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
       continue;
     }
 
-    const goDataFeed = await go(() => contract.connect(voidSigner).dataFeeds(beaconUpdateData.beaconId), {
+    beaconUpdates = [
+      ...beaconUpdates,
+      {
+        logOptionsBeaconId,
+        beaconUpdateData,
+        newBeaconResponse,
+        newBeaconValue,
+        calldata: contract.interface.encodeFunctionData('dataFeeds', [beaconUpdateData.beaconId]),
+      },
+    ];
+  }
+
+  // TODO: should this also be batched? it's just a static call so it might be ok...
+  const goReadDataFeedWithIdTryMulticall = await go(
+    () => {
+      const calldatas = beaconUpdates.map((beaconUpdateData) => beaconUpdateData.calldata);
+      return contract.connect(voidSigner).callStatic.tryMulticall(calldatas);
+    },
+    {
       ...prepareGoOptions(startTime, totalTimeout),
       onAttemptError: (goError) =>
-        logger.warn(`Failed attempt to read data feed. Error: ${goError.error}`, logOptionsBeaconId),
-    });
-    if (!goDataFeed.success) {
-      logger.warn(`Unable to read data feed. Error: ${goDataFeed.error}`, logOptionsBeaconId);
-      continue;
+        logger.warn(`Failed attempt to read beacon data using multicall. Error ${goError.error}`, logOptions),
     }
-    const onChainData = goDataFeed.data;
-    if (!onChainData) {
-      const message = `Missing on chain data for beacon. Skipping.`;
-      logger.warn(message, logOptionsBeaconId);
+  );
+  if (!goReadDataFeedWithIdTryMulticall.success) {
+    logger.warn(
+      `Unable to read beacon data using multicall. Error: ${goReadDataFeedWithIdTryMulticall.error}`,
+      logOptions
+    );
+    return;
+  }
+
+  const { successes, returndata } = goReadDataFeedWithIdTryMulticall.data;
+
+  // Process beacon update calldatas
+  let updateDataFeedWithSignedDataCalldatas: string[] = [];
+  for (let i = 0; i < beaconUpdates.length; i++) {
+    const onChainData = returndata[i];
+    const beaconUpdateData = beaconUpdates[i];
+
+    if (!successes[i]) {
+      logger.warn(`Unable to read data feed. Error: ${onChainData}`, beaconUpdateData.logOptionsBeaconId);
       continue;
     }
 
+    // Decode on-chain data returned by tryMulticall
+    const [onChainDataValue, onChainDataTimestamp] = ethers.utils.defaultAbiCoder.decode(
+      ['int224', 'uint32'],
+      onChainData
+    );
+
     // Check that signed data is newer than on chain value
-    const isSignedDataFresh = checkBeaconSignedDataFreshness(onChainData.timestamp, newBeaconResponse.timestamp);
+    const isSignedDataFresh = checkBeaconSignedDataFreshness(
+      onChainDataTimestamp,
+      beaconUpdateData.newBeaconResponse.timestamp
+    );
     if (!isSignedDataFresh) {
-      logger.warn(`Signed data older than on chain record. Skipping.`, logOptionsBeaconId);
+      logger.warn(`Signed data older than on chain record. Skipping.`, beaconUpdateData.logOptionsBeaconId);
       continue;
     }
 
     // Check that on chain data is newer than heartbeat interval
-    const isOnchainDataFresh = checkOnchainDataFreshness(onChainData.timestamp, beaconUpdateData.heartbeatInterval);
+    const isOnchainDataFresh = checkOnchainDataFreshness(
+      onChainDataTimestamp,
+      beaconUpdateData.beaconUpdateData.heartbeatInterval
+    );
     if (!isOnchainDataFresh) {
       logger.info(
         `On chain data timestamp older than heartbeat. Updating without condition check.`,
-        logOptionsBeaconId
+        beaconUpdateData.logOptionsBeaconId
       );
     } else {
       // Check beacon condition
-      const shouldUpdate = checkUpdateCondition(onChainData.value, beaconUpdateData.deviationThreshold, newBeaconValue);
+      const shouldUpdate = checkUpdateCondition(
+        onChainDataValue,
+        beaconUpdateData.beaconUpdateData.deviationThreshold,
+        beaconUpdateData.newBeaconValue
+      );
       if (shouldUpdate === null) {
-        logger.warn(`Unable to fetch current beacon value`, logOptionsBeaconId);
+        logger.warn(`Unable to fetch current beacon value`, beaconUpdateData.logOptionsBeaconId);
         // This can happen only if we reach the total timeout so it makes no sense to continue with the rest of the beacons
         return;
       }
       if (!shouldUpdate) {
-        logger.info(`Deviation threshold not reached. Skipping.`, logOptionsBeaconId);
+        logger.info(`Deviation threshold not reached. Skipping.`, beaconUpdateData.logOptionsBeaconId);
         continue;
       }
-
-      logger.info(`Deviation threshold reached. Updating.`, logOptionsBeaconId);
+      logger.info(`Deviation threshold reached. Updating.`, beaconUpdateData.logOptionsBeaconId);
     }
 
-    // eslint-disable-next-line functional/immutable-data
-    calldatas.push(
+    updateDataFeedWithSignedDataCalldatas = [
+      ...updateDataFeedWithSignedDataCalldatas,
       contract.interface.encodeFunctionData('updateDataFeedWithSignedData', [
         [
           ethers.utils.defaultAbiCoder.encode(
             ['address', 'bytes32', 'uint256', 'bytes', 'bytes'],
             [
-              beaconUpdateData.airnode,
-              beaconUpdateData.templateId,
-              newBeaconResponse.timestamp,
-              newBeaconResponse.encodedValue,
-              newBeaconResponse.signature,
+              beaconUpdateData.beaconUpdateData.airnode,
+              beaconUpdateData.beaconUpdateData.templateId,
+              beaconUpdateData.newBeaconResponse.timestamp,
+              beaconUpdateData.newBeaconResponse.encodedValue,
+              beaconUpdateData.newBeaconResponse.signature,
             ]
           ),
         ],
-      ])
-    );
+      ]),
+    ];
   }
 
   let nonce: number | undefined;
-  for (const batch of chunk(calldatas, BEACON_UPDATE_BATCH_SIZE)) {
+  for (const batch of chunk(updateDataFeedWithSignedDataCalldatas, BEACON_UPDATE_BATCH_SIZE)) {
     // Get transaction count only first time when update condition satisfied
     if (!nonce) {
       const transactionCount = await getTransactionCount(
@@ -255,7 +310,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
         prepareGoOptions(startTime, totalTimeout)
       );
       if (isNil(transactionCount)) {
-        logger.warn(`Unable to fetch transaction count`, logOptions);
+        logger.warn(`Unable to fetch transaction count for sponsor wallet ${sponsorWallet.address}`, logOptions);
         return;
       }
       nonce = transactionCount;
