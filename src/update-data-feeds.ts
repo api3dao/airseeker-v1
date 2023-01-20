@@ -249,12 +249,19 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
       () =>
         contract
           .connect(sponsorWallet)
-          .updateBeaconWithSignedData(
-            beaconUpdateData.airnode,
-            beaconUpdateData.templateId,
-            newBeaconResponse.timestamp,
-            newBeaconResponse.encodedValue,
-            newBeaconResponse.signature,
+          .updateDataFeedWithSignedData(
+            [
+              ethers.utils.defaultAbiCoder.encode(
+                ['address', 'bytes32', 'uint256', 'bytes', 'bytes'],
+                [
+                  beaconUpdateData.airnode,
+                  beaconUpdateData.templateId,
+                  newBeaconResponse.timestamp,
+                  newBeaconResponse.encodedValue,
+                  newBeaconResponse.signature,
+                ]
+              ),
+            ],
             {
               nonce,
               ...gasTarget,
@@ -437,12 +444,13 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
     // Update beacon set
     const tx = await go(
       () =>
-        contract.connect(sponsorWallet).updateBeaconSetWithSignedData(
-          beaconSetBeaconValues.map((value) => value.airnode),
-          beaconSetBeaconValues.map((value) => value.templateId),
-          beaconSetBeaconValues.map((value) => value.timestamp),
-          beaconSetBeaconValues.map((value) => value.encodedValue),
-          beaconSetBeaconValues.map((value) => value.signature),
+        contract.connect(sponsorWallet).updateDataFeedWithSignedData(
+          beaconSetBeaconValues.map(({ airnode, templateId, timestamp, encodedValue, signature }) =>
+            ethers.utils.defaultAbiCoder.encode(
+              ['address', 'bytes32', 'uint256', 'bytes', 'bytes'],
+              [airnode, templateId, timestamp, encodedValue, signature]
+            )
+          ),
           {
             nonce,
             ...gasTarget,

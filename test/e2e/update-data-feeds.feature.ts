@@ -56,12 +56,12 @@ describe('updateDataFeeds', () => {
 
     const beaconData = await dapiServer
       .connect(voidSigner)
-      .readDataFeedValueWithId('0x924b5d4cb3ec6366ae4302a1ca6aec035594ea3ea48a102d160b50b0c43ebfb5');
-    expect(beaconData.toString()).toEqual('738149047');
+      .dataFeeds('0x924b5d4cb3ec6366ae4302a1ca6aec035594ea3ea48a102d160b50b0c43ebfb5');
+    expect(beaconData.value.toString()).toEqual('738149047');
     const beaconSetData = await dapiServer
       .connect(voidSigner)
-      .readDataFeedValueWithId('0xf7f1620b7f422eb9a69c8e21b317ba1555d3d87e1d804f0b024f03b107e411e8');
-    expect(beaconSetData.toString()).toEqual('20914636248');
+      .dataFeeds('0xf7f1620b7f422eb9a69c8e21b317ba1555d3d87e1d804f0b024f03b107e411e8');
+    expect(beaconSetData.value.toString()).toEqual('20914636248');
   });
 
   // TODO: Add more tests

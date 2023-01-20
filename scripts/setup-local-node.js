@@ -36,7 +36,7 @@ async function main() {
   console.log('🚀 DapiServer address:', dapiServer.address);
 
   // Access control
-  const managerRootRole = await accessControlRegistry.deriveRootRole(manager.address);
+  const managerRootRole = hre.ethers.utils.solidityKeccak256(['address'], [manager.address]);
   await accessControlRegistry
     .connect(manager)
     .initializeRoleAndGrantToSender(managerRootRole, dapiServerAdminRoleDescription);
