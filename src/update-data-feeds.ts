@@ -185,41 +185,45 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
       voidSigner,
       contract,
       beaconUpdateData.beaconId,
-      prepareGoOptions(startTime, totalTimeout),
+      { ...prepareGoOptions(startTime, totalTimeout), retries: 2 },
       logOptionsBeaconId
     );
     if (!onChainData) {
-      continue;
-    }
-
-    // Check that signed data is newer than on chain value
-    const isSignedDataFresh = checkBeaconSignedDataFreshness(onChainData.timestamp, newBeaconResponse.timestamp);
-    if (!isSignedDataFresh) {
-      logger.warn(`Signed data older than on chain record. Skipping.`, logOptionsBeaconId);
-      continue;
-    }
-
-    // Check that on chain data is newer than heartbeat interval
-    const isOnchainDataFresh = checkOnchainDataFreshness(onChainData.timestamp, beaconUpdateData.heartbeatInterval);
-    if (!isOnchainDataFresh) {
-      logger.info(
-        `On chain data timestamp older than heartbeat. Updating without condition check.`,
-        logOptionsBeaconId
-      );
+      logger.warn('🚀 DATA FEED NOT INITIALIZED!!!', logOptionsBeaconId);
     } else {
-      // Check beacon condition
-      const shouldUpdate = checkUpdateCondition(onChainData.value, beaconUpdateData.deviationThreshold, newBeaconValue);
-      if (shouldUpdate === null) {
-        logger.warn(`Unable to fetch current beacon value`, logOptionsBeaconId);
-        // This can happen only if we reach the total timeout so it makes no sense to continue with the rest of the beacons
-        return;
-      }
-      if (!shouldUpdate) {
-        logger.info(`Deviation threshold not reached. Skipping.`, logOptionsBeaconId);
+      // Check that signed data is newer than on chain value
+      const isSignedDataFresh = checkBeaconSignedDataFreshness(onChainData.timestamp, newBeaconResponse.timestamp);
+      if (!isSignedDataFresh) {
+        logger.warn(`Signed data older than on chain record. Skipping.`, logOptionsBeaconId);
         continue;
       }
 
-      logger.info(`Deviation threshold reached. Updating.`, logOptionsBeaconId);
+      // Check that on chain data is newer than heartbeat interval
+      const isOnchainDataFresh = checkOnchainDataFreshness(onChainData.timestamp, beaconUpdateData.heartbeatInterval);
+      if (!isOnchainDataFresh) {
+        logger.info(
+          `On chain data timestamp older than heartbeat. Updating without condition check.`,
+          logOptionsBeaconId
+        );
+      } else {
+        // Check beacon condition
+        const shouldUpdate = checkUpdateCondition(
+          onChainData.value,
+          beaconUpdateData.deviationThreshold,
+          newBeaconValue
+        );
+        if (shouldUpdate === null) {
+          logger.warn(`Unable to fetch current beacon value`, logOptionsBeaconId);
+          // This can happen only if we reach the total timeout so it makes no sense to continue with the rest of the beacons
+          return;
+        }
+        if (!shouldUpdate) {
+          logger.info(`Deviation threshold not reached. Skipping.`, logOptionsBeaconId);
+          continue;
+        }
+
+        logger.info(`Deviation threshold reached. Updating.`, logOptionsBeaconId);
+      }
     }
 
     // Get transaction count only first time when update condition satisfied

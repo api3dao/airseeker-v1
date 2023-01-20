@@ -262,19 +262,36 @@ export const deployAndUpdateSubscriptions = async () => {
   // ETH subscription
   await updateBeacon(dapiServer, airnodePspSponsorWallet, airnodeWallet, subscriptionIdETH, apiValueETH);
   // BTC subscription
-  await updateBeacon(dapiServer, airnodePspSponsorWallet, airnodeWallet, subscriptionIdBTC, apiValueBTC);
+  //await updateBeacon(dapiServer, airnodePspSponsorWallet, airnodeWallet, subscriptionIdBTC, apiValueBTC);
   // LTC subscription
   await updateBeacon(dapiServer, airnodePspSponsorWallet, airnodeWallet, subscriptionIdLTC, apiValueLTC);
-  const signedDataValue = '0x000000000000000000000000000000000000000000000000000000002bff42b7';
-  const { timestamp: signedDataTimestamp, signature: signedDataSignature } = await signData(
+  const signedDataValueETH = hre.ethers.utils.defaultAbiCoder.encode(
+    ['uint224'],
+    [hre.ethers.BigNumber.from('738149047')]
+  );
+  const { timestamp: signedDataTimestampETH, signature: signedDataSignatureETH } = await signData(
     airnodeWallet,
     templateIdETH,
-    signedDataValue
+    signedDataValueETH
   );
-  const signedData = {
-    timestamp: signedDataTimestamp.toString(),
-    encodedValue: signedDataValue,
-    signature: signedDataSignature,
+  const signedDataETH = {
+    timestamp: signedDataTimestampETH.toString(),
+    encodedValue: signedDataValueETH,
+    signature: signedDataSignatureETH,
+  };
+  const signedDataValueBTC = hre.ethers.utils.defaultAbiCoder.encode(
+    ['uint224'],
+    [hre.ethers.BigNumber.from(apiValueBTC)]
+  );
+  const { timestamp: signedDataTimestampBTC, signature: signedDataSignatureBTC } = await signData(
+    airnodeWallet,
+    templateIdBTC,
+    signedDataValueBTC
+  );
+  const signedDataBTC = {
+    timestamp: signedDataTimestampBTC.toString(),
+    encodedValue: signedDataValueBTC,
+    signature: signedDataSignatureBTC,
   };
 
   const beaconIdETH = hre.ethers.utils.keccak256(
@@ -310,7 +327,8 @@ export const deployAndUpdateSubscriptions = async () => {
     airnodeWallet,
     subscriptionIdETH,
     subscriptionIdBTC,
-    signedData,
+    signedDataETH,
+    signedDataBTC,
     beaconIdETH,
     beaconIdBTC,
     beaconIdLTC,

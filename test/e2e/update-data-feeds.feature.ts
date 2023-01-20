@@ -7,7 +7,6 @@ import * as state from '../../src/state';
 import { initializeProviders } from '../../src/providers';
 import { deployAndUpdateSubscriptions } from '../setup/deployment';
 import { buildAirseekerConfig, buildLocalSecrets } from '../fixtures/config';
-import { SignedData } from '../../src/validation';
 import { parseConfigWithSecrets } from '../../src/config';
 import { initializeWallets } from '../../src/wallets';
 
@@ -19,7 +18,6 @@ const providerUrl = 'http://127.0.0.1:8545/';
 const provider = new ethers.providers.StaticJsonRpcProvider(providerUrl);
 const voidSigner = new ethers.VoidSigner(ethers.constants.AddressZero, provider);
 const dapiServer = DapiServerFactory.connect('0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0', provider);
-let signedData: SignedData;
 
 describe('updateDataFeeds', () => {
   beforeEach(async () => {
@@ -32,8 +30,8 @@ describe('updateDataFeeds', () => {
 
     jest.restoreAllMocks();
 
-    const { signedData: preparedSignedData } = await deployAndUpdateSubscriptions();
-    signedData = preparedSignedData;
+    const { beaconIdETH, beaconIdBTC, signedDataETH, signedDataBTC } = await deployAndUpdateSubscriptions();
+
     const config = parseConfigWithSecrets(buildAirseekerConfig(), buildLocalSecrets());
     if (!config.success) {
       throw new Error('Invalid configuration fixture');
@@ -41,11 +39,12 @@ describe('updateDataFeeds', () => {
     state.initializeState(config.data);
     initializeProviders();
     initializeWallets();
-    const beaconValues1 = {
-      '0x924b5d4cb3ec6366ae4302a1ca6aec035594ea3ea48a102d160b50b0c43ebfb5': signedData,
+    const beaconValues = {
+      [beaconIdETH]: signedDataETH,
+      [beaconIdBTC]: signedDataBTC,
     };
 
-    state.updateState((oldState) => ({ ...oldState, beaconValues: beaconValues1 }));
+    state.updateState((oldState) => ({ ...oldState, beaconValues }));
   });
 
   it('updates data feeds based on the configuration', async () => {
