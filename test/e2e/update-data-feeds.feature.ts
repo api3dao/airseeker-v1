@@ -7,7 +7,6 @@ import * as state from '../../src/state';
 import { initializeProviders } from '../../src/providers';
 import { deployAndUpdateSubscriptions } from '../setup/deployment';
 import { buildAirseekerConfig, buildLocalSecrets } from '../fixtures/config';
-import { SignedData } from '../../src/validation';
 import { parseConfigWithSecrets } from '../../src/config';
 import { initializeWallets } from '../../src/wallets';
 
@@ -19,7 +18,6 @@ const providerUrl = 'http://127.0.0.1:8545/';
 const provider = new ethers.providers.StaticJsonRpcProvider(providerUrl);
 const voidSigner = new ethers.VoidSigner(ethers.constants.AddressZero, provider);
 const dapiServer = DapiServerFactory.connect('0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0', provider);
-let signedData: SignedData;
 
 describe('updateDataFeeds', () => {
   beforeEach(async () => {
@@ -32,8 +30,7 @@ describe('updateDataFeeds', () => {
 
     jest.restoreAllMocks();
 
-    const { signedData: preparedSignedData } = await deployAndUpdateSubscriptions();
-    signedData = preparedSignedData;
+    const { beaconIdETH, beaconIdLTC, signedDataETH, signedDataLTC } = await deployAndUpdateSubscriptions();
     const config = parseConfigWithSecrets(buildAirseekerConfig(), buildLocalSecrets());
     if (!config.success) {
       throw new Error('Invalid configuration fixture');
@@ -41,11 +38,12 @@ describe('updateDataFeeds', () => {
     state.initializeState(config.data);
     initializeProviders();
     initializeWallets();
-    const beaconValues1 = {
-      '0x924b5d4cb3ec6366ae4302a1ca6aec035594ea3ea48a102d160b50b0c43ebfb5': signedData,
+    const beaconValues = {
+      [beaconIdETH]: signedDataETH,
+      [beaconIdLTC]: signedDataLTC,
     };
 
-    state.updateState((oldState) => ({ ...oldState, beaconValues: beaconValues1 }));
+    state.updateState((oldState) => ({ ...oldState, beaconValues }));
   });
 
   it('updates data feeds based on the configuration', async () => {
@@ -54,10 +52,18 @@ describe('updateDataFeeds', () => {
     state.updateState((oldState) => ({ ...oldState, stopSignalReceived: true }));
     await utils.sleep(8_000);
 
-    const beaconData = await dapiServer
+    const beaconDataETH = await dapiServer
       .connect(voidSigner)
       .dataFeeds('0x924b5d4cb3ec6366ae4302a1ca6aec035594ea3ea48a102d160b50b0c43ebfb5');
-    expect(beaconData.value.toString()).toEqual('738149047');
+    expect(beaconDataETH.value.toString()).toEqual('738149047');
+    const beaconDataBTC = await dapiServer
+      .connect(voidSigner)
+      .dataFeeds('0xbf7ce55d109fd196de2a8bf1515d166c56c9decbe9cb473656bbca30d5743990');
+    expect(beaconDataBTC.value.toString()).toEqual('41091123450');
+    const beaconDataLTC = await dapiServer
+      .connect(voidSigner)
+      .dataFeeds('0x9b5825decf1232f79d3408fb6f7eeb7050fd88037f6517a94914e7d01ccd0cef');
+    expect(beaconDataLTC.value.toString()).toEqual('51420000');
     const beaconSetData = await dapiServer
       .connect(voidSigner)
       .dataFeeds('0xf7f1620b7f422eb9a69c8e21b317ba1555d3d87e1d804f0b024f03b107e411e8');
