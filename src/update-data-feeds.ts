@@ -10,7 +10,13 @@ import {
   checkOnchainDataFreshness,
   checkUpdateCondition,
 } from './check-condition';
-import { BEACON_UPDATE_BATCH_SIZE, INT224_MAX, INT224_MIN, NO_DATA_FEEDS_EXIT_CODE } from './constants';
+import {
+  BEACON_READ_BATCH_SIZE,
+  BEACON_UPDATE_BATCH_SIZE,
+  INT224_MAX,
+  INT224_MIN,
+  NO_DATA_FEEDS_EXIT_CODE,
+} from './constants';
 import { logger, LogOptionsOverride } from './logging';
 import { getState, Provider } from './state';
 import { getTransactionCount } from './transaction-count';
@@ -205,11 +211,11 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
 
   let nonce: number | undefined;
 
-  for (const batch of chunk(beaconUpdates, BEACON_UPDATE_BATCH_SIZE)) {
+  for (const readBatch of chunk(beaconUpdates, BEACON_READ_BATCH_SIZE)) {
     // Read beacon batch onchain values
     const goReadDataFeedWithIdTryMulticall = await go(
       () => {
-        const calldatas = batch.map((beaconUpdateData) => beaconUpdateData.dataFeedsCalldata);
+        const calldatas = readBatch.map((beaconUpdateData) => beaconUpdateData.dataFeedsCalldata);
         return contract.connect(voidSigner).callStatic.tryMulticall(calldatas);
       },
       {
@@ -231,9 +237,9 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
     // Process beacon update calldatas
     let updateDataFeedWithSignedDataCalldatas: string[] = [];
 
-    for (let i = 0; i < batch.length; i++) {
+    for (let i = 0; i < readBatch.length; i++) {
       const onChainData = returndata[i];
-      const beaconUpdateData = batch[i];
+      const beaconUpdateData = readBatch[i];
 
       if (!successes[i]) {
         logger.warn(`Unable to read data feed. Error: ${onChainData}`, beaconUpdateData.logOptionsBeaconId);
@@ -318,31 +324,29 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
       nonce = transactionCount;
     }
 
-    // Get the latest gas price
-    const [logs, gasTarget] = await getGasPrice(provider.rpcProvider, config.chains[chainId].options);
-    logs.forEach((log) =>
-      log.level === 'ERROR' ? logger.error(log.message, null, logOptions) : logger.info(log.message, logOptions)
-    );
+    for (const updateBatch of chunk(updateDataFeedWithSignedDataCalldatas, BEACON_UPDATE_BATCH_SIZE)) {
+      // Get the latest gas price
+      const [logs, gasTarget] = await getGasPrice(provider.rpcProvider, config.chains[chainId].options);
+      logs.forEach((log) =>
+        log.level === 'ERROR' ? logger.error(log.message, null, logOptions) : logger.info(log.message, logOptions)
+      );
 
-    // Update beacon batch onchain values
-    const tx = await go(
-      () =>
-        contract.connect(sponsorWallet).tryMulticall(updateDataFeedWithSignedDataCalldatas, { nonce, ...gasTarget }),
-      {
+      // Update beacon batch onchain values
+      const tx = await go(() => contract.connect(sponsorWallet).tryMulticall(updateBatch, { nonce, ...gasTarget }), {
         ...prepareGoOptions(startTime, totalTimeout),
         onAttemptError: (goError) =>
           logger.warn(`Failed attempt to update beacon batch. Error ${goError.error}`, logOptions),
+      });
+      if (!tx.success) {
+        logger.warn(`Unable send beacon batch update transaction with nonce ${nonce}. Error: ${tx.error}`, logOptions);
+        return;
       }
-    );
-    if (!tx.success) {
-      logger.warn(`Unable send beacon batch update transaction with nonce ${nonce}. Error: ${tx.error}`, logOptions);
-      return;
+      logger.info(
+        `Beacon batch update transaction was successfully sent with nonce ${nonce}. Tx hash ${tx.data.hash}.`,
+        logOptions
+      );
+      nonce++;
     }
-    logger.info(
-      `Beacon batch update transaction was successfully sent with nonce ${nonce}. Tx hash ${tx.data.hash}.`,
-      logOptions
-    );
-    nonce++;
   }
 };
 

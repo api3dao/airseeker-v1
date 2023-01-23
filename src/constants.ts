@@ -18,4 +18,6 @@ export const NO_FETCH_EXIT_CODE = 2;
 // `calculateUpdateInPercentage()`. Since the reported data needs to fit
 // into 224 bits, its multiplication by 10^8 is guaranteed not to overflow.
 export const HUNDRED_PERCENT = 1e8;
-export const BEACON_UPDATE_BATCH_SIZE = 100;
+// TODO: load these 2 from env var instead
+export const BEACON_READ_BATCH_SIZE = 100;
+export const BEACON_UPDATE_BATCH_SIZE = 10;
