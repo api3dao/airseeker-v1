@@ -12,7 +12,6 @@ import {
 } from './check-condition';
 import { INT224_MAX, INT224_MIN, NO_DATA_FEEDS_EXIT_CODE } from './constants';
 import { logger } from './logging';
-import { readDataFeedWithId } from './read-data-feed-with-id';
 import { getState, Provider } from './state';
 import { getTransactionCount } from './transaction-count';
 import { prepareGoOptions, shortenAddress, sleep } from './utils';
@@ -181,14 +180,19 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
       continue;
     }
 
-    const onChainData = await readDataFeedWithId(
-      voidSigner,
-      contract,
-      beaconUpdateData.beaconId,
-      prepareGoOptions(startTime, totalTimeout),
-      logOptionsBeaconId
-    );
+    const goDataFeed = await go(() => contract.connect(voidSigner).dataFeeds(beaconUpdateData.beaconId), {
+      ...prepareGoOptions(startTime, totalTimeout),
+      onAttemptError: (goError) =>
+        logger.warn(`Failed attempt to read data feed. Error: ${goError.error}`, logOptionsBeaconId),
+    });
+    if (!goDataFeed.success) {
+      logger.warn(`Unable to read data feed. Error: ${goDataFeed.error}`, logOptionsBeaconId);
+      continue;
+    }
+    const onChainData = goDataFeed.data;
     if (!onChainData) {
+      const message = `Missing on chain data for beacon. Skipping.`;
+      logger.warn(message, logOptionsBeaconId);
       continue;
     }
 
@@ -311,13 +315,16 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
     logger.debug(`Updating beacon set`, logOptionsBeaconSetId);
 
     // Fetch beacon set value & timestamp from the chain
-    const beaconSetValueOnChain = await readDataFeedWithId(
-      voidSigner,
-      contract,
-      beaconSet.beaconSetId,
-      prepareGoOptions(startTime, totalTimeout),
-      logOptionsBeaconSetId
-    );
+    const goDataFeed = await go(() => contract.connect(voidSigner).dataFeeds(beaconSet.beaconSetId), {
+      ...prepareGoOptions(startTime, totalTimeout),
+      onAttemptError: (goError) =>
+        logger.warn(`Failed attempt to read data feed. Error: ${goError.error}`, logOptionsBeaconSetId),
+    });
+    if (!goDataFeed.success) {
+      logger.warn(`Unable to read data feed. Error: ${goDataFeed.error}`, logOptionsBeaconSetId);
+      continue;
+    }
+    const beaconSetValueOnChain = goDataFeed.data;
     if (!beaconSetValueOnChain) {
       const message = `Missing on chain data for beaconSet. Skipping.`;
       logger.warn(message, logOptionsBeaconSetId);
@@ -341,13 +348,16 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
         if (!beaconResponse) {
           logger.warn('Missing off chain data for beacon.', logOptionsBeaconId);
           // If there's no value for a given beacon, fetch it from the chain
-          const beaconValueOnChain = await readDataFeedWithId(
-            voidSigner,
-            contract,
-            beaconId,
-            prepareGoOptions(startTime, totalTimeout),
-            logOptionsBeaconId
-          );
+          const goDataFeed = await go(() => contract.connect(voidSigner).dataFeeds(beaconId), {
+            ...prepareGoOptions(startTime, totalTimeout),
+            onAttemptError: (goError) =>
+              logger.warn(`Failed attempt to read data feed. Error: ${goError.error}`, logOptionsBeaconSetId),
+          });
+          if (!goDataFeed.success) {
+            logger.warn(`Unable to read data feed. Error: ${goDataFeed.error}`, logOptionsBeaconSetId);
+            throw new Error(goDataFeed.error.message);
+          }
+          const beaconValueOnChain = goDataFeed.data;
           // If the value is not available on the chain skip the update
           if (!beaconValueOnChain) {
             const message = `Missing on chain data for beacon.`;

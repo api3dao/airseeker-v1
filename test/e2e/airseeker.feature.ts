@@ -64,7 +64,7 @@ describe('Airseeker', () => {
 
     expect(beaconValueETH.value).toEqual(hre.ethers.BigNumber.from(723.39202 * 1_000_000));
     expect(beaconValueBTC.value).toEqual(hre.ethers.BigNumber.from(41_091.12345 * 1_000_000));
-    expect(beaconValueLTC.value).toEqual(hre.ethers.BigNumber.from(51.42 * 1_000_000));
+    expect(beaconValueLTC.value).toEqual(hre.ethers.constants.Zero);
     expect(beaconSetValue.value).toEqual(hre.ethers.BigNumber.from(20_907.257735 * 1_000_000));
 
     mockReadFileSync('airseeker.json', JSON.stringify(airseekerConfig));
@@ -97,6 +97,7 @@ describe('Airseeker', () => {
     const beaconValueETH = await dapiServer.dataFeeds(deployment.beaconIdETH);
     const beaconValueBTC = await dapiServer.dataFeeds(deployment.beaconIdBTC);
     const beaconValueLTC = await dapiServer.dataFeeds(deployment.beaconIdLTC);
+    expect(beaconValueLTC.value).toEqual(hre.ethers.constants.Zero);
     const beaconSetValue = await dapiServer.dataFeeds(deployment.beaconSetId);
 
     mockReadFileSync(
@@ -153,10 +154,11 @@ describe('Airseeker', () => {
     const beaconValueLTCNew = await dapiServer.dataFeeds(deployment.beaconIdLTC);
     const beaconSetValueNew = await dapiServer.dataFeeds(deployment.beaconSetId);
 
-    expect(beaconValueETHNew.value).toEqual(hre.ethers.BigNumber.from(beaconValueETH.value));
-    expect(beaconValueBTCNew.value).toEqual(hre.ethers.BigNumber.from(beaconValueBTC.value));
-    expect(beaconValueLTCNew.value).toEqual(hre.ethers.BigNumber.from(beaconValueLTC.value));
-    expect(beaconSetValueNew.value).toEqual(hre.ethers.BigNumber.from(beaconSetValue.value));
+    expect(beaconValueETHNew.value).toEqual(beaconValueETH.value);
+    expect(beaconValueBTCNew.value).toEqual(beaconValueBTC.value);
+    // Except LTC since it has not been initialized
+    expect(beaconValueLTCNew.value).toEqual(hre.ethers.BigNumber.from(54.85 * 1_000_000));
+    expect(beaconSetValueNew.value).toEqual(beaconSetValue.value);
   });
 
   it('updates if the DapiServer timestamp is older than heartbeatInterval', async () => {

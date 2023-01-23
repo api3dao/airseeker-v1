@@ -13,7 +13,7 @@ import { buildLocalConfigETH, buildLocalConfigBTC, buildLocalConfigLTC } from '.
 
 const subscriptionIdETH = '0xc1ed31de05a9aa74410c24bccd6aa40235006f9063f1c65d47401e97ad04560e';
 const subscriptionIdBTC = '0xb4c3cea3b78c384eb4409df1497bb2f1fd872f1928a218f8907c38fe0d66ffea';
-const subscriptionIdLTC = '0x74d8547ed2a09b41eb376455f65996a21b2e22fd832534d126639e3eec3a5c13';
+// const subscriptionIdLTC = '0x74d8547ed2a09b41eb376455f65996a21b2e22fd832534d126639e3eec3a5c13';
 const provider = new hre.ethers.providers.StaticJsonRpcProvider('http://127.0.0.1:8545');
 const localConfigETH = buildLocalConfigETH();
 
@@ -264,17 +264,48 @@ export const deployAndUpdateSubscriptions = async () => {
   // BTC subscription
   await updateBeacon(dapiServer, airnodePspSponsorWallet, airnodeWallet, subscriptionIdBTC, apiValueBTC);
   // LTC subscription
-  await updateBeacon(dapiServer, airnodePspSponsorWallet, airnodeWallet, subscriptionIdLTC, apiValueLTC);
-  const signedDataValue = '0x000000000000000000000000000000000000000000000000000000002bff42b7';
-  const { timestamp: signedDataTimestamp, signature: signedDataSignature } = await signData(
+  // await updateBeacon(dapiServer, airnodePspSponsorWallet, airnodeWallet, subscriptionIdLTC, apiValueLTC);
+  const signedDataValueETH = hre.ethers.utils.defaultAbiCoder.encode(
+    ['uint224'],
+    [hre.ethers.BigNumber.from('738149047')]
+  );
+  const { timestamp: signedDataTimestampETH, signature: signedDataSignatureETH } = await signData(
     airnodeWallet,
     templateIdETH,
-    signedDataValue
+    signedDataValueETH
   );
-  const signedData = {
-    timestamp: signedDataTimestamp.toString(),
-    encodedValue: signedDataValue,
-    signature: signedDataSignature,
+  const signedDataETH = {
+    timestamp: signedDataTimestampETH.toString(),
+    encodedValue: signedDataValueETH,
+    signature: signedDataSignatureETH,
+  };
+  const signedDataValueBTC = hre.ethers.utils.defaultAbiCoder.encode(
+    ['uint224'],
+    [hre.ethers.BigNumber.from(apiValueBTC)]
+  );
+  const { timestamp: signedDataTimestampBTC, signature: signedDataSignatureBTC } = await signData(
+    airnodeWallet,
+    templateIdBTC,
+    signedDataValueBTC
+  );
+  const signedDataBTC = {
+    timestamp: signedDataTimestampBTC.toString(),
+    encodedValue: signedDataValueBTC,
+    signature: signedDataSignatureBTC,
+  };
+  const signedDataValueLTC = hre.ethers.utils.defaultAbiCoder.encode(
+    ['uint224'],
+    [hre.ethers.BigNumber.from(apiValueLTC)]
+  );
+  const { timestamp: signedDataTimestampLTC, signature: signedDataSignatureLTC } = await signData(
+    airnodeWallet,
+    templateIdLTC,
+    signedDataValueLTC
+  );
+  const signedDataLTC = {
+    timestamp: signedDataTimestampLTC.toString(),
+    encodedValue: signedDataValueLTC,
+    signature: signedDataSignatureLTC,
   };
 
   const beaconIdETH = hre.ethers.utils.keccak256(
@@ -306,11 +337,14 @@ export const deployAndUpdateSubscriptions = async () => {
     dapiServer,
     templateIdETH,
     templateIdBTC,
+    templateIdLTC,
     airnodePspSponsorWallet,
     airnodeWallet,
     subscriptionIdETH,
     subscriptionIdBTC,
-    signedData,
+    signedDataETH,
+    signedDataBTC,
+    signedDataLTC,
     beaconIdETH,
     beaconIdBTC,
     beaconIdLTC,

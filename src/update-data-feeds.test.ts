@@ -2,7 +2,6 @@ import { DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol
 import { ethers } from 'ethers';
 import * as state from './state';
 import * as api from './update-data-feeds';
-import * as readDataFeedModule from './read-data-feed-with-id';
 import { logger } from './logging';
 import { initializeProviders } from './providers';
 import { BeaconSetUpdate, BeaconUpdate, Config } from './validation';
@@ -265,7 +264,7 @@ describe('updateDataFeedsInLoop', () => {
     jest.spyOn(api, 'updateBeacons').mockImplementation(async () => {
       requestCount++;
     });
-    jest.spyOn(api, 'updateBeaconSets');
+    jest.spyOn(api, 'updateBeaconSets').mockImplementation(jest.fn());
     jest.spyOn(state, 'getState').mockImplementation(() => {
       if (requestCount === 2) {
         return {
@@ -312,8 +311,8 @@ describe('updateBeaconSets', () => {
     txCountSpy.mockResolvedValueOnce(212);
 
     const timestamp = 1649664085;
-    const readOnChainBeaconDataSpy = jest
-      .spyOn(readDataFeedModule, 'readDataFeedWithId')
+    const dataFeedsSpy = jest
+      .fn()
       .mockReturnValueOnce(Promise.resolve({ timestamp: timestamp - 25, value: ethers.BigNumber.from(40000000000) }))
       .mockReturnValueOnce(
         Promise.resolve({
@@ -333,6 +332,7 @@ describe('updateBeaconSets', () => {
             return this;
           },
           updateDataFeedWithSignedData: updateDataFeedWithSignedDataMock,
+          dataFeeds: dataFeedsSpy,
         } as any)
     );
 
@@ -340,7 +340,7 @@ describe('updateBeaconSets', () => {
 
     await api.updateBeaconSets(groups[0], Date.now());
 
-    expect(readOnChainBeaconDataSpy).toHaveBeenCalled();
+    expect(dataFeedsSpy).toHaveBeenCalled();
     expect(updateDataFeedWithSignedDataSpy).toHaveBeenCalledWith(
       [
         ethers.utils.defaultAbiCoder.encode(
@@ -399,15 +399,24 @@ describe('updateBeaconSets', () => {
 
     // For reading on-chain data that causes to update beaconSet
     const timestamp = 1649664085;
-    const readOnChainBeaconDataSpy = jest
-      .spyOn(readDataFeedModule, 'readDataFeedWithId')
+    const dataFeedsSpy = jest
+      .fn()
       .mockReturnValueOnce(Promise.resolve({ timestamp: timestamp - 25, value: ethers.BigNumber.from(40000000000) }));
+    jest.spyOn(DapiServerFactory, 'connect').mockImplementation(
+      (_dapiServerAddress, _provider) =>
+        ({
+          connect(_signerOrProvider: ethers.Signer | ethers.providers.Provider | string) {
+            return this;
+          },
+          dataFeeds: dataFeedsSpy,
+        } as any)
+    );
 
     const groups = api.groupDataFeedsByProviderSponsor();
 
     expect(await api.updateBeaconSets(groups[0], Date.now())).toBeUndefined();
     expect(logger.warn).toHaveBeenCalledWith(`Unable to fetch transaction count`, { meta: expect.anything() });
-    expect(readOnChainBeaconDataSpy).toHaveBeenCalledTimes(1);
+    expect(dataFeedsSpy).toHaveBeenCalledTimes(1);
   });
 });
 
