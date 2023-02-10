@@ -311,20 +311,23 @@ describe('updateBeaconSets', () => {
     txCountSpy.mockResolvedValueOnce(212);
 
     const timestamp = 1649664085;
-    const dataFeedsSpy = jest
-      .fn()
-      .mockReturnValueOnce(Promise.resolve({ timestamp: timestamp - 25, value: ethers.BigNumber.from(40000000000) }))
-      .mockReturnValueOnce(
-        Promise.resolve({
-          timestamp: timestamp - 30,
-          value: ethers.BigNumber.from(41000000000),
-        })
-      );
+    const dataFeedsMock = jest.fn().mockReturnValueOnce(
+      Promise.resolve({
+        timestamp: timestamp - 30,
+        value: ethers.BigNumber.from(41000000000),
+      })
+    );
 
     const updateDataFeedWithSignedDataSpy = jest.fn();
     const updateDataFeedWithSignedDataMock = updateDataFeedWithSignedDataSpy.mockImplementation(async () => ({
       hash: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
     }));
+    const tryMulticallMock = jest.fn().mockReturnValueOnce({
+      successes: [true],
+      returndata: [
+        ethers.utils.defaultAbiCoder.encode(['int224', 'uint32'], [ethers.BigNumber.from(40000000000), timestamp - 25]),
+      ],
+    });
     jest.spyOn(DapiServerFactory, 'connect').mockImplementation(
       (_dapiServerAddress, _provider) =>
         ({
@@ -332,7 +335,13 @@ describe('updateBeaconSets', () => {
             return this;
           },
           updateDataFeedWithSignedData: updateDataFeedWithSignedDataMock,
-          dataFeeds: dataFeedsSpy,
+          dataFeeds: dataFeedsMock,
+          interface: {
+            encodeFunctionData: (_functionFragment: 'dataFeeds', _values: [any]): string => {
+              return '0x67a7cfb741c3d6e0ee82ae3d33356c4dceb84e98d1a0b361db0f51081fc5a2541ae51683';
+            },
+          },
+          callStatic: { tryMulticall: tryMulticallMock },
         } as any)
     );
 
@@ -340,7 +349,8 @@ describe('updateBeaconSets', () => {
 
     await api.updateBeaconSets(groups[0], Date.now());
 
-    expect(dataFeedsSpy).toHaveBeenCalled();
+    expect(dataFeedsMock).toHaveBeenCalledTimes(1);
+    expect(tryMulticallMock).toHaveBeenCalledTimes(1);
     expect(updateDataFeedWithSignedDataSpy).toHaveBeenCalledWith(
       [
         ethers.utils.defaultAbiCoder.encode(
@@ -399,16 +409,24 @@ describe('updateBeaconSets', () => {
 
     // For reading on-chain data that causes to update beaconSet
     const timestamp = 1649664085;
-    const dataFeedsSpy = jest
-      .fn()
-      .mockReturnValueOnce(Promise.resolve({ timestamp: timestamp - 25, value: ethers.BigNumber.from(40000000000) }));
+    const tryMulticallMock = jest.fn().mockReturnValueOnce({
+      successes: [true],
+      returndata: [
+        ethers.utils.defaultAbiCoder.encode(['int224', 'uint32'], [ethers.BigNumber.from(40000000000), timestamp - 25]),
+      ],
+    });
     jest.spyOn(DapiServerFactory, 'connect').mockImplementation(
       (_dapiServerAddress, _provider) =>
         ({
           connect(_signerOrProvider: ethers.Signer | ethers.providers.Provider | string) {
             return this;
           },
-          dataFeeds: dataFeedsSpy,
+          interface: {
+            encodeFunctionData: (_functionFragment: 'dataFeeds', _values: [any]): string => {
+              return '0x67a7cfb741c3d6e0ee82ae3d33356c4dceb84e98d1a0b361db0f51081fc5a2541ae51683';
+            },
+          },
+          callStatic: { tryMulticall: tryMulticallMock },
         } as any)
     );
 
@@ -416,7 +434,7 @@ describe('updateBeaconSets', () => {
 
     expect(await api.updateBeaconSets(groups[0], Date.now())).toBeUndefined();
     expect(logger.warn).toHaveBeenCalledWith(`Unable to fetch transaction count`, { meta: expect.anything() });
-    expect(dataFeedsSpy).toHaveBeenCalledTimes(1);
+    expect(tryMulticallMock).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -19,5 +19,5 @@ export const NO_FETCH_EXIT_CODE = 2;
 // into 224 bits, its multiplication by 10^8 is guaranteed not to overflow.
 export const HUNDRED_PERCENT = 1e8;
 // TODO: load these 2 from env var instead
-export const BEACON_READ_BATCH_SIZE = 100;
-export const BEACON_UPDATE_BATCH_SIZE = 10;
+export const DATAFEED_READ_BATCH_SIZE = 100;
+export const DATAFEED_UPDATE_BATCH_SIZE = 10;
