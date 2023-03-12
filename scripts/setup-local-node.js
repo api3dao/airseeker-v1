@@ -5,7 +5,7 @@ const protocol = require('@api3/airnode-protocol');
 const {
   AccessControlRegistry__factory: AccessControlRegistryFactory,
   AirnodeProtocol__factory: AirnodeProtocolFactory,
-  DapiServer__factory: DapiServerFactory,
+  Api3ServerV1__factory: Api3ServerV1Factory,
 } = require('@api3/airnode-protocol-v1');
 
 async function main() {
@@ -28,10 +28,14 @@ async function main() {
   );
   const airnodeProtocol = await airnodeProtocolFactory.connect(deployer).deploy();
 
-  const dapiServerFactory = new hre.ethers.ContractFactory(DapiServerFactory.abi, DapiServerFactory.bytecode, deployer);
+  const dapiServerFactory = new hre.ethers.ContractFactory(
+    Api3ServerV1Factory.abi,
+    Api3ServerV1Factory.bytecode,
+    deployer
+  );
   const dapiServer = await dapiServerFactory
     .connect(deployer)
-    .deploy(accessControlRegistry.address, dapiServerAdminRoleDescription, manager.address, airnodeProtocol.address);
+    .deploy(accessControlRegistry.address, dapiServerAdminRoleDescription, manager.address);
 
   console.log('🚀 DapiServer address:', dapiServer.address);
 

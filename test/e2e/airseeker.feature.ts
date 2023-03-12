@@ -3,7 +3,7 @@ import { ContractFactory, Contract, Wallet } from 'ethers';
 import * as hre from 'hardhat';
 import '@nomiclabs/hardhat-ethers';
 import { buildAirseekerConfig, buildLocalSecrets } from '../fixtures/config';
-import { deployAndUpdateSubscriptions } from '../setup/deployment';
+import { deployAndUpdate } from '../setup/deployment';
 import { main, handleStopSignal } from '../../src/main';
 import { sleep } from '../../src/utils';
 import * as makeRequest from '../../src/make-request';
@@ -24,14 +24,11 @@ describe('Airseeker', () => {
     accessControlRegistry: Contract;
     airnodeProtocolFactory: ContractFactory;
     airnodeProtocol: Contract;
-    dapiServerFactory: ContractFactory;
+    api3ServerV1Factory: ContractFactory;
     dapiServer: Contract;
     templateIdETH: string;
     templateIdBTC: string;
-    airnodePspSponsorWallet: Wallet;
     airnodeWallet: Wallet;
-    subscriptionIdETH: string;
-    subscriptionIdBTC: string;
     beaconIdETH: string;
     beaconIdBTC: string;
     beaconIdLTC: string;
@@ -49,7 +46,7 @@ describe('Airseeker', () => {
     jest.restoreAllMocks();
     jest.clearAllTimers();
 
-    deployment = await deployAndUpdateSubscriptions();
+    deployment = await deployAndUpdate();
   });
 
   it('updates the beacons successfully', async () => {

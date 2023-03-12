@@ -64,11 +64,11 @@ export const sanitiseFilename = (filename: string) => {
 };
 
 export const getDapiServerInterface = () => {
-  return new ethers.utils.Interface(protocol.DapiServer__factory.abi);
+  return new ethers.utils.Interface(protocol.Api3ServerV1__factory.abi);
 };
 
 export const getDapiServerContract = (dapiServerAddress: string, provider: ethers.providers.JsonRpcProvider) => {
-  return new ethers.Contract(dapiServerAddress, protocol.DapiServer__factory.abi, provider);
+  return new ethers.Contract(dapiServerAddress, protocol.Api3ServerV1__factory.abi, provider);
 };
 
 export const getDapiNameHash = (dapiName: any) => {

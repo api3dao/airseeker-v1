@@ -1,11 +1,11 @@
 import { ethers } from 'ethers';
 import * as hre from 'hardhat';
-import { DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol-v1';
+import { Api3ServerV1__factory as Api3ServerV1Factory } from '@api3/airnode-protocol-v1';
 import { initiateDataFeedUpdates } from '../../src/update-data-feeds';
 import * as utils from '../../src/utils';
 import * as state from '../../src/state';
 import { initializeProviders } from '../../src/providers';
-import { deployAndUpdateSubscriptions } from '../setup/deployment';
+import { deployAndUpdate } from '../setup/deployment';
 import { buildAirseekerConfig, buildLocalSecrets } from '../fixtures/config';
 import { parseConfigWithSecrets } from '../../src/config';
 import { initializeWallets } from '../../src/wallets';
@@ -17,7 +17,7 @@ jest.setTimeout(60_000);
 const providerUrl = 'http://127.0.0.1:8545/';
 const provider = new ethers.providers.StaticJsonRpcProvider(providerUrl);
 const voidSigner = new ethers.VoidSigner(ethers.constants.AddressZero, provider);
-const dapiServer = DapiServerFactory.connect('0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0', provider);
+const dapiServer = Api3ServerV1Factory.connect('0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0', provider);
 
 describe('updateDataFeeds', () => {
   beforeEach(async () => {
@@ -30,7 +30,7 @@ describe('updateDataFeeds', () => {
 
     jest.restoreAllMocks();
 
-    const { beaconIdETH, beaconIdLTC, signedDataETH, signedDataLTC } = await deployAndUpdateSubscriptions();
+    const { beaconIdETH, beaconIdLTC, signedDataETH, signedDataLTC } = await deployAndUpdate();
     const config = parseConfigWithSecrets(buildAirseekerConfig(), buildLocalSecrets());
     if (!config.success) {
       throw new Error('Invalid configuration fixture');
