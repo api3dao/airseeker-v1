@@ -1,4 +1,4 @@
-import { DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol-v1';
+import { Api3ServerV1__factory as Api3ServerV1Factory } from '@api3/airnode-protocol-v1';
 import { ethers } from 'ethers';
 import * as state from './state';
 import * as api from './update-data-feeds';
@@ -297,7 +297,7 @@ describe('updateDataFeedsInLoop', () => {
 });
 
 describe('updateBeaconSets', () => {
-  it('calls updateDataFeedWithSignedData in DapiServer contract', async () => {
+  it('calls updateBeaconSetWithBeacons in DapiServer contract', async () => {
     state.updateState((currentState) => ({
       ...currentState,
       beaconValues: {
@@ -321,17 +321,17 @@ describe('updateBeaconSets', () => {
         })
       );
 
-    const updateDataFeedWithSignedDataSpy = jest.fn();
-    const updateDataFeedWithSignedDataMock = updateDataFeedWithSignedDataSpy.mockImplementation(async () => ({
+    const updateBeaconSetWithBeaconsSpy = jest.fn();
+    const updateBeaconSetWithBeaconsMock = updateBeaconSetWithBeaconsSpy.mockImplementation(async () => ({
       hash: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
     }));
-    jest.spyOn(DapiServerFactory, 'connect').mockImplementation(
+    jest.spyOn(Api3ServerV1Factory, 'connect').mockImplementation(
       (_dapiServerAddress, _provider) =>
         ({
           connect(_signerOrProvider: ethers.Signer | ethers.providers.Provider | string) {
             return this;
           },
-          updateDataFeedWithSignedData: updateDataFeedWithSignedDataMock,
+          updateBeaconSetWithBeacons: updateBeaconSetWithBeaconsMock,
           dataFeeds: dataFeedsSpy,
         } as any)
     );
@@ -341,38 +341,11 @@ describe('updateBeaconSets', () => {
     await api.updateBeaconSets(groups[0], Date.now());
 
     expect(dataFeedsSpy).toHaveBeenCalled();
-    expect(updateDataFeedWithSignedDataSpy).toHaveBeenCalledWith(
+    expect(updateBeaconSetWithBeaconsSpy).toHaveBeenCalledWith(
       [
-        ethers.utils.defaultAbiCoder.encode(
-          ['address', 'bytes32', 'uint256', 'bytes', 'bytes'],
-          [
-            '0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace',
-            '0xea30f92923ece1a97af69d450a8418db31be5a26a886540a13c09c739ba8eaaa',
-            validSignedData.timestamp,
-            validSignedData.encodedValue,
-            validSignedData.signature,
-          ]
-        ),
-        ethers.utils.defaultAbiCoder.encode(
-          ['address', 'bytes32', 'uint256', 'bytes', 'bytes'],
-          [
-            '0x5656D3A378B1AAdFDDcF4196ea364A9d78617290',
-            '0xea30f92923ece1a97af69d450a8418db31be5a26a886540a13c09c739ba8eaaa',
-            timestamp - 30,
-            '0x',
-            '0x',
-          ]
-        ),
-        ethers.utils.defaultAbiCoder.encode(
-          ['address', 'bytes32', 'uint256', 'bytes', 'bytes'],
-          [
-            '0x5656D3A378B1AAdFDDcF4196ea364A9d78617290',
-            '0x9ec34b00a5019442dcd05a4860ff2bf015164b368cb83fcb756088fcabcdabcd',
-            validSignedData.timestamp,
-            validSignedData.encodedValue,
-            validSignedData.signature,
-          ]
-        ),
+        '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c',
+        '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2',
+        '0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469beabcdabcd',
       ],
       expect.objectContaining({
         gasLimit: expect.any(ethers.BigNumber),
@@ -402,7 +375,7 @@ describe('updateBeaconSets', () => {
     const dataFeedsSpy = jest
       .fn()
       .mockReturnValueOnce(Promise.resolve({ timestamp: timestamp - 25, value: ethers.BigNumber.from(40000000000) }));
-    jest.spyOn(DapiServerFactory, 'connect').mockImplementation(
+    jest.spyOn(Api3ServerV1Factory, 'connect').mockImplementation(
       (_dapiServerAddress, _provider) =>
         ({
           connect(_signerOrProvider: ethers.Signer | ethers.providers.Provider | string) {

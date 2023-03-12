@@ -1,11 +1,11 @@
 import { ethers } from 'ethers';
 import {
-  checkBeaconSetSignedDataFreshness,
-  checkBeaconSignedDataFreshness,
+  checkFulfillmentDataTimestamp,
+  checkFulfillmentDataValue,
   checkOnchainDataFreshness,
   checkUpdateCondition,
 } from './check-condition';
-import { getUnixTimestamp, validSignedData } from '../test/fixtures';
+import { getUnixTimestamp } from '../test/fixtures';
 
 describe('checkUpdateCondition', () => {
   const onChainValue = ethers.BigNumber.from(500);
@@ -33,32 +33,55 @@ describe('checkUpdateCondition', () => {
   });
 });
 
-describe('checkBeaconSignedDataFreshness', () => {
-  it('returns true if signed data is newer than on chain record', () => {
-    const isFresh = checkBeaconSignedDataFreshness(getUnixTimestamp('2019-4-28'), validSignedData.timestamp);
+describe('checkFulfillmentDataTimestamp', () => {
+  const onChainData = {
+    value: ethers.BigNumber.from(10),
+    timestamp: getUnixTimestamp('2019-4-28'),
+  };
 
+  it('returns true if fulfillment data is newer than on-chain record', () => {
+    const isFresh = checkFulfillmentDataTimestamp(onChainData.timestamp, getUnixTimestamp('2019-4-29'));
     expect(isFresh).toBe(true);
   });
 
-  it('returns false if signed data is older than on chain record', () => {
-    const isFresh = checkBeaconSignedDataFreshness(getUnixTimestamp('2022-4-28'), validSignedData.timestamp);
+  it('returns false if fulfillment data is older than on-chain record', () => {
+    const isFresh = checkFulfillmentDataTimestamp(onChainData.timestamp, getUnixTimestamp('2019-4-27'));
+    expect(isFresh).toBe(false);
+  });
 
+  it('returns false if fulfillment data has same timestamp with on-chain record', () => {
+    const isFresh = checkFulfillmentDataTimestamp(onChainData.timestamp, onChainData.timestamp);
     expect(isFresh).toBe(false);
   });
 });
 
-describe('checkBeaconSetSignedDataFreshness', () => {
-  it('returns true if signed data is newer than on chain record', () => {
-    const beaconSetBeaconTimestamps = ['1555711223', '1556229645', '1555020018', '1556402497'];
-    const isFresh = checkBeaconSetSignedDataFreshness(getUnixTimestamp('2019-4-20'), beaconSetBeaconTimestamps);
+describe('checkFulfillmentDataValue', () => {
+  const onChainData = {
+    value: ethers.BigNumber.from(10),
+    timestamp: getUnixTimestamp('2019-4-28'),
+  };
+  const fulfillmentDataValue = ethers.BigNumber.from(20);
 
+  // this is not a possible case however better to check
+  it("returns true if on chain record hasn't been initialized while both values are same", () => {
+    const uninitializedOnChainData = { ...onChainData, timestamp: 0 };
+    const isFresh = checkFulfillmentDataValue(uninitializedOnChainData, uninitializedOnChainData.value);
     expect(isFresh).toBe(true);
   });
 
-  it('returns false if signed data is older than on chain record', () => {
-    const beaconSetBeaconTimestamps = ['1555711223', '1556229645', '1555020018', '1556402497'];
-    const isFresh = checkBeaconSetSignedDataFreshness(getUnixTimestamp('2019-4-28'), beaconSetBeaconTimestamps);
+  it("returns true if on chain record hasn't been initialized while both values are different", () => {
+    const uninitializedOnChainData = { ...onChainData, timestamp: 0 };
+    const isFresh = checkFulfillmentDataValue(uninitializedOnChainData, fulfillmentDataValue);
+    expect(isFresh).toBe(true);
+  });
 
+  it('returns true if fulfillment data is different than on chain record', () => {
+    const isFresh = checkFulfillmentDataValue(onChainData, fulfillmentDataValue);
+    expect(isFresh).toBe(true);
+  });
+
+  it('returns false if fulfillment data is same with on chain record', () => {
+    const isFresh = checkFulfillmentDataValue(onChainData, onChainData.value);
     expect(isFresh).toBe(false);
   });
 });
