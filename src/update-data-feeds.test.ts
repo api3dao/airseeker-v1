@@ -58,7 +58,7 @@ const config: Config = {
   chains: {
     '1': {
       contracts: {
-        DapiServer: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
+        Api3ServerV1: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
       },
       providers: {
         selfHostedMainnet: {
@@ -94,7 +94,7 @@ const config: Config = {
     },
     '3': {
       contracts: {
-        DapiServer: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
+        Api3ServerV1: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
       },
       providers: {
         infuraRopsten: {
@@ -297,7 +297,7 @@ describe('updateDataFeedsInLoop', () => {
 });
 
 describe('updateBeaconSets', () => {
-  it('calls updateBeaconSetWithBeacons in DapiServer contract', async () => {
+  it('calls updateBeaconSetWithBeacons in Api3ServerV1 contract', async () => {
     state.updateState((currentState) => ({
       ...currentState,
       beaconValues: {
@@ -326,7 +326,7 @@ describe('updateBeaconSets', () => {
       hash: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
     }));
     jest.spyOn(Api3ServerV1Factory, 'connect').mockImplementation(
-      (_dapiServerAddress, _provider) =>
+      (_api3ServerV1Address, _provider) =>
         ({
           connect(_signerOrProvider: ethers.Signer | ethers.providers.Provider | string) {
             return this;
@@ -376,7 +376,7 @@ describe('updateBeaconSets', () => {
       .fn()
       .mockReturnValueOnce(Promise.resolve({ timestamp: timestamp - 25, value: ethers.BigNumber.from(40000000000) }));
     jest.spyOn(Api3ServerV1Factory, 'connect').mockImplementation(
-      (_dapiServerAddress, _provider) =>
+      (_api3ServerV1, _provider) =>
         ({
           connect(_signerOrProvider: ethers.Signer | ethers.providers.Provider | string) {
             return this;

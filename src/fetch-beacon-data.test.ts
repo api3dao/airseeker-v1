@@ -51,7 +51,7 @@ const config: Config = {
   chains: {
     '1': {
       contracts: {
-        DapiServer: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
+        Api3ServerV1: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
       },
       providers: {
         selfHostedMainnet: {
@@ -87,7 +87,7 @@ const config: Config = {
     },
     '3': {
       contracts: {
-        DapiServer: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
+        Api3ServerV1: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
       },
       providers: {
         infuraRopsten: {

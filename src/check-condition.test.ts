@@ -10,19 +10,19 @@ import { getUnixTimestamp } from '../test/fixtures';
 describe('checkUpdateCondition', () => {
   const onChainValue = ethers.BigNumber.from(500);
 
-  it('reads dapiserver value and checks the threshold condition to be true for increase', () => {
+  it('returns true when api value is higher and deviation threshold is reached', () => {
     const shouldUpdate = checkUpdateCondition(onChainValue, 10, ethers.BigNumber.from(560));
 
     expect(shouldUpdate).toEqual(true);
   });
 
-  it('reads dapiserver value and checks the threshold condition to be true for decrease', () => {
+  it('returns true when api value is lower and deviation threshold is reached', () => {
     const shouldUpdate = checkUpdateCondition(onChainValue, 10, ethers.BigNumber.from(440));
 
     expect(shouldUpdate).toEqual(true);
   });
 
-  it('reads dapiserver value and checks the threshold condition to be false', () => {
+  it('returns false when deviation threshold is not reached', () => {
     const shouldUpdate = checkUpdateCondition(onChainValue, 10, ethers.BigNumber.from(480));
 
     expect(shouldUpdate).toEqual(false);

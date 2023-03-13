@@ -11,7 +11,7 @@ jest.setTimeout(60_000);
 const providerUrl = 'http://127.0.0.1:8545/';
 const provider = new ethers.providers.StaticJsonRpcProvider(providerUrl);
 const voidSigner = new ethers.VoidSigner(ethers.constants.AddressZero, provider);
-const dapiServer = Api3ServerV1Factory.connect('0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0', provider);
+const api3ServerV1 = Api3ServerV1Factory.connect('0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0', provider);
 
 const apiValue = 723.39202;
 const _times = 1_000_000;
@@ -39,7 +39,7 @@ describe('checkUpdateCondition', () => {
       ethers.utils.solidityPack(['address', 'bytes32'], [airnodeWallet.address, templateIdETH])
     );
 
-    onChainValue = (await dapiServer.connect(voidSigner).dataFeeds(beaconId))!;
+    onChainValue = (await api3ServerV1.connect(voidSigner).dataFeeds(beaconId))!;
   });
 
   it('returns true for increase above the deviationThreshold', () => {

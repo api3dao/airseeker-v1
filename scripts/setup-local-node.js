@@ -4,14 +4,13 @@ const node = require('@api3/airnode-node');
 const protocol = require('@api3/airnode-protocol');
 const {
   AccessControlRegistry__factory: AccessControlRegistryFactory,
-  AirnodeProtocol__factory: AirnodeProtocolFactory,
   Api3ServerV1__factory: Api3ServerV1Factory,
 } = require('@api3/airnode-protocol-v1');
 
 async function main() {
   const [deployer, manager, sponsor] = await hre.ethers.getSigners();
 
-  const dapiServerAdminRoleDescription = 'DapiServer admin';
+  const api3ServerV1AdminRoleDescription = 'Api3ServerV1 admin';
 
   // Deploy contracts
   const accessControlRegistryFactory = new hre.ethers.ContractFactory(
@@ -21,29 +20,22 @@ async function main() {
   );
   const accessControlRegistry = await accessControlRegistryFactory.connect(deployer).deploy();
 
-  const airnodeProtocolFactory = new hre.ethers.ContractFactory(
-    AirnodeProtocolFactory.abi,
-    AirnodeProtocolFactory.bytecode,
-    deployer
-  );
-  const airnodeProtocol = await airnodeProtocolFactory.connect(deployer).deploy();
-
-  const dapiServerFactory = new hre.ethers.ContractFactory(
+  const api3ServerV1Factory = new hre.ethers.ContractFactory(
     Api3ServerV1Factory.abi,
     Api3ServerV1Factory.bytecode,
     deployer
   );
-  const dapiServer = await dapiServerFactory
+  const api3ServerV1 = await api3ServerV1Factory
     .connect(deployer)
-    .deploy(accessControlRegistry.address, dapiServerAdminRoleDescription, manager.address);
+    .deploy(accessControlRegistry.address, api3ServerV1AdminRoleDescription, manager.address);
 
-  console.log('🚀 DapiServer address:', dapiServer.address);
+  console.log('🚀 Api3ServerV1 address:', api3ServerV1.address);
 
   // Access control
   const managerRootRole = hre.ethers.utils.solidityKeccak256(['address'], [manager.address]);
   await accessControlRegistry
     .connect(manager)
-    .initializeRoleAndGrantToSender(managerRootRole, dapiServerAdminRoleDescription);
+    .initializeRoleAndGrantToSender(managerRootRole, api3ServerV1AdminRoleDescription);
 
   const airseekerSponsorWallet = node.evm.deriveSponsorWalletFromMnemonic(
     'achieve climb couple wait accident symbol spy blouse reduce foil echo label',

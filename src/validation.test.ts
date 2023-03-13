@@ -22,18 +22,18 @@ it('successfully parses example configuration', () => {
   expect(() => configSchema.parse(interpolatedConfig)).not.toThrow();
 });
 
-it('fails if chain is missing DapiServer contract address', () => {
+it('fails if chain is missing Api3ServerV1 contract address', () => {
   const config: Config = JSON.parse(
     fs.readFileSync(path.join(__dirname, '..', 'config', 'airseeker.example.json'), 'utf8')
   );
-  delete config.chains['1'].contracts['DapiServer'];
+  delete config.chains['1'].contracts['Api3ServerV1'];
   const interpolatedConfig = interpolateSecrets(config, envVariables);
 
   expect(() => configSchema.parse(interpolatedConfig)).toThrow(
     new ZodError([
       {
         code: 'custom',
-        message: 'DapiServer contract address is missing',
+        message: 'Api3ServerV1 contract address is missing',
         path: ['chains', '1', 'contracts'],
       },
     ])

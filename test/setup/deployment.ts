@@ -1,16 +1,15 @@
-import { Contract, Wallet } from 'ethers';
-import * as hre from 'hardhat';
-import '@nomiclabs/hardhat-ethers';
 import * as abi from '@api3/airnode-abi';
 import * as node from '@api3/airnode-node';
 import * as protocol from '@api3/airnode-protocol';
 import {
   AccessControlRegistry__factory as AccessControlRegistryFactory,
-  AirnodeProtocol__factory as AirnodeProtocolFactory,
   Api3ServerV1__factory as Api3ServerV1Factory,
 } from '@api3/airnode-protocol-v1';
-import { buildLocalConfigETH, buildLocalConfigBTC, buildLocalConfigLTC } from '../fixtures/config';
+import '@nomiclabs/hardhat-ethers';
+import { Contract, Wallet } from 'ethers';
+import * as hre from 'hardhat';
 import { SignedData } from '../../src/validation';
+import { buildLocalConfigBTC, buildLocalConfigETH, buildLocalConfigLTC } from '../fixtures/config';
 
 const provider = new hre.ethers.providers.StaticJsonRpcProvider('http://127.0.0.1:8545');
 const localConfigETH = buildLocalConfigETH();
@@ -23,7 +22,7 @@ const roles = {
 };
 
 const updateBeacon = async (
-  dapiServer: Contract,
+  api3ServerV1: Contract,
   airnodeWallet: Wallet,
   airseekerSponsorWallet: Wallet,
   templateId: string,
@@ -36,7 +35,7 @@ const updateBeacon = async (
     apiValue
   );
 
-  await dapiServer
+  await api3ServerV1
     .connect(airseekerSponsorWallet)
     .updateBeaconWithSignedData(
       airnodeWallet.address,
@@ -71,7 +70,7 @@ const signData = async (
 };
 
 export const deployAndUpdate = async () => {
-  const dapiServerAdminRoleDescription = 'DapiServer admin';
+  const api3ServerV1AdminRoleDescription = 'Api3ServerV1 admin';
 
   // Deploy contracts
   const accessControlRegistryFactory = new hre.ethers.ContractFactory(
@@ -81,21 +80,14 @@ export const deployAndUpdate = async () => {
   );
   const accessControlRegistry = await accessControlRegistryFactory.deploy();
 
-  const airnodeProtocolFactory = new hre.ethers.ContractFactory(
-    AirnodeProtocolFactory.abi,
-    AirnodeProtocolFactory.bytecode,
-    roles.deployer
-  );
-  const airnodeProtocol = await airnodeProtocolFactory.deploy();
-
   const api3ServerV1Factory = new hre.ethers.ContractFactory(
     Api3ServerV1Factory.abi,
     Api3ServerV1Factory.bytecode,
     roles.deployer
   );
-  const dapiServer = await api3ServerV1Factory.deploy(
+  const api3ServerV1 = await api3ServerV1Factory.deploy(
     accessControlRegistry.address,
-    dapiServerAdminRoleDescription,
+    api3ServerV1AdminRoleDescription,
     roles.manager.address
   );
 
@@ -103,7 +95,7 @@ export const deployAndUpdate = async () => {
   const managerRootRole = hre.ethers.utils.solidityKeccak256(['address'], [roles.manager.address]);
   await accessControlRegistry
     .connect(roles.manager)
-    .initializeRoleAndGrantToSender(managerRootRole, dapiServerAdminRoleDescription);
+    .initializeRoleAndGrantToSender(managerRootRole, api3ServerV1AdminRoleDescription);
 
   // Wallets
   const airnodeWallet = hre.ethers.Wallet.fromMnemonic(localConfigETH.airnodeMnemonic);
@@ -159,8 +151,8 @@ export const deployAndUpdate = async () => {
   const apiValueBTC = Math.floor(41_091.12345 * 1_000_000);
   const apiValueLTC = Math.floor(51.42 * 1_000_000);
 
-  await updateBeacon(dapiServer, airnodeWallet, airseekerSponsorWallet, templateIdETH, apiValueETHInitial);
-  await updateBeacon(dapiServer, airnodeWallet, airseekerSponsorWallet, templateIdBTC, apiValueBTC);
+  await updateBeacon(api3ServerV1, airnodeWallet, airseekerSponsorWallet, templateIdETH, apiValueETHInitial);
+  await updateBeacon(api3ServerV1, airnodeWallet, airseekerSponsorWallet, templateIdBTC, apiValueBTC);
 
   const signedDataETH = await signData(
     airnodeWallet,
@@ -194,7 +186,7 @@ export const deployAndUpdate = async () => {
   );
 
   // BeaconSet update
-  const tx = await dapiServer
+  const tx = await api3ServerV1
     .connect(airseekerSponsorWallet)
     .updateBeaconSetWithBeacons([beaconIdETH, beaconIdBTC], { gasLimit: 500_000 });
   await tx.wait();
@@ -206,10 +198,8 @@ export const deployAndUpdate = async () => {
   return {
     accessControlRegistryFactory,
     accessControlRegistry,
-    airnodeProtocolFactory,
-    airnodeProtocol,
     api3ServerV1Factory,
-    dapiServer,
+    api3ServerV1,
     templateIdETH,
     templateIdBTC,
     templateIdLTC,

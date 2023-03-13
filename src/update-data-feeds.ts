@@ -121,7 +121,7 @@ export const initializeUpdateCycle = (
   const totalTimeout = updateInterval * 1_000;
 
   // Prepare contract for beacon updates
-  const contractAddress = config.chains[chainId].contracts['DapiServer'];
+  const contractAddress = config.chains[chainId].contracts['Api3ServerV1'];
   const contract = Api3ServerV1Factory.connect(contractAddress, rpcProvider);
 
   const sponsorWallet = new ethers.Wallet(sponsorWalletsPrivateKey[sponsorAddress]).connect(rpcProvider);

@@ -17,7 +17,7 @@ jest.setTimeout(60_000);
 const providerUrl = 'http://127.0.0.1:8545/';
 const provider = new ethers.providers.StaticJsonRpcProvider(providerUrl);
 const voidSigner = new ethers.VoidSigner(ethers.constants.AddressZero, provider);
-const dapiServer = Api3ServerV1Factory.connect('0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0', provider);
+const api3ServerV1 = Api3ServerV1Factory.connect('0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0', provider);
 
 describe('updateDataFeeds', () => {
   beforeEach(async () => {
@@ -52,19 +52,19 @@ describe('updateDataFeeds', () => {
     state.updateState((oldState) => ({ ...oldState, stopSignalReceived: true }));
     await utils.sleep(8_000);
 
-    const beaconDataETH = await dapiServer
+    const beaconDataETH = await api3ServerV1
       .connect(voidSigner)
       .dataFeeds('0x924b5d4cb3ec6366ae4302a1ca6aec035594ea3ea48a102d160b50b0c43ebfb5');
     expect(beaconDataETH.value.toString()).toEqual('738149047');
-    const beaconDataBTC = await dapiServer
+    const beaconDataBTC = await api3ServerV1
       .connect(voidSigner)
       .dataFeeds('0xbf7ce55d109fd196de2a8bf1515d166c56c9decbe9cb473656bbca30d5743990');
     expect(beaconDataBTC.value.toString()).toEqual('41091123450');
-    const beaconDataLTC = await dapiServer
+    const beaconDataLTC = await api3ServerV1
       .connect(voidSigner)
       .dataFeeds('0x9b5825decf1232f79d3408fb6f7eeb7050fd88037f6517a94914e7d01ccd0cef');
     expect(beaconDataLTC.value.toString()).toEqual('51420000');
-    const beaconSetData = await dapiServer
+    const beaconSetData = await api3ServerV1
       .connect(voidSigner)
       .dataFeeds('0xf7f1620b7f422eb9a69c8e21b317ba1555d3d87e1d804f0b024f03b107e411e8');
     expect(beaconSetData.value.toString()).toEqual('20914636248');

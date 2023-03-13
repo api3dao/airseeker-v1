@@ -1,7 +1,5 @@
 import { writeFileSync } from 'fs';
-import * as protocol from '@api3/airnode-protocol-v1';
 import { format } from 'prettier';
-import { ethers } from 'ethers';
 
 const PRETTIER_CONFIG = {
   bracketSpacing: true,
@@ -61,16 +59,4 @@ export const sanitiseFilename = (filename: string) => {
     .replace(reservedRe, '_')
     .replace(windowsReservedRe, '_')
     .toLowerCase();
-};
-
-export const getDapiServerInterface = () => {
-  return new ethers.utils.Interface(protocol.Api3ServerV1__factory.abi);
-};
-
-export const getDapiServerContract = (dapiServerAddress: string, provider: ethers.providers.JsonRpcProvider) => {
-  return new ethers.Contract(dapiServerAddress, protocol.Api3ServerV1__factory.abi, provider);
-};
-
-export const getDapiNameHash = (dapiName: any) => {
-  return ethers.utils.solidityKeccak256(['bytes32'], [ethers.utils.formatBytes32String(dapiName)]);
 };
