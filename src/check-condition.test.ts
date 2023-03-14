@@ -1,10 +1,5 @@
 import { ethers } from 'ethers';
-import {
-  checkFulfillmentDataTimestamp,
-  checkFulfillmentDataValue,
-  checkOnchainDataFreshness,
-  checkUpdateCondition,
-} from './check-condition';
+import { checkFulfillmentDataTimestamp, checkOnchainDataFreshness, checkUpdateCondition } from './check-condition';
 import { getUnixTimestamp } from '../test/fixtures';
 
 describe('checkUpdateCondition', () => {
@@ -51,37 +46,6 @@ describe('checkFulfillmentDataTimestamp', () => {
 
   it('returns false if fulfillment data has same timestamp with on-chain record', () => {
     const isFresh = checkFulfillmentDataTimestamp(onChainData.timestamp, onChainData.timestamp);
-    expect(isFresh).toBe(false);
-  });
-});
-
-describe('checkFulfillmentDataValue', () => {
-  const onChainData = {
-    value: ethers.BigNumber.from(10),
-    timestamp: getUnixTimestamp('2019-4-28'),
-  };
-  const fulfillmentDataValue = ethers.BigNumber.from(20);
-
-  // this is not a possible case however better to check
-  it("returns true if on chain record hasn't been initialized while both values are same", () => {
-    const uninitializedOnChainData = { ...onChainData, timestamp: 0 };
-    const isFresh = checkFulfillmentDataValue(uninitializedOnChainData, uninitializedOnChainData.value);
-    expect(isFresh).toBe(true);
-  });
-
-  it("returns true if on chain record hasn't been initialized while both values are different", () => {
-    const uninitializedOnChainData = { ...onChainData, timestamp: 0 };
-    const isFresh = checkFulfillmentDataValue(uninitializedOnChainData, fulfillmentDataValue);
-    expect(isFresh).toBe(true);
-  });
-
-  it('returns true if fulfillment data is different than on chain record', () => {
-    const isFresh = checkFulfillmentDataValue(onChainData, fulfillmentDataValue);
-    expect(isFresh).toBe(true);
-  });
-
-  it('returns false if fulfillment data is same with on chain record', () => {
-    const isFresh = checkFulfillmentDataValue(onChainData, onChainData.value);
     expect(isFresh).toBe(false);
   });
 });

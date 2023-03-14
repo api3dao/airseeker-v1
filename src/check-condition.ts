@@ -2,11 +2,6 @@ import { ethers } from 'ethers';
 import { calculateUpdateInPercentage } from './calculations';
 import { HUNDRED_PERCENT } from './constants';
 
-type OnChainData = {
-  value: ethers.BigNumber;
-  timestamp: number;
-};
-
 export const checkUpdateCondition = (
   onChainValue: ethers.BigNumber,
   deviationThreshold: number,
@@ -29,21 +24,6 @@ export const checkUpdateCondition = (
  */
 export const checkFulfillmentDataTimestamp = (onChainDataTimestamp: number, fulfillmentDataTimestamp: number) => {
   return onChainDataTimestamp < fulfillmentDataTimestamp;
-};
-
-/**
- * Returns true when the on chain data isn't initialized or the fulfillment data value is different than
- * on chain data value.
- *
- * Update transaction with stale data would revert on chain, draining the sponsor wallet. See:
- * https://github.com/api3dao/airnode-protocol-v1/blob/dev/contracts/dapis/DataFeedServer.sol#L122
- * This can happen if the gateway or Airseeker is down and Airkeeper does the updates instead.
- */
-export const checkFulfillmentDataValue = (onChainData: OnChainData, fulfillmentDataValue: ethers.BigNumber) => {
-  if (onChainData.timestamp !== 0) {
-    return onChainData.value !== fulfillmentDataValue;
-  }
-  return true;
 };
 
 /**

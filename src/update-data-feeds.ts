@@ -4,12 +4,7 @@ import { getGasPrice } from '@api3/airnode-utilities';
 import { ethers } from 'ethers';
 import { isEmpty, isNil } from 'lodash';
 import { calculateBeaconSetTimestamp, calculateMedian } from './calculations';
-import {
-  checkFulfillmentDataTimestamp,
-  checkFulfillmentDataValue,
-  checkOnchainDataFreshness,
-  checkUpdateCondition,
-} from './check-condition';
+import { checkFulfillmentDataTimestamp, checkOnchainDataFreshness, checkUpdateCondition } from './check-condition';
 import { INT224_MAX, INT224_MIN, NO_DATA_FEEDS_EXIT_CODE } from './constants';
 import { logger } from './logging';
 import { getState, Provider } from './state';
@@ -206,13 +201,6 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
       continue;
     }
 
-    // Check that fulfillment data value updates the on chain data value
-    const isValueChanged = checkFulfillmentDataValue(onChainData, newBeaconValue);
-    if (!isValueChanged) {
-      logger.warn(`Fulfillment data value is same with the on-chain data value. Skipping.`, logOptionsBeaconId);
-      continue;
-    }
-
     // Check that on chain data is newer than heartbeat interval
     const isOnchainDataFresh = checkOnchainDataFreshness(onChainData.timestamp, beaconUpdateData.heartbeatInterval);
     if (!isOnchainDataFresh) {
@@ -405,16 +393,6 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
     const isFulfillmentDataFresh = checkFulfillmentDataTimestamp(beaconSetOnChainData.timestamp, newBeaconSetTimestamp);
     if (!isFulfillmentDataFresh) {
       logger.warn(`Fulfillment data older than on-chain beacon set data. Skipping.`, logOptionsBeaconSetId);
-      continue;
-    }
-
-    // Check that fulfillment data value updates the on chain data value
-    const isValueChanged = checkFulfillmentDataValue(beaconSetOnChainData, newBeaconSetValue);
-    if (!isValueChanged) {
-      logger.warn(
-        `Fulfillment data value is same with the on-chain beacon set data value. Skipping.`,
-        logOptionsBeaconSetId
-      );
       continue;
     }
 
