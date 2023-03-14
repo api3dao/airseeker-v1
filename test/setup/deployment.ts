@@ -1,3 +1,5 @@
+import * as hre from 'hardhat';
+import '@nomiclabs/hardhat-ethers';
 import * as abi from '@api3/airnode-abi';
 import * as node from '@api3/airnode-node';
 import * as protocol from '@api3/airnode-protocol';
@@ -5,9 +7,7 @@ import {
   AccessControlRegistry__factory as AccessControlRegistryFactory,
   Api3ServerV1__factory as Api3ServerV1Factory,
 } from '@api3/airnode-protocol-v1';
-import '@nomiclabs/hardhat-ethers';
 import { Contract, Wallet } from 'ethers';
-import * as hre from 'hardhat';
 import { SignedData } from '../../src/validation';
 import { buildLocalConfigBTC, buildLocalConfigETH, buildLocalConfigLTC } from '../fixtures/config';
 

@@ -58,7 +58,7 @@ const config: Config = {
   chains: {
     '1': {
       contracts: {
-        Api3ServerV1: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
+        Api3ServerV1: '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
       },
       providers: {
         selfHostedMainnet: {
@@ -94,7 +94,7 @@ const config: Config = {
     },
     '3': {
       contracts: {
-        Api3ServerV1: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
+        Api3ServerV1: '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
       },
       providers: {
         infuraRopsten: {
@@ -437,7 +437,7 @@ describe('initializeUpdateCycle', () => {
       provider,
     } = initialUpdateData!;
 
-    expect(contract.address).toEqual('0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0');
+    expect(contract.address).toEqual('0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512');
     expect(sponsorWallet.address).toEqual('0x1129eEDf4996cF133e0e9555d4c9d305c9918EC5');
     expect(voidSigner.address).toEqual(ethers.constants.AddressZero);
     expect(totalTimeout).toEqual(1_000);

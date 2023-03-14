@@ -17,7 +17,7 @@ jest.setTimeout(60_000);
 const providerUrl = 'http://127.0.0.1:8545/';
 const provider = new ethers.providers.StaticJsonRpcProvider(providerUrl);
 const voidSigner = new ethers.VoidSigner(ethers.constants.AddressZero, provider);
-const api3ServerV1 = Api3ServerV1Factory.connect('0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0', provider);
+const api3ServerV1 = Api3ServerV1Factory.connect('0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512', provider);
 
 describe('updateDataFeeds', () => {
   beforeEach(async () => {
