@@ -98,7 +98,7 @@ re-remove the CloudFormation stack.
    yarn run dev:setup-local-node
    ```
 
-   This will deploy the DapiServer contract to the local ethereum node and also send funds to a test Airseeker sponsor
+   This will deploy the Api3ServerV1 contract to the local ethereum node and also send funds to a test Airseeker sponsor
    wallet (used to submit data feed update transactions).
 
 3. Then you might also want to run the following script to create the required testing config files:
@@ -107,7 +107,7 @@ re-remove the CloudFormation stack.
    yarn run dev:create-local-config
    ```
 
-   You should verify that the DapiServer contract address in the `config/airseeker.json` file matches the address
+   You should verify that the Api3ServerV1 contract address in the `config/airseeker.json` file matches the address
    displayed when running the script from the previous step. Secrets are automatically loaded from `config/secrets.env`
    file when Airseeker is invoked locally.
 

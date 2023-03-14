@@ -61,8 +61,8 @@ export const providerSchema = z
 export const chainSchema = z
   .object({
     contracts: z.record(config.evmAddressSchema).refine((contracts) => {
-      return !isNil(contracts['DapiServer']);
-    }, 'DapiServer contract address is missing'),
+      return !isNil(contracts['Api3ServerV1']);
+    }, 'Api3ServerV1 contract address is missing'),
     providers: z.record(providerSchema),
     options: config.chainOptionsSchema,
   })

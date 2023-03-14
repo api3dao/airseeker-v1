@@ -1,15 +1,10 @@
-import { DapiServer__factory as DapiServerFactory } from '@api3/airnode-protocol-v1';
+import { Api3ServerV1__factory as Api3ServerV1Factory } from '@api3/airnode-protocol-v1';
 import { go } from '@api3/promise-utils';
 import { getGasPrice } from '@api3/airnode-utilities';
 import { ethers } from 'ethers';
 import { isEmpty, isNil } from 'lodash';
-import { calculateMedian } from './calculations';
-import {
-  checkBeaconSetSignedDataFreshness,
-  checkOnchainDataFreshness,
-  checkBeaconSignedDataFreshness,
-  checkUpdateCondition,
-} from './check-condition';
+import { calculateBeaconSetTimestamp, calculateMedian } from './calculations';
+import { checkFulfillmentDataTimestamp, checkOnchainDataFreshness, checkUpdateCondition } from './check-condition';
 import { INT224_MAX, INT224_MIN, NO_DATA_FEEDS_EXIT_CODE } from './constants';
 import { logger } from './logging';
 import { getState, Provider } from './state';
@@ -121,8 +116,8 @@ export const initializeUpdateCycle = (
   const totalTimeout = updateInterval * 1_000;
 
   // Prepare contract for beacon updates
-  const contractAddress = config.chains[chainId].contracts['DapiServer'];
-  const contract = DapiServerFactory.connect(contractAddress, rpcProvider);
+  const contractAddress = config.chains[chainId].contracts['Api3ServerV1'];
+  const contract = Api3ServerV1Factory.connect(contractAddress, rpcProvider);
 
   const sponsorWallet = new ethers.Wallet(sponsorWalletsPrivateKey[sponsorAddress]).connect(rpcProvider);
 
@@ -196,10 +191,13 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
       continue;
     }
 
-    // Check that signed data is newer than on chain value
-    const isSignedDataFresh = checkBeaconSignedDataFreshness(onChainData.timestamp, newBeaconResponse.timestamp);
-    if (!isSignedDataFresh) {
-      logger.warn(`Signed data older than on chain record. Skipping.`, logOptionsBeaconId);
+    // Check that fulfillment data is newer than on chain data
+    const isFulfillmentDataFresh = checkFulfillmentDataTimestamp(
+      onChainData.timestamp,
+      parseInt(newBeaconResponse.timestamp, 10)
+    );
+    if (!isFulfillmentDataFresh) {
+      logger.warn(`Fulfillment data older than on-chain data. Skipping.`, logOptionsBeaconId);
       continue;
     }
 
@@ -253,19 +251,12 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
       () =>
         contract
           .connect(sponsorWallet)
-          .updateDataFeedWithSignedData(
-            [
-              ethers.utils.defaultAbiCoder.encode(
-                ['address', 'bytes32', 'uint256', 'bytes', 'bytes'],
-                [
-                  beaconUpdateData.airnode,
-                  beaconUpdateData.templateId,
-                  newBeaconResponse.timestamp,
-                  newBeaconResponse.encodedValue,
-                  newBeaconResponse.signature,
-                ]
-              ),
-            ],
+          .updateBeaconWithSignedData(
+            beaconUpdateData.airnode,
+            beaconUpdateData.templateId,
+            newBeaconResponse.timestamp,
+            newBeaconResponse.encodedValue,
+            newBeaconResponse.signature,
             {
               nonce,
               ...gasTarget,
@@ -324,8 +315,8 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
       logger.warn(`Unable to read data feed. Error: ${goDataFeed.error}`, logOptionsBeaconSetId);
       continue;
     }
-    const beaconSetValueOnChain = goDataFeed.data;
-    if (!beaconSetValueOnChain) {
+    const beaconSetOnChainData = goDataFeed.data;
+    if (!beaconSetOnChainData) {
       const message = `Missing on chain data for beaconSet. Skipping.`;
       logger.warn(message, logOptionsBeaconSetId);
       continue;
@@ -395,17 +386,18 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
       (result) => (result as PromiseFulfilledResult<BeaconSetBeaconValue>).value
     );
 
-    const isSignedDataFresh = checkBeaconSetSignedDataFreshness(
-      beaconSetValueOnChain.timestamp,
-      beaconSetBeaconValues.map((value) => value.timestamp)
-    );
-    if (!isSignedDataFresh) {
-      logger.info('On chain beacon set value is more up-to-date. Skipping.');
+    const newBeaconSetValue = calculateMedian(beaconSetBeaconValues.map((value) => value.value));
+    const newBeaconSetTimestamp = calculateBeaconSetTimestamp(beaconSetBeaconValues.map((value) => value.timestamp));
+
+    // Check that fulfillment data is newer than on chain data
+    const isFulfillmentDataFresh = checkFulfillmentDataTimestamp(beaconSetOnChainData.timestamp, newBeaconSetTimestamp);
+    if (!isFulfillmentDataFresh) {
+      logger.warn(`Fulfillment data older than on-chain beacon set data. Skipping.`, logOptionsBeaconSetId);
       continue;
     }
 
     // Check that on chain data is newer than heartbeat interval
-    const isOnchainDataFresh = checkOnchainDataFreshness(beaconSetValueOnChain.timestamp, beaconSet.heartbeatInterval);
+    const isOnchainDataFresh = checkOnchainDataFreshness(beaconSetOnChainData.timestamp, beaconSet.heartbeatInterval);
     if (!isOnchainDataFresh) {
       logger.info(
         `On chain data timestamp older than heartbeat. Updating without condition check.`,
@@ -414,11 +406,10 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
     } else {
       // Check beacon set condition
       // If the deviation threshold is reached do the update, skip otherwise
-      const updatedValue = calculateMedian(beaconSetBeaconValues.map((value) => value.value));
       const shouldUpdate = checkUpdateCondition(
-        beaconSetValueOnChain.value,
+        beaconSetOnChainData.value,
         beaconSet.deviationThreshold,
-        updatedValue
+        newBeaconSetValue
       );
       if (shouldUpdate === null) {
         logger.warn(`Unable to fetch current beacon set value`, logOptionsBeaconSetId);
@@ -454,13 +445,8 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
     // Update beacon set
     const tx = await go(
       () =>
-        contract.connect(sponsorWallet).updateDataFeedWithSignedData(
-          beaconSetBeaconValues.map(({ airnode, templateId, timestamp, encodedValue, signature }) =>
-            ethers.utils.defaultAbiCoder.encode(
-              ['address', 'bytes32', 'uint256', 'bytes', 'bytes'],
-              [airnode, templateId, timestamp, encodedValue, signature]
-            )
-          ),
+        contract.connect(sponsorWallet).updateBeaconSetWithBeacons(
+          beaconSetBeaconValues.map(({ beaconId }) => beaconId),
           {
             nonce,
             ...gasTarget,

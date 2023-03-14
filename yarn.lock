@@ -74,12 +74,12 @@
     yargs "^17.5.1"
     zod "^3.17.3"
 
-"@api3/airnode-protocol-v1@^1.0.0-alpha.0":
-  version "1.0.0-alpha.0"
-  resolved "https://registry.yarnpkg.com/@api3/airnode-protocol-v1/-/airnode-protocol-v1-1.0.0-alpha.0.tgz#aede09391cecc592effe9ca9ba6e88e76698f0d1"
-  integrity sha512-tTfMEwxgzf+mH7CcdYIDlpJzl+yApzI5W1Qe7NE2gqMJqGTkSpQUAtcW01uNFwR5UihkAsPI3fCAJWm4Vu7fpw==
+"@api3/airnode-protocol-v1@1.2.4":
+  version "1.2.4"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-protocol-v1/-/airnode-protocol-v1-1.2.4.tgz#c799ab5b0398f94b85334f0ecd98dc7940c03b5a"
+  integrity sha512-5QB+e/4CNmtkVAZERaEXkUttbjCUMOwqpaYUZdtuzbEXXoXQ2hWo+bTJNZ5bYhpphlLQULLbqje6s5oN1CTUuw==
   dependencies:
-    "@openzeppelin/contracts" "4.8.0"
+    "@openzeppelin/contracts" "4.8.2"
 
 "@api3/airnode-protocol@^0.8.0":
   version "0.8.0"
@@ -1578,10 +1578,10 @@
   resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.4.2.tgz#4e889c9c66e736f7de189a53f8ba5b8d789425c2"
   integrity sha512-NyJV7sJgoGYqbtNUWgzzOGW4T6rR19FmX1IJgXGdapGPWsuMelGJn9h03nos0iqfforCbCB0iYIR0MtIuIFLLw==
 
-"@openzeppelin/contracts@4.8.0":
-  version "4.8.0"
-  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.8.0.tgz#6854c37df205dd2c056bdfa1b853f5d732109109"
-  integrity sha512-AGuwhRRL+NaKx73WKRNzeCxOCOCxpaqF+kp8TJ89QzAipSwZy/NoflkWaL9bywXFRhIzXt8j38sfF7KBKCPWLw==
+"@openzeppelin/contracts@4.8.2":
+  version "4.8.2"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.8.2.tgz#d815ade0027b50beb9bcca67143c6bcc3e3923d6"
+  integrity sha512-kEUOgPQszC0fSYWpbh2kT94ltOJwj1qfT2DWo+zVttmGmf97JZ99LspePNaeeaLhCImaHVeBbjaQFZQn7+Zc5g==
 
 "@pm2/agent@~2.0.0":
   version "2.0.1"

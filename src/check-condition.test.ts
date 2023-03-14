@@ -1,28 +1,23 @@
 import { ethers } from 'ethers';
-import {
-  checkBeaconSetSignedDataFreshness,
-  checkBeaconSignedDataFreshness,
-  checkOnchainDataFreshness,
-  checkUpdateCondition,
-} from './check-condition';
-import { getUnixTimestamp, validSignedData } from '../test/fixtures';
+import { checkFulfillmentDataTimestamp, checkOnchainDataFreshness, checkUpdateCondition } from './check-condition';
+import { getUnixTimestamp } from '../test/fixtures';
 
 describe('checkUpdateCondition', () => {
   const onChainValue = ethers.BigNumber.from(500);
 
-  it('reads dapiserver value and checks the threshold condition to be true for increase', () => {
+  it('returns true when api value is higher and deviation threshold is reached', () => {
     const shouldUpdate = checkUpdateCondition(onChainValue, 10, ethers.BigNumber.from(560));
 
     expect(shouldUpdate).toEqual(true);
   });
 
-  it('reads dapiserver value and checks the threshold condition to be true for decrease', () => {
+  it('returns true when api value is lower and deviation threshold is reached', () => {
     const shouldUpdate = checkUpdateCondition(onChainValue, 10, ethers.BigNumber.from(440));
 
     expect(shouldUpdate).toEqual(true);
   });
 
-  it('reads dapiserver value and checks the threshold condition to be false', () => {
+  it('returns false when deviation threshold is not reached', () => {
     const shouldUpdate = checkUpdateCondition(onChainValue, 10, ethers.BigNumber.from(480));
 
     expect(shouldUpdate).toEqual(false);
@@ -33,32 +28,24 @@ describe('checkUpdateCondition', () => {
   });
 });
 
-describe('checkBeaconSignedDataFreshness', () => {
-  it('returns true if signed data is newer than on chain record', () => {
-    const isFresh = checkBeaconSignedDataFreshness(getUnixTimestamp('2019-4-28'), validSignedData.timestamp);
+describe('checkFulfillmentDataTimestamp', () => {
+  const onChainData = {
+    value: ethers.BigNumber.from(10),
+    timestamp: getUnixTimestamp('2019-4-28'),
+  };
 
+  it('returns true if fulfillment data is newer than on-chain record', () => {
+    const isFresh = checkFulfillmentDataTimestamp(onChainData.timestamp, getUnixTimestamp('2019-4-29'));
     expect(isFresh).toBe(true);
   });
 
-  it('returns false if signed data is older than on chain record', () => {
-    const isFresh = checkBeaconSignedDataFreshness(getUnixTimestamp('2022-4-28'), validSignedData.timestamp);
-
+  it('returns false if fulfillment data is older than on-chain record', () => {
+    const isFresh = checkFulfillmentDataTimestamp(onChainData.timestamp, getUnixTimestamp('2019-4-27'));
     expect(isFresh).toBe(false);
   });
-});
 
-describe('checkBeaconSetSignedDataFreshness', () => {
-  it('returns true if signed data is newer than on chain record', () => {
-    const beaconSetBeaconTimestamps = ['1555711223', '1556229645', '1555020018', '1556402497'];
-    const isFresh = checkBeaconSetSignedDataFreshness(getUnixTimestamp('2019-4-20'), beaconSetBeaconTimestamps);
-
-    expect(isFresh).toBe(true);
-  });
-
-  it('returns false if signed data is older than on chain record', () => {
-    const beaconSetBeaconTimestamps = ['1555711223', '1556229645', '1555020018', '1556402497'];
-    const isFresh = checkBeaconSetSignedDataFreshness(getUnixTimestamp('2019-4-28'), beaconSetBeaconTimestamps);
-
+  it('returns false if fulfillment data has same timestamp with on-chain record', () => {
+    const isFresh = checkFulfillmentDataTimestamp(onChainData.timestamp, onChainData.timestamp);
     expect(isFresh).toBe(false);
   });
 });
