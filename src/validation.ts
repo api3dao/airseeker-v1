@@ -322,6 +322,14 @@ export const configSchema = z
     ois: z.array(oisSchema),
     apiCredentials: z.array(config.apiCredentialsSchema),
     endpoints: endpointsSchema,
+    rateLimiting: z
+      .object({
+        maxGatewayConcurrency: z.number().optional(),
+        minGatewayTime: z.number().optional(),
+        maxProviderConcurrency: z.number().optional(),
+        minProviderTime: z.number().optional(),
+      })
+      .optional(),
   })
   .strict()
   .superRefine(validateBeaconsReferences)
