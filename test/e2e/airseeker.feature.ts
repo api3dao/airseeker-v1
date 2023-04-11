@@ -139,7 +139,7 @@ describe('Airseeker', () => {
       // Wait for Airseeker cycles to finish
       await sleep(20_000);
       // Stop Airseeker
-      softHandleStopSignal('stop');
+      softHandleStopSignal();
       // Wait for last cycle to finish
       await sleep(20_000);
     });
@@ -201,7 +201,7 @@ describe('Airseeker', () => {
       // Wait for Airseeker cycles to finish
       await sleep(20_000);
       // Stop Airseeker
-      softHandleStopSignal('stop');
+      softHandleStopSignal();
       // Wait for last cycle to finish
       await sleep(20_000);
     });
@@ -233,7 +233,7 @@ describe('Airseeker', () => {
       // Wait for Airseeker cycles to finish
       await sleep(40_000);
       // Stop Airseeker
-      softHandleStopSignal('stop');
+      softHandleStopSignal();
       // Wait for last cycle to finish
       await sleep(20_000);
     });
@@ -302,7 +302,7 @@ describe('Airseeker', () => {
       // Wait for Airseeker cycles to finish
       await sleep(20_000);
       // Stop Airseeker
-      softHandleStopSignal('stop');
+      softHandleStopSignal();
       // Wait for last cycle to finish
       await sleep(20_000);
     });
