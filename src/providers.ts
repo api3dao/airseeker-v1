@@ -55,7 +55,7 @@ export const getNetwork = (chainId: string): Network | undefined => {
 export const initializeProvider = (
   chainId: string,
   providerUrl: string,
-  config: Config
+  config?: Config
 ): Omit<Provider, 'providerName'> => {
   const rpcProvider = new RateLimitedProvider(
     {
@@ -64,8 +64,8 @@ export const initializeProvider = (
     },
     getNetwork(chainId),
     new Bottleneck({
-      minTime: config.rateLimiting?.minProviderTime ?? PROVIDER_MIN_TIME_DEFAULT,
-      maxConcurrent: config.rateLimiting?.maxProviderConcurrency ?? PROVIDER_MAX_CONCURRENCY_DEFAULT,
+      minTime: config?.rateLimiting?.minProviderTime ?? PROVIDER_MIN_TIME_DEFAULT,
+      maxConcurrent: config?.rateLimiting?.maxProviderConcurrency ?? PROVIDER_MAX_CONCURRENCY_DEFAULT,
     })
   );
 
