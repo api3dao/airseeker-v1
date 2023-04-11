@@ -7,6 +7,12 @@ import { initializeProviders } from './providers';
 import { initializeWallets } from './wallets';
 import { initializeState, updateState } from './state';
 
+export const softHandleStopSignal = (signal: string) => {
+  stopSignalReceived = true;
+  // Let the process wait for the last cycles instead of killing it immediately
+  updateState((state) => ({ ...state, stopSignalReceived: true }));
+};
+
 let stopSignalReceived = false;
 
 export const handleStopSignal = (signal: string) => {
@@ -20,9 +26,7 @@ export const handleStopSignal = (signal: string) => {
   logger.info('Stopping Airseeker gracefully...');
   logger.info('Hit CTRL+C again to force terminate.');
 
-  stopSignalReceived = true;
-  // Let the process wait for the last cycles instead of killing it immediately
-  updateState((state) => ({ ...state, stopSignalReceived: true }));
+  softHandleStopSignal(signal);
 };
 
 export async function main() {

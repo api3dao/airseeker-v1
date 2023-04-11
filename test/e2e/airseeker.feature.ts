@@ -4,7 +4,7 @@ import * as hre from 'hardhat';
 import '@nomiclabs/hardhat-ethers';
 import { buildAirseekerConfig, buildLocalSecrets } from '../fixtures/config';
 import { deployAndUpdate } from '../setup/deployment';
-import { main, handleStopSignal } from '../../src/main';
+import { main, handleStopSignal, softHandleStopSignal } from '../../src/main';
 import { sleep } from '../../src/utils';
 import * as makeRequest from '../../src/make-request';
 
@@ -139,7 +139,7 @@ describe('Airseeker', () => {
       // Wait for Airseeker cycles to finish
       await sleep(20_000);
       // Stop Airseeker
-      handleStopSignal('stop');
+      softHandleStopSignal('stop');
       // Wait for last cycle to finish
       await sleep(20_000);
     });
@@ -201,7 +201,7 @@ describe('Airseeker', () => {
       // Wait for Airseeker cycles to finish
       await sleep(20_000);
       // Stop Airseeker
-      handleStopSignal('stop');
+      softHandleStopSignal('stop');
       // Wait for last cycle to finish
       await sleep(20_000);
     });
@@ -233,7 +233,7 @@ describe('Airseeker', () => {
       // Wait for Airseeker cycles to finish
       await sleep(40_000);
       // Stop Airseeker
-      handleStopSignal('stop');
+      softHandleStopSignal('stop');
       // Wait for last cycle to finish
       await sleep(20_000);
     });
@@ -302,7 +302,7 @@ describe('Airseeker', () => {
       // Wait for Airseeker cycles to finish
       await sleep(20_000);
       // Stop Airseeker
-      handleStopSignal('stop');
+      softHandleStopSignal('stop');
       // Wait for last cycle to finish
       await sleep(20_000);
     });
