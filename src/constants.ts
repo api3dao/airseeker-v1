@@ -26,3 +26,17 @@ export const TOTAL_TIMEOUT_HEADROOM = 500;
 // The difference between the socket timeout (used in ethers) and the go-utils total timeout.
 // This prevents dangling sockets which ultimately cause file descriptor exhaustion.
 export const PROVIDER_TIMEOUT_HEADROOM_MS = 500;
+
+// The maximum number of simultaneously running HTTP requests to ethers Providers
+export const PROVIDER_MAX_CONCURRENCY_DEFAULT = 5;
+
+// The minimum amount of time between HTTP calls to remote gateways per remote gateway.
+// Example: 200 ms means a maximum of 5 requests per second
+export const PROVIDER_MIN_TIME_DEFAULT = 200;
+
+// The maximum number of simultaneously-running HTTP requests per remote gateway.
+export const GATEWAY_MAX_CONCURRENCY_DEFAULT = 5;
+
+// The minimum amount of time between HTTP calls to remote gateways per remote gateway.
+// Example: 200 ms means a maximum of 5 requests per second
+export const GATEWAY_MINIMUM_TIME_DEFAULT = 200;

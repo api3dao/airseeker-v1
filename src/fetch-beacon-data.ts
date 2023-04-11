@@ -64,7 +64,7 @@ export const fetchBeaconDataInLoop = async (beaconId: string) => {
 export const fetchBeaconData = async (beaconId: string) => {
   const logOptionsBeaconId = { meta: { 'Beacon-ID': beaconId } };
   logger.debug('Fetching beacon data', logOptionsBeaconId);
-  const { config } = getState();
+  const { config, gatewaysWithLimiters } = getState();
 
   const { fetchInterval, airnode, templateId, fetchMethod } = config.beacons[beaconId];
   const template = config.templates[templateId];
@@ -79,8 +79,8 @@ export const fetchBeaconData = async (beaconId: string) => {
       break;
     }
     case 'gateway': {
-      const gateway = config.gateways[airnode];
-      fetchFn = () => makeSignedDataGatewayRequests(gateway, { ...template, id: templateId });
+      const gateways = gatewaysWithLimiters[airnode];
+      fetchFn = () => makeSignedDataGatewayRequests(gateways, { ...template, id: templateId });
       onAttemptError = (goError: GoResultError<Error>) =>
         logger.warn(`Failed attempt to call signed data gateway. Error: ${goError.error}`, logOptionsBeaconId);
       break;

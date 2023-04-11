@@ -4,6 +4,7 @@ import { Config } from './validation';
 import * as makeRequestApi from './make-request';
 import * as state from './state';
 import { validSignedData } from '../test/fixtures';
+import { addLimitersToGateways } from './state';
 
 const config: Config = {
   airseekerWalletMnemonic: 'achieve climb couple wait accident symbol spy blouse reduce foil echo label',
@@ -306,6 +307,7 @@ describe('fetchBeaconDataInLoop', () => {
       if (requestCount === 2) {
         return {
           config,
+          gatewaysWithLimiters: addLimitersToGateways(config.gateways),
           stopSignalReceived: true,
           beaconValues: {},
           providers: {},
@@ -316,6 +318,7 @@ describe('fetchBeaconDataInLoop', () => {
       } else {
         return {
           config,
+          gatewaysWithLimiters: addLimitersToGateways(config.gateways),
           stopSignalReceived: false,
           beaconValues: {},
           providers: {},

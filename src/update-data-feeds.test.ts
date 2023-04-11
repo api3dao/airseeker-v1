@@ -5,6 +5,7 @@ import * as api from './update-data-feeds';
 import { initializeProviders } from './providers';
 import { BeaconSetUpdate, BeaconUpdate, Config } from './validation';
 import { initializeWallets } from './wallets';
+import { addLimitersToGateways } from './state';
 import { validSignedData } from '../test/fixtures';
 
 // Jest version 27 has a bug where jest.setTimeout does not work correctly inside describe or test blocks
@@ -268,6 +269,7 @@ describe('updateDataFeedsInLoop', () => {
       if (requestCount === 2) {
         return {
           config,
+          gatewaysWithLimiters: addLimitersToGateways(config.gateways),
           stopSignalReceived: true,
           beaconValues: {},
           providers: {},
@@ -278,6 +280,7 @@ describe('updateDataFeedsInLoop', () => {
       } else {
         return {
           config,
+          gatewaysWithLimiters: addLimitersToGateways(config.gateways),
           stopSignalReceived: false,
           beaconValues: {},
           providers: {},

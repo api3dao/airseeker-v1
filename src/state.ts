@@ -1,7 +1,9 @@
 import { setLogOptions, randomHexString } from '@api3/airnode-utilities';
 import { ethers } from 'ethers';
 import Bottleneck from 'bottleneck';
-import { BeaconId, Config, SignedData } from './validation';
+import { BeaconId, Config, Gateway, SignedData } from './validation';
+import { GatewayWithLimiter } from './make-request';
+import { GATEWAY_MAX_CONCURRENCY_DEFAULT, GATEWAY_MINIMUM_TIME_DEFAULT } from './constants';
 
 export type Id<T> = T & {
   id: string;
@@ -25,6 +27,7 @@ export interface State {
   providers: Providers;
   airseekerWalletPrivateKey: string;
   sponsorWalletsPrivateKey: SponsorWalletsPrivateKey;
+  gatewaysWithLimiters: Record<string, GatewayWithLimiter[]>;
 }
 
 // TODO: Freeze the state in development mode
@@ -33,6 +36,22 @@ let state: State;
 export const initializeState = (config: Config) => {
   state = getInitialState(config);
 };
+
+export const addLimitersToSingleAirnodeGateways = (gateways: Gateway[], config?: Config) =>
+  gateways.map((gateway) => ({
+    ...(gateway as Gateway),
+    queue: new Bottleneck({
+      maxConcurrent: config?.rateLimiting?.maxGatewayConcurrency ?? GATEWAY_MAX_CONCURRENCY_DEFAULT,
+      minTime: config?.rateLimiting?.minGatewayTime ?? GATEWAY_MINIMUM_TIME_DEFAULT,
+    }),
+  }));
+
+export const addLimitersToGateways = (gateways?: Record<string, Gateway[]>, config?: Config) =>
+  gateways
+    ? Object.fromEntries(
+        Object.entries(gateways).map(([key, gateways]) => [key, addLimitersToSingleAirnodeGateways(gateways, config)])
+      )
+    : {};
 
 export const getInitialState = (config: Config) => {
   // Set initial log options
@@ -45,17 +64,7 @@ export const getInitialState = (config: Config) => {
     stopSignalReceived: false,
     beaconValues: {},
     providers: {},
-    gatewaysWithLimiters: config.gateways
-      ? Object.fromEntries(
-          Object.entries(config.gateways).map(([key, gateway]) => [
-            key,
-            {
-              ...gateway,
-              queue: new Bottleneck(),
-            },
-          ])
-        )
-      : config.gateways,
+    gatewaysWithLimiters: addLimitersToGateways(config.gateways),
     airseekerWalletPrivateKey: '',
     sponsorWalletsPrivateKey: {},
   };

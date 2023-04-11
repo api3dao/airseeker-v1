@@ -4,6 +4,7 @@ import { go } from '@api3/promise-utils';
 import { ethers } from 'ethers';
 import axios from 'axios';
 import anyPromise from 'promise.any';
+import Bottleneck from 'bottleneck';
 import { logger } from './logging';
 import { Gateway, SignedData, signedDataSchema, signedDataSchemaLegacy, Template, Endpoint } from './validation';
 import { GATEWAY_TIMEOUT_MS, TOTAL_TIMEOUT_HEADROOM } from './constants';
@@ -29,8 +30,10 @@ export function signWithTemplateId(templateId: string, timestamp: string, data: 
   );
 }
 
+export type GatewayWithLimiter = Gateway & { queue?: Bottleneck };
+
 export const makeSignedDataGatewayRequests = async (
-  gateways: Gateway[],
+  gateways: GatewayWithLimiter[],
   template: Id<Template>
 ): Promise<SignedData> => {
   const { endpointId, parameters, id: templateId } = template;
@@ -38,28 +41,31 @@ export const makeSignedDataGatewayRequests = async (
 
   // Initiate HTTP request to each of the gateways and resolve with the data (or reject otherwise)
   const requests = gateways.map(async (gateway) => {
-    const { apiKey, url } = gateway;
+    const { apiKey, url, queue } = gateway;
 
     const fullUrl = urlJoin(url, endpointId);
 
-    const goRes = await go(
-      async () => {
-        const { data } = await axios({
-          url: fullUrl,
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-            'x-api-key': apiKey,
-          },
-          data: { encodedParameters: parameters },
-          timeout: GATEWAY_TIMEOUT_MS,
-        });
+    const goResFn = () =>
+      go(
+        async () => {
+          const { data } = await axios({
+            url: fullUrl,
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+              'x-api-key': apiKey,
+            },
+            data: { encodedParameters: parameters },
+            timeout: GATEWAY_TIMEOUT_MS,
+          });
 
-        return data;
-      },
-      { totalTimeoutMs: GATEWAY_TIMEOUT_MS - TOTAL_TIMEOUT_HEADROOM }
-    );
+          return data;
+        },
+        { totalTimeoutMs: GATEWAY_TIMEOUT_MS - TOTAL_TIMEOUT_HEADROOM }
+      );
+
+    const goRes = await (queue?.schedule ? queue.schedule(goResFn) : goResFn());
 
     if (!goRes.success) {
       const message = `Failed to make signed data gateway request for gateway: "${fullUrl}". Error: "${goRes.error}"`;
