@@ -1,19 +1,34 @@
-import { uniq } from 'lodash';
+import { chain, uniq } from 'lodash';
 import references from '@api3/airnode-protocol';
 import * as v1 from '@api3/airnode-protocol-v1';
 import { ethers } from 'ethers';
+import { Network } from '@ethersproject/networks';
 import { getState, Provider, Providers, updateState } from './state';
 import { PROVIDER_TIMEOUT_HEADROOM_MS, PROVIDER_TIMEOUT_MS } from './constants';
 
-export const initializeProvider = (chainId: string, providerUrl: string): Omit<Provider, 'providerName'> => {
-  const network = references.networks[chainId] ?? v1.references.chainNames[chainId] ?? null;
+export const getNetwork = (chainId: string): Network | undefined => {
+  if (references?.networks[chainId]) {
+    return references?.networks[chainId];
+  }
 
+  const chainName = v1.references.chainNames[chainId];
+  if (!chainName) {
+    return undefined;
+  }
+
+  return {
+    name: chainName,
+    chainId: parseInt(chainId),
+  };
+};
+
+export const initializeProvider = (chainId: string, providerUrl: string): Omit<Provider, 'providerName'> => {
   const rpcProvider = new ethers.providers.StaticJsonRpcProvider(
     {
       url: providerUrl,
       timeout: PROVIDER_TIMEOUT_MS - PROVIDER_TIMEOUT_HEADROOM_MS,
     },
-    network
+    getNetwork(chainId)
   );
 
   return { rpcProvider, chainId };

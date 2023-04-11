@@ -7,9 +7,20 @@ import { initializeProviders } from './providers';
 import { initializeWallets } from './wallets';
 import { initializeState, updateState } from './state';
 
+let stopSignalReceived = false;
+
 export const handleStopSignal = (signal: string) => {
   logger.info(`Signal ${signal} received`);
-  logger.info('Stopping Airseeker...');
+
+  if (stopSignalReceived) {
+    logger.warn('Second stop signal received, terminating immediately.');
+    process.exit(1);
+  }
+
+  logger.info('Stopping Airseeker gracefully...');
+  logger.info('Hit CTRL+C again to force terminate.');
+
+  stopSignalReceived = true;
   // Let the process wait for the last cycles instead of killing it immediately
   updateState((state) => ({ ...state, stopSignalReceived: true }));
 };
