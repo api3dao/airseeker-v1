@@ -1,4 +1,4 @@
-import { chain, uniq } from 'lodash';
+import { uniq } from 'lodash';
 import references from '@api3/airnode-protocol';
 import * as v1 from '@api3/airnode-protocol-v1';
 import { ethers } from 'ethers';

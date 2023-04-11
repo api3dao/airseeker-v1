@@ -3,8 +3,6 @@ import { SuperRefinement, z } from 'zod';
 import { oisSchema, OIS, Endpoint as oisEndpoint } from '@api3/ois';
 import { config } from '@api3/airnode-validator';
 import isNil from 'lodash/isNil';
-import * as bottleneck from 'bottleneck';
-import Bottleneck from 'bottleneck';
 
 export const logSchema = z.object({
   format: config.logFormatSchema,
