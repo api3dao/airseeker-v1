@@ -1,6 +1,7 @@
 import { setLogOptions, randomHexString } from '@api3/airnode-utilities';
 import { ethers } from 'ethers';
 import { BeaconId, Config, SignedData } from './validation';
+import Bottleneck from 'bottleneck';
 
 export type Id<T> = T & {
   id: string;
@@ -44,6 +45,17 @@ export const getInitialState = (config: Config) => {
     stopSignalReceived: false,
     beaconValues: {},
     providers: {},
+    gatewaysWithLimiters: config.gateways
+      ? Object.fromEntries(
+          Object.entries(config.gateways).map(([key, gateway]) => [
+            key,
+            {
+              ...gateway,
+              queue: new Bottleneck(),
+            },
+          ])
+        )
+      : config.gateways,
     airseekerWalletPrivateKey: '',
     sponsorWalletsPrivateKey: {},
   };
