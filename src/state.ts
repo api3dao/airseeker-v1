@@ -1,7 +1,7 @@
 import { setLogOptions, randomHexString } from '@api3/airnode-utilities';
 import { ethers } from 'ethers';
-import { BeaconId, Config, SignedData } from './validation';
 import Bottleneck from 'bottleneck';
+import { BeaconId, Config, SignedData } from './validation';
 
 export type Id<T> = T & {
   id: string;
