@@ -18,3 +18,11 @@ export const NO_FETCH_EXIT_CODE = 2;
 // `calculateUpdateInPercentage()`. Since the reported data needs to fit
 // into 224 bits, its multiplication by 10^8 is guaranteed not to overflow.
 export const HUNDRED_PERCENT = 1e8;
+
+// The difference between the socket timeout (used in axios utils) and the go-utils total timeout.
+// This prevents dangling sockets which ultimately cause file descriptor exhaustion.
+export const TOTAL_TIMEOUT_HEADROOM = 500;
+
+// The difference between the socket timeout (used in ethers) and the go-utils total timeout.
+// This prevents dangling sockets which ultimately cause file descriptor exhaustion.
+export const PROVIDER_TIMEOUT_HEADROOM_MS = 500;

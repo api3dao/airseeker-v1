@@ -6,7 +6,7 @@ import axios from 'axios';
 import anyPromise from 'promise.any';
 import { logger } from './logging';
 import { Gateway, SignedData, signedDataSchema, signedDataSchemaLegacy, Template, Endpoint } from './validation';
-import { GATEWAY_TIMEOUT_MS } from './constants';
+import { GATEWAY_TIMEOUT_MS, TOTAL_TIMEOUT_HEADROOM } from './constants';
 import { Id, getState } from './state';
 
 export const urlJoin = (baseUrl: string, endpointId: string) => {
@@ -42,21 +42,24 @@ export const makeSignedDataGatewayRequests = async (
 
     const fullUrl = urlJoin(url, endpointId);
 
-    const goRes = await go(async () => {
-      const { data } = await axios({
-        url: fullUrl,
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          'x-api-key': apiKey,
-        },
-        data: { encodedParameters: parameters },
-        timeout: GATEWAY_TIMEOUT_MS,
-      });
+    const goRes = await go(
+      async () => {
+        const { data } = await axios({
+          url: fullUrl,
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'x-api-key': apiKey,
+          },
+          data: { encodedParameters: parameters },
+          timeout: GATEWAY_TIMEOUT_MS,
+        });
 
-      return data;
-    });
+        return data;
+      },
+      { totalTimeoutMs: GATEWAY_TIMEOUT_MS - TOTAL_TIMEOUT_HEADROOM }
+    );
 
     if (!goRes.success) {
       const message = `Failed to make signed data gateway request for gateway: "${fullUrl}". Error: "${goRes.error}"`;

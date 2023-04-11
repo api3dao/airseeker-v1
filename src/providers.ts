@@ -1,9 +1,20 @@
-import * as node from '@api3/airnode-node';
 import { uniq } from 'lodash';
+import references from '@api3/airnode-protocol';
+import * as v1 from '@api3/airnode-protocol-v1';
+import { ethers } from 'ethers';
 import { getState, Provider, Providers, updateState } from './state';
+import { PROVIDER_TIMEOUT_HEADROOM_MS, PROVIDER_TIMEOUT_MS } from './constants';
 
 export const initializeProvider = (chainId: string, providerUrl: string): Omit<Provider, 'providerName'> => {
-  const rpcProvider = node.evm.buildEVMProvider(providerUrl, chainId);
+  const network = references.networks[chainId] ?? v1.references.chainNames[chainId] ?? null;
+
+  const rpcProvider = new ethers.providers.StaticJsonRpcProvider(
+    {
+      url: providerUrl,
+      timeout: PROVIDER_TIMEOUT_MS - PROVIDER_TIMEOUT_HEADROOM_MS,
+    },
+    network
+  );
 
   return { rpcProvider, chainId };
 };
@@ -15,7 +26,7 @@ export const initializeProviders = () => {
     const chain = config.chains[chainId];
 
     const chainProviders = Object.entries(chain.providers).map(([providerName, provider]) => ({
-      ...initializeProvider(chainId, provider.url),
+      ...initializeProvider(chainId, provider.url), // EVM_PROVIDER_TIMEOUT is 10_000
       providerName,
     }));
 
