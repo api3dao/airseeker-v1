@@ -113,6 +113,7 @@ export const makeSignedDataGatewayRequests = async (
 export const makeApiRequest = async (template: Id<Template>): Promise<SignedData> => {
   const {
     config: { endpoints, ois, apiCredentials },
+    apiLimiters,
   } = getState();
   const logOptionsTemplateId = { meta: { 'Template-ID': template.id } };
 
@@ -123,11 +124,16 @@ export const makeApiRequest = async (template: Id<Template>): Promise<SignedData
     parameters,
     ...endpoint,
   };
-  const [_, apiCallResponse] = await node.api.callApi({
-    type: 'http-gateway',
-    config: { ois, apiCredentials },
-    aggregatedApiCall,
-  });
+
+  const scheduler = apiLimiters && apiLimiters[template.id] ? apiLimiters[template.id].schedule : (arg: any) => arg();
+
+  const [_, apiCallResponse] = await scheduler(() =>
+    node.api.callApi({
+      type: 'http-gateway',
+      config: { ois, apiCredentials },
+      aggregatedApiCall,
+    })
+  );
 
   if (!apiCallResponse.success) {
     const message = `Failed to make direct API request for the endpoint [${endpoint.oisTitle}] ${endpoint.endpointName}.`;

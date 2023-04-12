@@ -5,7 +5,7 @@ import * as abi from '@api3/airnode-abi';
 import { logger } from './logging';
 import { makeApiRequest, makeSignedDataGatewayRequests, signWithTemplateId, urlJoin } from './make-request';
 import * as state from './state';
-import { addLimitersToSingleAirnodeGateways } from './state';
+import { buildGatewayLimiter } from './state';
 import { validSignedData } from '../test/fixtures';
 
 const generateRandomBytes32 = () => ethers.utils.hexlify(ethers.utils.randomBytes(32));
@@ -120,7 +120,7 @@ describe('makeSignedDataGatewayRequests', () => {
     jest.spyOn(logger, 'warn');
 
     const response = await makeSignedDataGatewayRequests(
-      addLimitersToSingleAirnodeGateways([
+      buildGatewayLimiter([
         { apiKey: 'api-key-1', url: 'https://gateway-1.com/' },
         { apiKey: 'api-key-2', url: 'https://gateway-2.com/' },
         { apiKey: 'api-key-3', url: 'https://gateway-3.com/' },

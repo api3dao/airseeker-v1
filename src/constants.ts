@@ -39,4 +39,7 @@ export const GATEWAY_MAX_CONCURRENCY_DEFAULT = 5;
 
 // The minimum amount of time between HTTP calls to remote gateways per remote gateway.
 // Example: 200 ms means a maximum of 5 requests per second
-export const GATEWAY_MINIMUM_TIME_DEFAULT = 200;
+export const GATEWAY_MIN_TIME_DEFAULT = 200;
+
+export const DIRECT_GATEWAY_MIN_TIME = 200;
+export const DIRECT_GATEWAY_MAX_CONCURRENCY = 5;
