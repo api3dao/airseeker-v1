@@ -9,6 +9,8 @@ export const logSchema = z.object({
   level: config.logLevelSchema,
 });
 
+export const limiterConfig = z.object({ minTime: z.number(), maxConcurrent: z.number() });
+
 export const fetchMethodSchema = z.union([z.literal('gateway'), z.literal('api')]);
 
 export const beaconSchema = z
@@ -55,6 +57,7 @@ export const beaconSetsSchema = z
 export const providerSchema = z
   .object({
     url: z.string().url(),
+    rateLimiter: limiterConfig.optional(),
   })
   .strict();
 
@@ -330,6 +333,12 @@ export const configSchema = z
         minProviderTime: z.number().optional(),
         minDirectGatewayTime: z.number().optional(),
         maxDirectGatewayConcurrency: z.number().optional(),
+        overrides: z
+          .object({
+            signedDataGateways: z.record(limiterConfig).optional(), // key is Airnode address
+            directGateways: z.record(limiterConfig).optional(), // key is ois title
+          })
+          .optional(),
       })
       .optional(),
   })
@@ -373,3 +382,4 @@ export type SignedData = z.infer<typeof signedDataSchema>;
 export type Endpoint = z.infer<typeof endpointSchema>;
 export type Endpoints = z.infer<typeof endpointsSchema>;
 export type FetchMethod = z.infer<typeof fetchMethodSchema>;
+export type LimiterConfig = z.infer<typeof limiterConfig>;
