@@ -16,6 +16,9 @@
   "files": [
     "dist"
   ],
+  "engines": {
+    "node": ">=16"
+  },
   "scripts": {
     "build": "yarn clean && yarn compile && yarn build:ncc",
     "clean": "rimraf -rf ./ncc ./build ./dist *.tgz",
