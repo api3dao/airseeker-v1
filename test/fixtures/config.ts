@@ -1,12 +1,12 @@
 export const buildAirseekerConfig = () => ({
   airseekerWalletMnemonic: '${AIRSEEKER_WALLET_MNEMONIC}',
   rateLimiting: {
-    maxGatewayConcurrency: 5,
-    minGatewayTime: 200,
-    maxProviderConcurrency: 5,
-    minProviderTime: 200,
-    minDirectGatewayTime: 200,
-    maxDirectGatewayConcurrency: 5,
+    maxGatewayConcurrency: 500,
+    minGatewayTime: 1,
+    maxProviderConcurrency: 500,
+    minProviderTime: 1,
+    maxDirectGatewayConcurrency: 500,
+    minDirectGatewayTime: 1,
   },
   log: {
     format: 'plain',
