@@ -328,6 +328,8 @@ export const configSchema = z
         minGatewayTime: z.number().optional(),
         maxProviderConcurrency: z.number().optional(),
         minProviderTime: z.number().optional(),
+        minDirectGatewayTime: z.number().optional(),
+        maxDirectGatewayConcurrency: z.number().optional(),
       })
       .optional(),
   })

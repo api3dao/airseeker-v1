@@ -3,7 +3,7 @@ import * as api from './fetch-beacon-data';
 import { Config } from './validation';
 import * as makeRequestApi from './make-request';
 import * as state from './state';
-import { addLimitersToGateways } from './state';
+import { buildGatewayLimiters, buildApiLimiters } from './state';
 import { validSignedData } from '../test/fixtures';
 
 const config: Config = {
@@ -307,7 +307,8 @@ describe('fetchBeaconDataInLoop', () => {
       if (requestCount === 2) {
         return {
           config,
-          gatewaysWithLimiters: addLimitersToGateways(config.gateways),
+          gatewaysWithLimiters: buildGatewayLimiters(config.gateways),
+          apiLimiters: buildApiLimiters(config),
           stopSignalReceived: true,
           beaconValues: {},
           providers: {},
@@ -318,7 +319,8 @@ describe('fetchBeaconDataInLoop', () => {
       } else {
         return {
           config,
-          gatewaysWithLimiters: addLimitersToGateways(config.gateways),
+          gatewaysWithLimiters: buildGatewayLimiters(config.gateways),
+          apiLimiters: buildApiLimiters(config),
           stopSignalReceived: false,
           beaconValues: {},
           providers: {},

@@ -3,7 +3,12 @@ import { ethers } from 'ethers';
 import Bottleneck from 'bottleneck';
 import { BeaconId, Config, Gateway, SignedData } from './validation';
 import { GatewayWithLimiter } from './make-request';
-import { GATEWAY_MAX_CONCURRENCY_DEFAULT, GATEWAY_MINIMUM_TIME_DEFAULT } from './constants';
+import {
+  DIRECT_GATEWAY_MAX_CONCURRENCY,
+  DIRECT_GATEWAY_MIN_TIME,
+  GATEWAY_MAX_CONCURRENCY_DEFAULT,
+  GATEWAY_MIN_TIME_DEFAULT,
+} from './constants';
 
 export type Id<T> = T & {
   id: string;
@@ -28,6 +33,7 @@ export interface State {
   airseekerWalletPrivateKey: string;
   sponsorWalletsPrivateKey: SponsorWalletsPrivateKey;
   gatewaysWithLimiters: Record<string, GatewayWithLimiter[]>;
+  apiLimiters: Record<string, Bottleneck>;
 }
 
 // TODO: Freeze the state in development mode
@@ -37,19 +43,35 @@ export const initializeState = (config: Config) => {
   state = getInitialState(config);
 };
 
-export const addLimitersToSingleAirnodeGateways = (gateways: Gateway[], config?: Config) =>
+export const buildGatewayLimiter = (gateways: Gateway[], config?: Config) =>
   gateways.map((gateway) => ({
     ...(gateway as Gateway),
     queue: new Bottleneck({
       maxConcurrent: config?.rateLimiting?.maxGatewayConcurrency ?? GATEWAY_MAX_CONCURRENCY_DEFAULT,
-      minTime: config?.rateLimiting?.minGatewayTime ?? GATEWAY_MINIMUM_TIME_DEFAULT,
+      minTime: config?.rateLimiting?.minGatewayTime ?? GATEWAY_MIN_TIME_DEFAULT,
     }),
   }));
 
-export const addLimitersToGateways = (gateways?: Record<string, Gateway[]>, config?: Config) =>
+export const buildGatewayLimiters = (gateways?: Record<string, Gateway[]>, config?: Config) =>
   gateways
     ? Object.fromEntries(
-        Object.entries(gateways).map(([key, gateways]) => [key, addLimitersToSingleAirnodeGateways(gateways, config)])
+        Object.entries(gateways).map(([key, gateways]) => [key, buildGatewayLimiter(gateways, config)])
+      )
+    : {};
+
+export const buildApiLimiters = (config: Config) =>
+  config.beacons
+    ? Object.fromEntries(
+        Object.values(config.beacons)
+          .filter((beacon) => beacon.fetchMethod === 'gateway')
+          .map((beacon) => beacon.templateId)
+          .map((templateId) => [
+            templateId,
+            new Bottleneck({
+              minTime: config.rateLimiting?.minDirectGatewayTime ?? DIRECT_GATEWAY_MIN_TIME,
+              maxConcurrent: config.rateLimiting?.maxDirectGatewayConcurrency ?? DIRECT_GATEWAY_MAX_CONCURRENCY,
+            }),
+          ])
       )
     : {};
 
@@ -64,7 +86,8 @@ export const getInitialState = (config: Config) => {
     stopSignalReceived: false,
     beaconValues: {},
     providers: {},
-    gatewaysWithLimiters: addLimitersToGateways(config.gateways),
+    gatewaysWithLimiters: buildGatewayLimiters(config.gateways),
+    apiLimiters: buildApiLimiters(config),
     airseekerWalletPrivateKey: '',
     sponsorWalletsPrivateKey: {},
   };
