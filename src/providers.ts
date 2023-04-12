@@ -26,13 +26,19 @@ export class RateLimitedProvider extends ethers.providers.StaticJsonRpcProvider 
   }
 
   public perform(method: string, params: any) {
-    return poll(() => {
-      return this.limiter.schedule(() => {
-        return super.perform(method, params).then((result) => {
-          return result;
-        }, Promise.reject);
-      });
-    });
+    // Schedule the call via the rate limiter
+    // Timeouts:
+    // ---------
+    // The parent must time out after the child scope to avoid leaking file descriptors.
+    //
+    // 3rd go-utils: PROVIDER_TIMEOUT_MS = 5_000 ms
+    // 2nd Bottleneck: PROVIDER_TIMEOUT_MS-(PROVIDER_TIMEOUT_HEADROOM_MS/2) = 5_000 - 500/2 = 5_000 - 250 = 4_750 ms
+    // 1st ethers socket: PROVIDER_TIMEOUT_MS-PROVIDER_TIMEOUT_HEADROOM_MS = 5_000 - 500 = 4_500 ms
+    return poll(() =>
+      this.limiter.schedule({ expiration: PROVIDER_TIMEOUT_MS - PROVIDER_TIMEOUT_HEADROOM_MS / 2 }, () =>
+        super.perform(method, params).then((result) => result, Promise.reject)
+      )
+    );
   }
 }
 
