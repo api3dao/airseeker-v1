@@ -12,7 +12,7 @@ import {
   PROVIDER_TIMEOUT_HEADROOM_MS,
   PROVIDER_TIMEOUT_MS,
 } from './constants';
-import { Config } from './validation';
+import { Config, LimiterConfig } from './validation';
 
 /**
  * LimitedProvider rate limits Provider calls
@@ -61,7 +61,8 @@ export const getNetwork = (chainId: string): Network | undefined => {
 export const initializeProvider = (
   chainId: string,
   providerUrl: string,
-  config?: Config
+  config?: Config,
+  rateLimiter?: LimiterConfig
 ): Omit<Provider, 'providerName'> => {
   const rpcProvider = new RateLimitedProvider(
     {
@@ -70,8 +71,9 @@ export const initializeProvider = (
     },
     getNetwork(chainId),
     new Bottleneck({
-      minTime: config?.rateLimiting?.minProviderTime ?? PROVIDER_MIN_TIME_DEFAULT,
-      maxConcurrent: config?.rateLimiting?.maxProviderConcurrency ?? PROVIDER_MAX_CONCURRENCY_DEFAULT,
+      minTime: rateLimiter?.minTime ?? config?.rateLimiting?.minProviderTime ?? PROVIDER_MIN_TIME_DEFAULT,
+      maxConcurrent:
+        rateLimiter?.maxConcurrent ?? config?.rateLimiting?.maxProviderConcurrency ?? PROVIDER_MAX_CONCURRENCY_DEFAULT,
     })
   );
 
@@ -85,7 +87,7 @@ export const initializeProviders = () => {
     const chain = config.chains[chainId];
 
     const chainProviders = Object.entries(chain.providers).map(([providerName, provider]) => ({
-      ...initializeProvider(chainId, provider.url, config), // EVM_PROVIDER_TIMEOUT is 10_000
+      ...initializeProvider(chainId, provider.url, config, provider?.rateLimiter), // EVM_PROVIDER_TIMEOUT is 10_000
       providerName,
     }));
 

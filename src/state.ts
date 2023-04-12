@@ -1,7 +1,7 @@
 import { setLogOptions, randomHexString } from '@api3/airnode-utilities';
 import { ethers } from 'ethers';
 import Bottleneck from 'bottleneck';
-import { BeaconId, Config, Gateway, SignedData } from './validation';
+import { BeaconId, Config, Gateway, LimiterConfig, SignedData } from './validation';
 import { GatewayWithLimiter } from './make-request';
 import {
   DIRECT_GATEWAY_MAX_CONCURRENCY,
@@ -43,37 +43,112 @@ export const initializeState = (config: Config) => {
   state = getInitialState(config);
 };
 
-export const buildGatewayLimiter = (gateways: Gateway[], config?: Config) =>
+export const buildGatewayLimiter = (gateways: Gateway[], config?: Config, limiterConfig?: LimiterConfig) =>
   gateways.map((gateway) => ({
     ...(gateway as Gateway),
     queue: new Bottleneck({
-      maxConcurrent: config?.rateLimiting?.maxGatewayConcurrency ?? GATEWAY_MAX_CONCURRENCY_DEFAULT,
-      minTime: config?.rateLimiting?.minGatewayTime ?? GATEWAY_MIN_TIME_DEFAULT,
+      maxConcurrent:
+        limiterConfig?.maxConcurrent ?? config?.rateLimiting?.maxGatewayConcurrency ?? GATEWAY_MAX_CONCURRENCY_DEFAULT,
+      minTime: limiterConfig?.minTime ?? config?.rateLimiting?.minGatewayTime ?? GATEWAY_MIN_TIME_DEFAULT,
     }),
   }));
+
+const getSignedDataGatewayOverrideConfig = (airnodeAddress: string, config?: Config): LimiterConfig | undefined => {
+  const signedGatewayOverrides = config?.rateLimiting?.overrides?.signedDataGateways;
+
+  if (!(signedGatewayOverrides && signedGatewayOverrides[airnodeAddress])) {
+    return undefined;
+  }
+
+  return signedGatewayOverrides[airnodeAddress];
+};
 
 export const buildGatewayLimiters = (gateways?: Record<string, Gateway[]>, config?: Config) =>
   gateways
     ? Object.fromEntries(
-        Object.entries(gateways).map(([key, gateways]) => [key, buildGatewayLimiter(gateways, config)])
+        Object.entries(gateways).map(([key, gateways]) => [
+          key,
+          buildGatewayLimiter(gateways, config, getSignedDataGatewayOverrideConfig(key, config)),
+        ])
       )
     : {};
 
-export const buildApiLimiters = (config: Config) =>
-  config.beacons
-    ? Object.fromEntries(
-        Object.values(config.beacons)
-          .filter((beacon) => beacon.fetchMethod === 'gateway')
-          .map((beacon) => beacon.templateId)
-          .map((templateId) => [
-            templateId,
-            new Bottleneck({
-              minTime: config.rateLimiting?.minDirectGatewayTime ?? DIRECT_GATEWAY_MIN_TIME,
-              maxConcurrent: config.rateLimiting?.maxDirectGatewayConcurrency ?? DIRECT_GATEWAY_MAX_CONCURRENCY,
-            }),
-          ])
-      )
-    : {};
+const deriveEndpointId = (oisTitle: string, endpointName: string) =>
+  ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(['string', 'string'], [oisTitle, endpointName]));
+
+// export const buildApiLimiters = (config: Config) => {
+//   const overrides = config.rateLimiting?.overrides?.directGateways ?? {};
+//
+//   return config.beacons
+//     ? Object.fromEntries(
+//       Object.values(config.beacons)
+//         .filter((beacon) => beacon.fetchMethod === 'gateway')
+//         .map((beacon) => beacon.templateId)
+//         .map((templateId) => endpoints[config.templates[templateId].endpointId].title)
+//         .map((oisTitle) => [
+//           oisTitle,
+//           new Bottleneck({
+//             minTime: overrides[oisTitle]?.minTime ?? config.rateLimiting?.minDirectGatewayTime ?? DIRECT_GATEWAY_MIN_TIME,
+//             maxConcurrent: overrides[oisTitle]?.maxConcurrent ?? config.rateLimiting?.maxDirectGatewayConcurrency ?? DIRECT_GATEWAY_MAX_CONCURRENCY,
+//           }),
+//         ]),
+//     )
+//     : {};
+// };
+
+// const generateEndpointTitles = (config: Config) => {
+//   return Object.fromEntries(config.ois.flatMap(ois => ois.endpoints.map(endpoint => ([deriveEndpointId(ois.title, endpoint.name), {
+//     ...endpoint,
+//     title: ois.title,
+//   }]))));
+// };
+
+export const buildApiLimiters = (config: Config) => {
+  if (!config.ois) {
+    return {};
+  }
+
+  const oisLimiters = Object.fromEntries(
+    config.ois.map((ois) => {
+      const directGatewayOverrides = config?.rateLimiting?.overrides?.directGateways;
+
+      if (directGatewayOverrides && directGatewayOverrides[ois.title]) {
+        const { minTime, maxConcurrent } = directGatewayOverrides[ois.title];
+
+        return [
+          ois.title,
+          new Bottleneck({
+            minTime: minTime ?? DIRECT_GATEWAY_MIN_TIME,
+            maxConcurrent: maxConcurrent ?? DIRECT_GATEWAY_MAX_CONCURRENCY,
+          }),
+        ];
+      }
+
+      return [
+        ois.title,
+        new Bottleneck({
+          minTime: DIRECT_GATEWAY_MIN_TIME,
+          maxConcurrent: DIRECT_GATEWAY_MAX_CONCURRENCY,
+        }),
+      ];
+    })
+  );
+  const endpointTitles = Object.fromEntries(
+    config.ois.flatMap((ois) =>
+      ois.endpoints.map((endpoint) => [deriveEndpointId(ois.title, endpoint.name), ois.title])
+    )
+  );
+
+  // Make use of the reference/pointer nature of objects
+  const apiLimiters = Object.fromEntries(
+    Object.entries(config.templates).map(([templateId, template]) => {
+      const title = endpointTitles[template.endpointId];
+      return [templateId, oisLimiters[title]];
+    })
+  );
+
+  return apiLimiters;
+};
 
 export const getInitialState = (config: Config) => {
   // Set initial log options
@@ -81,6 +156,7 @@ export const getInitialState = (config: Config) => {
     ...config.log,
     meta: { 'Coordinator-ID': randomHexString(16) },
   });
+
   return {
     config,
     stopSignalReceived: false,
