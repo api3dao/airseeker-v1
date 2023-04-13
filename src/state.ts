@@ -76,33 +76,6 @@ export const buildGatewayLimiters = (gateways?: Record<string, Gateway[]>, confi
 const deriveEndpointId = (oisTitle: string, endpointName: string) =>
   ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(['string', 'string'], [oisTitle, endpointName]));
 
-// export const buildApiLimiters = (config: Config) => {
-//   const overrides = config.rateLimiting?.overrides?.directGateways ?? {};
-//
-//   return config.beacons
-//     ? Object.fromEntries(
-//       Object.values(config.beacons)
-//         .filter((beacon) => beacon.fetchMethod === 'gateway')
-//         .map((beacon) => beacon.templateId)
-//         .map((templateId) => endpoints[config.templates[templateId].endpointId].title)
-//         .map((oisTitle) => [
-//           oisTitle,
-//           new Bottleneck({
-//             minTime: overrides[oisTitle]?.minTime ?? config.rateLimiting?.minDirectGatewayTime ?? DIRECT_GATEWAY_MIN_TIME,
-//             maxConcurrent: overrides[oisTitle]?.maxConcurrent ?? config.rateLimiting?.maxDirectGatewayConcurrency ?? DIRECT_GATEWAY_MAX_CONCURRENCY,
-//           }),
-//         ]),
-//     )
-//     : {};
-// };
-
-// const generateEndpointTitles = (config: Config) => {
-//   return Object.fromEntries(config.ois.flatMap(ois => ois.endpoints.map(endpoint => ([deriveEndpointId(ois.title, endpoint.name), {
-//     ...endpoint,
-//     title: ois.title,
-//   }]))));
-// };
-
 export const buildApiLimiters = (config: Config) => {
   if (!config.ois) {
     return {};

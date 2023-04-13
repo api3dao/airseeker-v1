@@ -15,7 +15,7 @@
         }
       },
       "directGateways": {
-        "ois-title": {
+        "Currency Converter API": {
           "minTime": 200,
           "maxConcurrent": 5
         }
@@ -95,7 +95,11 @@
       },
       "providers": {
         "infuraRopsten": {
-          "url": "${CP_INFURA_ROPSTEN_URL}"
+          "url": "${CP_INFURA_ROPSTEN_URL}",
+          "rateLimiter": {
+            "minTime": 200,
+            "maxConcurrent": 5
+          }
         }
       },
       "options": {
