@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { ethers } from 'ethers';
-import { ZodError } from 'zod';
+import { ZodError, ZodIssue } from 'zod';
 import { Config, configSchema } from './validation';
 import { interpolateSecrets } from './config';
 
@@ -132,7 +132,6 @@ it('fails if beacons.<beaconId>.airnode is not defined in gateways', () => {
 
   expect(() => configSchema.parse(interpolatedConfig)).toThrow(
     new ZodError(
-      // @ts-ignore
       [
         ...Object.entries(config.beacons)
           .filter(([_, beacon]) => beacon.fetchMethod !== 'api' && beacon.airnode === gatewayId)
@@ -142,12 +141,11 @@ it('fails if beacons.<beaconId>.airnode is not defined in gateways', () => {
             path: ['beacons', beaconId, 'airnode'],
           })),
         {
-          // @ts-ignore
           code: 'custom',
           message: `Airnode address "${gatewayId}" in rate limiting overrides is not defined in the gateways object`,
           path: ['rateLimiting', 'overrides', 'signedDataGateways', gatewayId],
         },
-      ]
+      ] as ZodIssue[]
     )
   );
 });
