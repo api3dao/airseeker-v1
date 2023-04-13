@@ -131,22 +131,20 @@ it('fails if beacons.<beaconId>.airnode is not defined in gateways', () => {
   const interpolatedConfig = interpolateSecrets(config, envVariables);
 
   expect(() => configSchema.parse(interpolatedConfig)).toThrow(
-    new ZodError(
-      [
-        ...Object.entries(config.beacons)
-          .filter(([_, beacon]) => beacon.fetchMethod !== 'api' && beacon.airnode === gatewayId)
-          .map(([beaconId, beacon]) => ({
-            code: 'custom',
-            message: `Gateway "${beacon.airnode}" is not defined in the config.gateways object`,
-            path: ['beacons', beaconId, 'airnode'],
-          })),
-        {
+    new ZodError([
+      ...Object.entries(config.beacons)
+        .filter(([_, beacon]) => beacon.fetchMethod !== 'api' && beacon.airnode === gatewayId)
+        .map(([beaconId, beacon]) => ({
           code: 'custom',
-          message: `Airnode address "${gatewayId}" in rate limiting overrides is not defined in the gateways object`,
-          path: ['rateLimiting', 'overrides', 'signedDataGateways', gatewayId],
-        },
-      ] as ZodIssue[]
-    )
+          message: `Gateway "${beacon.airnode}" is not defined in the config.gateways object`,
+          path: ['beacons', beaconId, 'airnode'],
+        })),
+      {
+        code: 'custom',
+        message: `Airnode address "${gatewayId}" in rate limiting overrides is not defined in the gateways object`,
+        path: ['rateLimiting', 'overrides', 'signedDataGateways', gatewayId],
+      },
+    ] as ZodIssue[])
   );
 });
 
