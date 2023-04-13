@@ -125,9 +125,10 @@ export const makeApiRequest = async (template: Id<Template>): Promise<SignedData
     ...endpoint,
   };
 
-  const scheduler = apiLimiters && apiLimiters[template.id] ? apiLimiters[template.id].schedule : (arg: any) => arg();
+  const limiter =
+    apiLimiters && apiLimiters[template.id] ? apiLimiters[template.id] : { schedule: (arg: any) => arg() };
 
-  const [_, apiCallResponse] = await scheduler(() =>
+  const [_, apiCallResponse] = await limiter.schedule(() =>
     node.api.callApi({
       type: 'http-gateway',
       config: { ois, apiCredentials },
