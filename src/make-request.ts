@@ -125,8 +125,7 @@ export const makeApiRequest = async (template: Id<Template>): Promise<SignedData
     ...endpoint,
   };
 
-  const limiter =
-    apiLimiters && apiLimiters[template.id] ? apiLimiters[template.id] : { schedule: (arg: any) => arg() };
+const limiter = apiLimiters?.[template.id] ?? { schedule: (arg: any) => arg() };
 
   const [_, apiCallResponse] = await limiter.schedule(() =>
     node.api.callApi({
