@@ -8,8 +8,8 @@ import { ConnectionInfo, poll } from '@ethersproject/web';
 import { getState, Provider, Providers, updateState } from './state';
 import {
   PROVIDER_MAX_CONCURRENCY_DEFAULT,
-  PROVIDER_MIN_TIME_DEFAULT,
-  PROVIDER_TIMEOUT_HEADROOM_MS,
+  PROVIDER_MIN_TIME_DEFAULT_MS,
+  PROVIDER_TIMEOUT_HEADROOM_DEFAULT_MS,
   PROVIDER_TIMEOUT_MS,
 } from './constants';
 import { Config, LimiterConfig } from './validation';
@@ -35,7 +35,7 @@ export class RateLimitedProvider extends ethers.providers.StaticJsonRpcProvider 
     // 2nd Bottleneck: PROVIDER_TIMEOUT_MS-(PROVIDER_TIMEOUT_HEADROOM_MS/2) = 5_000 - 500/2 = 5_000 - 250 = 4_750 ms
     // 1st ethers socket: PROVIDER_TIMEOUT_MS-PROVIDER_TIMEOUT_HEADROOM_MS = 5_000 - 500 = 4_500 ms
     return poll(() =>
-      this.limiter.schedule({ expiration: PROVIDER_TIMEOUT_MS - PROVIDER_TIMEOUT_HEADROOM_MS / 2 }, () =>
+      this.limiter.schedule({ expiration: PROVIDER_TIMEOUT_MS - PROVIDER_TIMEOUT_HEADROOM_DEFAULT_MS / 2 }, () =>
         super.perform(method, params).then((result) => result, Promise.reject)
       )
     );
@@ -67,11 +67,11 @@ export const initializeProvider = (
   const rpcProvider = new RateLimitedProvider(
     {
       url: providerUrl,
-      timeout: PROVIDER_TIMEOUT_MS - PROVIDER_TIMEOUT_HEADROOM_MS,
+      timeout: PROVIDER_TIMEOUT_MS - PROVIDER_TIMEOUT_HEADROOM_DEFAULT_MS,
     },
     getNetwork(chainId),
     new Bottleneck({
-      minTime: rateLimiter?.minTime ?? config?.rateLimiting?.minProviderTime ?? PROVIDER_MIN_TIME_DEFAULT,
+      minTime: rateLimiter?.minTime ?? config?.rateLimiting?.minProviderTime ?? PROVIDER_MIN_TIME_DEFAULT_MS,
       maxConcurrent:
         rateLimiter?.maxConcurrent ?? config?.rateLimiting?.maxProviderConcurrency ?? PROVIDER_MAX_CONCURRENCY_DEFAULT,
     })
