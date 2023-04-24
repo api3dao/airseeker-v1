@@ -67,8 +67,8 @@ export const buildGatewayLimiters = (gateways?: Record<string, Gateway[]>, confi
   gateways
     ? Object.fromEntries(
         Object.entries(gateways).map(([airnodeAddress, gateways]) => [
-          key,
-          buildGatewayLimiter(gateways, config, getSignedDataGatewayOverrideConfig(key, config)),
+          airnodeAddress,
+          buildGatewayLimiter(gateways, config, getSignedDataGatewayOverrideConfig(airnodeAddress, config)),
         ])
       )
     : {};
