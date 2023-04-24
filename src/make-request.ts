@@ -65,7 +65,7 @@ export const makeSignedDataGatewayRequests = async (
         { totalTimeoutMs: GATEWAY_TIMEOUT_MS - TOTAL_TIMEOUT_HEADROOM_DEFAULT_MS }
       );
 
-    const goRes = await (queue?.schedule ? queue.schedule(goResFn) : goResFn());
+    const goRes = await (queue ? queue.schedule(goResFn) : goResFn());
 
     if (!goRes.success) {
       const message = `Failed to make signed data gateway request for gateway: "${fullUrl}". Error: "${goRes.error}"`;
