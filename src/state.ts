@@ -4,10 +4,10 @@ import Bottleneck from 'bottleneck';
 import { BeaconId, Config, Gateway, LimiterConfig, SignedData } from './validation';
 import { GatewayWithLimiter } from './make-request';
 import {
-  DIRECT_GATEWAY_MAX_CONCURRENCY,
-  DIRECT_GATEWAY_MIN_TIME,
+  DIRECT_GATEWAY_MAX_CONCURRENCY_DEFAULT,
+  DIRECT_GATEWAY_MIN_TIME_DEFAULT_MS,
   GATEWAY_MAX_CONCURRENCY_DEFAULT,
-  GATEWAY_MIN_TIME_DEFAULT,
+  GATEWAY_MIN_TIME_DEFAULT_MS,
 } from './constants';
 
 export type Id<T> = T & {
@@ -49,7 +49,7 @@ export const buildGatewayLimiter = (gateways: Gateway[], config?: Config, limite
     queue: new Bottleneck({
       maxConcurrent:
         limiterConfig?.maxConcurrent ?? config?.rateLimiting?.maxGatewayConcurrency ?? GATEWAY_MAX_CONCURRENCY_DEFAULT,
-      minTime: limiterConfig?.minTime ?? config?.rateLimiting?.minGatewayTime ?? GATEWAY_MIN_TIME_DEFAULT,
+      minTime: limiterConfig?.minTime ?? config?.rateLimiting?.minGatewayTime ?? GATEWAY_MIN_TIME_DEFAULT_MS,
     }),
   }));
 
@@ -91,8 +91,8 @@ export const buildApiLimiters = (config: Config) => {
         return [
           ois.title,
           new Bottleneck({
-            minTime: minTime ?? DIRECT_GATEWAY_MIN_TIME,
-            maxConcurrent: maxConcurrent ?? DIRECT_GATEWAY_MAX_CONCURRENCY,
+            minTime: minTime ?? DIRECT_GATEWAY_MIN_TIME_DEFAULT_MS,
+            maxConcurrent: maxConcurrent ?? DIRECT_GATEWAY_MAX_CONCURRENCY_DEFAULT,
           }),
         ];
       }
@@ -100,8 +100,8 @@ export const buildApiLimiters = (config: Config) => {
       return [
         ois.title,
         new Bottleneck({
-          minTime: DIRECT_GATEWAY_MIN_TIME,
-          maxConcurrent: DIRECT_GATEWAY_MAX_CONCURRENCY,
+          minTime: DIRECT_GATEWAY_MIN_TIME_DEFAULT_MS,
+          maxConcurrent: DIRECT_GATEWAY_MAX_CONCURRENCY_DEFAULT,
         }),
       ];
     })

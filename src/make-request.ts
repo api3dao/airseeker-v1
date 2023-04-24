@@ -7,7 +7,7 @@ import anyPromise from 'promise.any';
 import Bottleneck from 'bottleneck';
 import { logger } from './logging';
 import { Gateway, SignedData, signedDataSchema, signedDataSchemaLegacy, Template, Endpoint } from './validation';
-import { GATEWAY_TIMEOUT_MS, TOTAL_TIMEOUT_HEADROOM } from './constants';
+import { GATEWAY_TIMEOUT_MS, TOTAL_TIMEOUT_HEADROOM_DEFAULT_MS } from './constants';
 import { Id, getState } from './state';
 
 export const urlJoin = (baseUrl: string, endpointId: string) => {
@@ -62,7 +62,7 @@ export const makeSignedDataGatewayRequests = async (
 
           return data;
         },
-        { totalTimeoutMs: GATEWAY_TIMEOUT_MS - TOTAL_TIMEOUT_HEADROOM }
+        { totalTimeoutMs: GATEWAY_TIMEOUT_MS - TOTAL_TIMEOUT_HEADROOM_DEFAULT_MS }
       );
 
     const goRes = await (queue?.schedule ? queue.schedule(goResFn) : goResFn());
