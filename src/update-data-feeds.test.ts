@@ -2,7 +2,6 @@ import { Api3ServerV1__factory as Api3ServerV1Factory } from '@api3/airnode-prot
 import { ethers } from 'ethers';
 import * as state from './state';
 import * as api from './update-data-feeds';
-import { logger } from './logging';
 import { initializeProviders } from './providers';
 import { BeaconSetUpdate, BeaconUpdate, Config } from './validation';
 import { initializeWallets } from './wallets';
@@ -360,42 +359,6 @@ describe('updateBeaconSets', () => {
       })
     );
   });
-
-  it(`returns undefined if transaction count can't be retrieved`, async () => {
-    state.updateState((currentState) => ({
-      ...currentState,
-      beaconValues: {
-        '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c': validSignedData,
-        '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2': validSignedData,
-        '0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469beabcdabcd': validSignedData,
-      },
-    }));
-    jest.spyOn(logger, 'warn');
-
-    const txCountSpy = jest.spyOn(ethers.providers.StaticJsonRpcProvider.prototype, 'getTransactionCount');
-    txCountSpy.mockRejectedValue(new Error('cannot fetch transaction count'));
-
-    // For reading on-chain data that causes to update beaconSet
-    const timestamp = 1649664085;
-    const dataFeedsSpy = jest
-      .fn()
-      .mockReturnValueOnce(Promise.resolve({ timestamp: timestamp - 25, value: ethers.BigNumber.from(40000000000) }));
-    jest.spyOn(Api3ServerV1Factory, 'connect').mockImplementation(
-      (_api3ServerV1, _provider) =>
-        ({
-          connect(_signerOrProvider: ethers.Signer | ethers.providers.Provider | string) {
-            return this;
-          },
-          dataFeeds: dataFeedsSpy,
-        } as any)
-    );
-
-    const groups = api.groupDataFeedsByProviderSponsor();
-
-    expect(await api.updateBeaconSets(groups[0], Date.now())).toBeUndefined();
-    expect(logger.warn).toHaveBeenCalledWith(`Unable to fetch transaction count`, { meta: expect.anything() });
-    expect(dataFeedsSpy).toHaveBeenCalledTimes(1);
-  });
 });
 
 describe('decodeBeaconValue', () => {
@@ -427,11 +390,15 @@ describe('initializeUpdateCycle', () => {
       },
     }));
 
+    const txCountSpy = jest.spyOn(ethers.providers.StaticJsonRpcProvider.prototype, 'getTransactionCount');
+    txCountSpy.mockResolvedValueOnce(212);
+
     const groups = api.groupDataFeedsByProviderSponsor();
-    const initialUpdateData = await api.initializeUpdateCycle(groups[0], api.DataFeedType.Beacon);
+    const initialUpdateData = await api.initializeUpdateCycle(groups[0], api.DataFeedType.Beacon, Date.now());
     const {
       contract,
       sponsorWallet,
+      transactionCount,
       voidSigner,
       totalTimeout,
       logOptions,
@@ -444,6 +411,7 @@ describe('initializeUpdateCycle', () => {
 
     expect(contract.address).toEqual('0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512');
     expect(sponsorWallet.address).toEqual('0x1129eEDf4996cF133e0e9555d4c9d305c9918EC5');
+    expect(transactionCount).toEqual(212);
     expect(voidSigner.address).toEqual(ethers.constants.AddressZero);
     expect(totalTimeout).toEqual(1_000);
     expect(logOptions).toEqual({
@@ -458,5 +426,13 @@ describe('initializeUpdateCycle', () => {
     expect(beaconSets).toEqual(groups[0].beaconSets);
     expect(initConfig).toEqual(config);
     expect(provider).toEqual(groups[0].provider);
+  });
+
+  it(`returns null if transaction count can't be retrieved`, async () => {
+    const getTransactionCountSpy = jest.spyOn(ethers.providers.StaticJsonRpcProvider.prototype, 'getTransactionCount');
+    getTransactionCountSpy.mockRejectedValueOnce('Error');
+
+    const groups = api.groupDataFeedsByProviderSponsor();
+    expect(await api.initializeUpdateCycle(groups[0], api.DataFeedType.Beacon, Date.now())).toBeNull();
   });
 });
