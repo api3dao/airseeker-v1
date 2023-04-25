@@ -5,13 +5,7 @@ import { getState, updateState } from './state';
 import { makeSignedDataGatewayRequests, makeApiRequest } from './make-request';
 import { sleep } from './utils';
 import { SignedData } from './validation';
-import {
-  GATEWAY_TIMEOUT_MS,
-  INFINITE_RETRIES,
-  NO_FETCH_EXIT_CODE,
-  RANDOM_BACKOFF_MAX_MS,
-  RANDOM_BACKOFF_MIN_MS,
-} from './constants';
+import { INFINITE_RETRIES, NO_FETCH_EXIT_CODE, RANDOM_BACKOFF_MAX_MS, RANDOM_BACKOFF_MIN_MS } from './constants';
 
 export const initiateFetchingBeaconData = async () => {
   logger.debug('Initiating fetching all beacon data');
@@ -66,7 +60,7 @@ export const fetchBeaconData = async (beaconId: string) => {
   logger.debug('Fetching beacon data', logOptionsBeaconId);
   const { config, gatewaysWithLimiters } = getState();
 
-  const { fetchInterval, airnode, templateId, fetchMethod } = config.beacons[beaconId];
+  const { airnode, templateId, fetchMethod } = config.beacons[beaconId];
   const template = config.templates[templateId];
 
   let fetchFn: () => Promise<SignedData>;
@@ -91,10 +85,8 @@ export const fetchBeaconData = async (beaconId: string) => {
   }
 
   const goRes = await go(fetchFn, {
-    attemptTimeoutMs: GATEWAY_TIMEOUT_MS,
     retries: INFINITE_RETRIES,
     delay: { type: 'random', minDelayMs: RANDOM_BACKOFF_MIN_MS, maxDelayMs: RANDOM_BACKOFF_MAX_MS },
-    totalTimeoutMs: fetchInterval * 1_000,
     onAttemptError,
   });
   if (!goRes.success) {

@@ -6,13 +6,8 @@ import axios from 'axios';
 import anyPromise from 'promise.any';
 import Bottleneck from 'bottleneck';
 import { logger } from './logging';
-import { Gateway, SignedData, signedDataSchema, signedDataSchemaLegacy, Template, Endpoint } from './validation';
-import {
-  GATEWAY_MAX_CONCURRENCY_DEFAULT,
-  GATEWAY_MIN_TIME_DEFAULT_MS,
-  GATEWAY_TIMEOUT_MS,
-  TOTAL_TIMEOUT_HEADROOM_DEFAULT_MS,
-} from './constants';
+import { Gateway, SignedData, signedDataSchema, signedDataSchemaLegacy, Template } from './validation';
+import { GATEWAY_TIMEOUT_MS, TOTAL_TIMEOUT_HEADROOM_DEFAULT_MS } from './constants';
 import { Id, getState } from './state';
 
 export const urlJoin = (baseUrl: string, endpointId: string) => {
@@ -122,20 +117,15 @@ export const makeApiRequest = async (template: Id<Template>): Promise<SignedData
   } = getState();
   const logOptionsTemplateId = { meta: { 'Template-ID': template.id } };
 
-  const parameters: node.ApiCallParameters = abi.decode(template.parameters);
-  const endpoint: Endpoint = endpoints[template.endpointId];
+  const parameters = abi.decode(template.parameters);
+  const endpoint = endpoints[template.endpointId];
 
   const aggregatedApiCall: node.BaseAggregatedApiCall = {
     parameters,
     ...endpoint,
   };
 
-  const limiter =
-    apiLimiters?.[template.id] ??
-    new Bottleneck({
-      minTime: GATEWAY_MIN_TIME_DEFAULT_MS,
-      maxConcurrent: GATEWAY_MAX_CONCURRENCY_DEFAULT,
-    });
+  const limiter = apiLimiters[template.id];
 
   const [_, apiCallResponse] = await limiter.schedule(() =>
     node.api.callApi({

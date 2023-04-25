@@ -13,31 +13,75 @@ import {
   PROVIDER_TIMEOUT_MS,
 } from './constants';
 import { Config, LimiterConfig } from './validation';
+import { logger } from './logging';
 
 /**
  * LimitedProvider rate limits Provider calls
  */
 export class RateLimitedProvider extends ethers.providers.StaticJsonRpcProvider {
   public limiter: Bottleneck;
+  public id = Math.floor(Math.random() * 1_000)
+    .toString(16)
+    .padStart(6, ' ');
+  public debug: boolean;
 
-  constructor(url: ConnectionInfo | string, network: Network | undefined, limiter: Bottleneck) {
+  /**
+   * Construct a new Rate limited provider
+   *
+   * @param url
+   * @param network
+   * @param limiter
+   * @param debug whether to print Bottleneck-related debugging data
+   */
+  constructor(url: ConnectionInfo | string, network: Network | undefined, limiter: Bottleneck, debug = false) {
     super(url, network);
     this.limiter = limiter;
+    this.debug = debug;
   }
 
-  public perform(method: string, params: any) {
-    // Schedule the call via the rate limiter
-    // Timeouts:
-    // ---------
-    // The parent must time out after the child scope to avoid leaking file descriptors.
-    //
-    // 3rd go-utils: PROVIDER_TIMEOUT_MS = 5_000 ms
-    // 2nd Bottleneck: PROVIDER_TIMEOUT_MS-(PROVIDER_TIMEOUT_HEADROOM_MS/2) = 5_000 - 500/2 = 5_000 - 250 = 4_750 ms
-    // 1st ethers socket: PROVIDER_TIMEOUT_MS-PROVIDER_TIMEOUT_HEADROOM_MS = 5_000 - 500 = 4_500 ms
-    return this.limiter.schedule({ expiration: PROVIDER_TIMEOUT_MS - PROVIDER_TIMEOUT_HEADROOM_DEFAULT_MS / 2 }, () =>
-      super.perform(method, params).then((result) => result, Promise.reject)
+  /**
+   * Return the underlying rate limiter in this provider.
+   */
+  getLimiter = () => this.limiter;
+
+  /**
+   * Return a StaticJsonRpcProvider with this provider's configuration
+   */
+  getProvider = () =>
+    new ethers.providers.StaticJsonRpcProvider(
+      {
+        url: this.connection.url,
+        timeout: this.connection.timeout,
+      },
+      this.network
     );
-  }
+
+  /**
+   * Override the base class's perform method to send all calls via the limiter.
+   * This will cause upstream timeouts to potentially trigger (eg. airnode utils)
+   *
+   * @param method
+   * @param params
+   */
+  perform = (method: string, params: any) => {
+    if (this.debug)
+      logger.debug(
+        `Provider ID: ${this.id} | Limiter Jobs: ${this.limiter
+          .jobs()
+          .length.toString()
+          .padStart(5, ' ')} OUTER Perform in rate-limited provider`
+      );
+    return this.limiter.schedule(() => {
+      if (this.debug)
+        logger.debug(
+          `Provider ID: ${this.id} | Limiter Jobs: ${this.limiter
+            .jobs()
+            .length.toString()
+            .padStart(5, ' ')} INNER Perform in rate-limited provider`
+        );
+      return super.perform(method, params);
+    });
+  };
 }
 
 export const getNetwork = (chainId: string): Network | undefined => {

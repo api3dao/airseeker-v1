@@ -9,6 +9,7 @@ import {
   GATEWAY_MAX_CONCURRENCY_DEFAULT,
   GATEWAY_MIN_TIME_DEFAULT_MS,
 } from './constants';
+import { RateLimitedProvider } from './providers';
 
 export type Id<T> = T & {
   id: string;
@@ -16,7 +17,7 @@ export type Id<T> = T & {
 
 export type BeaconValueStorage = Record<BeaconId, SignedData>;
 export type Provider = {
-  rpcProvider: ethers.providers.StaticJsonRpcProvider;
+  rpcProvider: RateLimitedProvider;
   chainId: string;
   providerName: string;
 };
