@@ -1,6 +1,6 @@
-import { ethers } from 'ethers';
 import { initializeState } from './state';
 import { getTransactionCount } from './transaction-count';
+import { RateLimitedProvider } from './providers';
 
 describe('getTransactionCount', () => {
   const chainId = '31337';
@@ -15,7 +15,7 @@ describe('getTransactionCount', () => {
     const provider = {
       rpcProvider: {
         getTransactionCount: jest.fn().mockResolvedValue(10),
-      } as unknown as ethers.providers.StaticJsonRpcProvider,
+      } as unknown as RateLimitedProvider,
       chainId,
       providerName: 'mock-provider',
     };
@@ -31,7 +31,7 @@ describe('getTransactionCount', () => {
         getTransactionCount: jest.fn().mockImplementation(() => {
           throw new Error('Mock error');
         }),
-      } as unknown as ethers.providers.StaticJsonRpcProvider,
+      } as unknown as RateLimitedProvider,
       chainId,
       providerName: 'mock-provider',
     };

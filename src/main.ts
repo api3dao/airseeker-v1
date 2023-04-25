@@ -33,9 +33,10 @@ export async function main() {
   const config = loadConfig(path.join(__dirname, '..', 'config', 'airseeker.json'), process.env);
   initializeState(config);
 
+  // TODO Remove
   // We do it after initializeState because logger facilities aren't available before initializeState
-  process.on('SIGINT', handleStopSignal);
-  process.on('SIGTERM', handleStopSignal);
+  // process.on('SIGINT', handleStopSignal); // CTRL+C
+  // process.on('SIGTERM', handleStopSignal);
 
   initializeProviders();
   initializeWallets();
