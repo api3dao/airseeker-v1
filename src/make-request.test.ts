@@ -2,6 +2,7 @@ import axios from 'axios';
 import { ethers } from 'ethers';
 import * as node from '@api3/airnode-node';
 import * as abi from '@api3/airnode-abi';
+import Bottleneck from 'bottleneck';
 import { logger } from './logging';
 import { makeApiRequest, makeSignedDataGatewayRequests, signWithTemplateId, urlJoin } from './make-request';
 import * as state from './state';
@@ -320,6 +321,7 @@ describe('makeApiRequest', () => {
         airseekerWalletPrivateKey: ethers.Wallet.fromMnemonic(
           'achieve climb couple wait accident symbol spy blouse reduce foil echo label'
         ).privateKey,
+        apiLimiters: { [template.id]: new Bottleneck() },
         config: {
           endpoints: {
             '0x57ec49db18ff1164c921592ab3b10804e468de892575efe2037d48b7c07c2d28': {
@@ -371,6 +373,7 @@ describe('makeApiRequest', () => {
         airseekerWalletPrivateKey: ethers.Wallet.fromMnemonic(
           'achieve climb couple wait accident symbol spy blouse reduce foil echo label'
         ).privateKey,
+        apiLimiters: { [template.id]: new Bottleneck() },
         config: {
           endpoints: {
             '0x57ec49db18ff1164c921592ab3b10804e468de892575efe2037d48b7c07c2d28': {
@@ -413,6 +416,7 @@ describe('makeApiRequest', () => {
           },
           log: { format: 'plain', level: 'INFO' },
         } as any,
+        apiLimiters: { [template.id]: new Bottleneck() },
       } as state.State;
     });
 
