@@ -8,6 +8,14 @@ import { validSignedData } from '../test/fixtures';
 
 const config: Config = {
   airseekerWalletMnemonic: 'achieve climb couple wait accident symbol spy blouse reduce foil echo label',
+  rateLimiting: {
+    maxGatewayConcurrency: 50,
+    minGatewayTime: 1,
+    maxProviderConcurrency: 50,
+    minProviderTime: 1,
+    maxDirectGatewayConcurrency: 50,
+    minDirectGatewayTime: 1,
+  },
   log: {
     format: 'plain',
     level: 'INFO',

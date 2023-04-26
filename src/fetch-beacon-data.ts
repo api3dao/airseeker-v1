@@ -5,7 +5,7 @@ import { getState, updateState } from './state';
 import { makeSignedDataGatewayRequests, makeApiRequest } from './make-request';
 import { sleep } from './utils';
 import { SignedData } from './validation';
-import { INFINITE_RETRIES, NO_FETCH_EXIT_CODE, RANDOM_BACKOFF_MAX_MS, RANDOM_BACKOFF_MIN_MS } from './constants';
+import { NO_FETCH_EXIT_CODE, RANDOM_BACKOFF_MAX_MS, RANDOM_BACKOFF_MIN_MS } from './constants';
 
 export const initiateFetchingBeaconData = async () => {
   logger.debug('Initiating fetching all beacon data');
@@ -37,7 +37,7 @@ export const initiateFetchingBeaconData = async () => {
  * do not overlap. We measure the total running time of the "fetchBeaconData" and then wait the remaining time
  * accordingly.
  *
- * It is possible that the gateway is down and the the data fetching will take the full "fetchInterval" duration. In
+ * It is possible that the gateway is down and that the data fetching will take the full "fetchInterval" duration. In
  * that case we do not want to wait, but start calling the gateway immediately as part of the next fetch cycle.
  */
 export const fetchBeaconDataInLoop = async (beaconId: string) => {
@@ -92,7 +92,7 @@ export const fetchBeaconData = async (beaconId: string) => {
   }
 
   const goRes = await go(fetchFn, {
-    retries: INFINITE_RETRIES,
+    retries: 2,
     delay: { type: 'random', minDelayMs: RANDOM_BACKOFF_MIN_MS, maxDelayMs: RANDOM_BACKOFF_MAX_MS },
     onAttemptError,
   });
