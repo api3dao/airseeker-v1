@@ -256,7 +256,6 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
     // Get the latest gas price
     const getGasFn = () => getGasPrice(provider.rpcProvider.getProvider(), config.chains[chainId].options);
     // We have to grab the limiter from the custom provider as the getGasPrice function contains its own timeouts
-    // We have to grab the limiter from the custom provider as the getGasPrice function contains its own timeouts.
     const [logs, gasTarget] = await provider.rpcProvider.getLimiter().schedule({ expiration: 30_000 }, getGasFn);
     logs.forEach((log) =>
       log.level === 'ERROR'
