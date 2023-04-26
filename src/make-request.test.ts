@@ -6,7 +6,7 @@ import Bottleneck from 'bottleneck';
 import { logger } from './logging';
 import { makeApiRequest, makeSignedDataGatewayRequests, signWithTemplateId, urlJoin } from './make-request';
 import * as state from './state';
-import { buildGatewayLimiter } from './state';
+import { buildGatewayLimiter, getRandomId } from './state';
 import { validSignedData } from '../test/fixtures';
 
 const generateRandomBytes32 = () => ethers.utils.hexlify(ethers.utils.randomBytes(32));
@@ -321,7 +321,7 @@ describe('makeApiRequest', () => {
         airseekerWalletPrivateKey: ethers.Wallet.fromMnemonic(
           'achieve climb couple wait accident symbol spy blouse reduce foil echo label'
         ).privateKey,
-        apiLimiters: { [template.id]: new Bottleneck() },
+        apiLimiters: { [template.id]: new Bottleneck({ id: getRandomId() }) },
         config: {
           endpoints: {
             '0x57ec49db18ff1164c921592ab3b10804e468de892575efe2037d48b7c07c2d28': {
@@ -373,7 +373,7 @@ describe('makeApiRequest', () => {
         airseekerWalletPrivateKey: ethers.Wallet.fromMnemonic(
           'achieve climb couple wait accident symbol spy blouse reduce foil echo label'
         ).privateKey,
-        apiLimiters: { [template.id]: new Bottleneck() },
+        apiLimiters: { [template.id]: new Bottleneck({ id: getRandomId() }) },
         config: {
           endpoints: {
             '0x57ec49db18ff1164c921592ab3b10804e468de892575efe2037d48b7c07c2d28': {
@@ -416,7 +416,7 @@ describe('makeApiRequest', () => {
           },
           log: { format: 'plain', level: 'INFO' },
         } as any,
-        apiLimiters: { [template.id]: new Bottleneck() },
+        apiLimiters: { [template.id]: new Bottleneck({ id: getRandomId() }) },
       } as state.State;
     });
 
