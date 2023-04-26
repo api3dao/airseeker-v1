@@ -17,7 +17,6 @@ describe('prepareGoOptions', () => {
     jest.spyOn(Date, 'now').mockReturnValue(1650548023000);
 
     const expectedGoOptions = {
-      retries: 100_000,
       delay: { type: 'random' as const, minDelayMs: 0, maxDelayMs: 2_500 },
     };
     expect(prepareGoOptions(startTime, totalTimeout)).toEqual(expectedGoOptions);

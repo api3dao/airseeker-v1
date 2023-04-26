@@ -8,6 +8,5 @@ export const shortenAddress = (address: string) => address.replace(address.subst
 export const calculateTimeout = (startTime: number, totalTimeout: number) => totalTimeout - (Date.now() - startTime);
 
 export const prepareGoOptions = (_startTime: number, _totalTimeout: number): GoAsyncOptions => ({
-  retries: 0,
   delay: { type: 'random' as const, minDelayMs: RANDOM_BACKOFF_MIN_MS, maxDelayMs: RANDOM_BACKOFF_MAX_MS },
 });
