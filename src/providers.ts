@@ -71,7 +71,7 @@ export class RateLimitedProvider extends ethers.providers.StaticJsonRpcProvider 
           .length.toString()
           .padStart(5, ' ')} OUTER Perform in rate-limited provider`
       );
-    return this.limiter.schedule(() => {
+    return this.limiter.schedule({ expiration: 60_000 }, () => {
       if (this.debug)
         logger.debug(
           `Provider ID: ${this.id} | Limiter Jobs: ${this.limiter

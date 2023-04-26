@@ -4,7 +4,7 @@ import * as hre from 'hardhat';
 import '@nomiclabs/hardhat-ethers';
 import { buildAirseekerConfig, buildLocalSecrets } from '../fixtures/config';
 import { deployAndUpdate } from '../setup/deployment';
-import { main, handleStopSignal, softHandleStopSignal } from '../../src/main';
+import { main, handleStopSignal } from '../../src/main';
 import { sleep } from '../../src/utils';
 import * as makeRequest from '../../src/make-request';
 
@@ -64,14 +64,10 @@ describe('Airseeker', () => {
 
     mockReadFileSync('airseeker.json', JSON.stringify(airseekerConfig));
 
-    await main().then(async () => {
-      // Wait for Airseeker cycles to finish
-      await sleep(20_000);
-      // Stop Airseeker
-      handleStopSignal('stop');
-      // Wait for last cycle to finish
-      await sleep(20_000);
-    });
+    const mainPromise = main();
+    await sleep(30_000);
+    handleStopSignal('SIGINT');
+    await mainPromise;
 
     const beaconValueETHNew = await api3ServerV1.dataFeeds(deployment.beaconIdETH);
     const beaconValueBTCNew = await api3ServerV1.dataFeeds(deployment.beaconIdBTC);
@@ -135,14 +131,10 @@ describe('Airseeker', () => {
       })
     );
 
-    await main().then(async () => {
-      // Wait for Airseeker cycles to finish
-      await sleep(20_000);
-      // Stop Airseeker
-      softHandleStopSignal();
-      // Wait for last cycle to finish
-      await sleep(20_000);
-    });
+    const mainPromise = main();
+    await sleep(30_000);
+    handleStopSignal('SIGINT');
+    await mainPromise;
 
     const beaconValueETHNew = await api3ServerV1.dataFeeds(deployment.beaconIdETH);
     const beaconValueBTCNew = await api3ServerV1.dataFeeds(deployment.beaconIdBTC);
@@ -197,14 +189,10 @@ describe('Airseeker', () => {
       })
     );
 
-    await main().then(async () => {
-      // Wait for Airseeker cycles to finish
-      await sleep(20_000);
-      // Stop Airseeker
-      softHandleStopSignal();
-      // Wait for last cycle to finish
-      await sleep(20_000);
-    });
+    const mainPromise = main();
+    await sleep(30_000);
+    handleStopSignal('SIGINT');
+    await mainPromise;
 
     const voidSigner = new hre.ethers.VoidSigner(hre.ethers.constants.AddressZero, provider);
     const api3ServerV1 = deployment.api3ServerV1.connect(voidSigner);
@@ -229,14 +217,10 @@ describe('Airseeker', () => {
     const makeApiRequestSpy = jest.spyOn(makeRequest, 'makeApiRequest');
     makeApiRequestSpy.mockRejectedValueOnce(new Error('Direct API call failed'));
 
-    await main().then(async () => {
-      // Wait for Airseeker cycles to finish
-      await sleep(40_000);
-      // Stop Airseeker
-      softHandleStopSignal();
-      // Wait for last cycle to finish
-      await sleep(20_000);
-    });
+    const mainPromise = main();
+    await sleep(30_000);
+    handleStopSignal('SIGINT');
+    await mainPromise;
 
     const voidSigner = new hre.ethers.VoidSigner(hre.ethers.constants.AddressZero, provider);
     const api3ServerV1 = deployment.api3ServerV1.connect(voidSigner);
@@ -298,14 +282,10 @@ describe('Airseeker', () => {
       })
     );
 
-    await main().then(async () => {
-      // Wait for Airseeker cycles to finish
-      await sleep(20_000);
-      // Stop Airseeker
-      softHandleStopSignal();
-      // Wait for last cycle to finish
-      await sleep(20_000);
-    });
+    const mainPromise = main();
+    await sleep(30_000);
+    handleStopSignal('SIGINT');
+    await mainPromise;
 
     const voidSigner = new hre.ethers.VoidSigner(hre.ethers.constants.AddressZero, provider);
     const api3ServerV1 = deployment.api3ServerV1.connect(voidSigner);

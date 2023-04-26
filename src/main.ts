@@ -5,28 +5,15 @@ import { initiateFetchingBeaconData } from './fetch-beacon-data';
 import { initiateDataFeedUpdates } from './update-data-feeds';
 import { initializeProviders } from './providers';
 import { initializeWallets } from './wallets';
-import { initializeState, updateState } from './state';
-
-export const softHandleStopSignal = () => {
-  stopSignalReceived = true;
-  // Let the process wait for the last cycles instead of killing it immediately
-  updateState((state) => ({ ...state, stopSignalReceived: true }));
-};
-
-let stopSignalReceived = false;
+import { expireLimiterJobs, initializeState, updateState } from './state';
 
 export const handleStopSignal = (signal: string) => {
   logger.info(`Signal ${signal} received`);
-
-  if (stopSignalReceived) {
-    logger.warn('Second stop signal received, terminating immediately.');
-    process.exit(1);
-  }
-
   logger.info('Stopping Airseeker gracefully...');
-  logger.info('Hit CTRL+C again to force terminate.');
 
-  softHandleStopSignal();
+  // Let the process wait for the last cycles instead of killing it immediately
+  updateState((state) => ({ ...state, stopSignalReceived: true }));
+  expireLimiterJobs();
 };
 
 export async function main() {
@@ -35,11 +22,10 @@ export async function main() {
 
   // TODO Remove
   // We do it after initializeState because logger facilities aren't available before initializeState
-  // process.on('SIGINT', handleStopSignal); // CTRL+C
-  // process.on('SIGTERM', handleStopSignal);
+  process.on('SIGINT', handleStopSignal); // CTRL+C
+  process.on('SIGTERM', handleStopSignal);
 
   initializeProviders();
   initializeWallets();
-  initiateFetchingBeaconData();
-  initiateDataFeedUpdates();
+  await Promise.all([initiateFetchingBeaconData(), initiateDataFeedUpdates()]);
 }

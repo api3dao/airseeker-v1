@@ -10,6 +10,7 @@ import {
   GATEWAY_MIN_TIME_DEFAULT_MS,
 } from './constants';
 import { RateLimitedProvider } from './providers';
+import { logger } from './logging';
 
 export type Id<T> = T & {
   id: string;
@@ -146,6 +147,24 @@ export const getInitialState = (config: Config) => {
 type StateUpdater = (state: State) => State;
 export const updateState = (updater: StateUpdater) => {
   setState(updater(state));
+};
+
+export const expireLimiterJobs = async () => {
+  logger.warn('Terminating all limiters...');
+
+  const state = getState();
+
+  const stopOptions = { dropWaitingJobs: true };
+
+  const apiLimiterPromises = Object.values(state.apiLimiters).map((limiter) => limiter.stop(stopOptions));
+  const rpcProviderPromises = Object.values(state.providers).flatMap((providers) =>
+    providers.flatMap((provider) => provider.rpcProvider.getLimiter().stop(stopOptions))
+  );
+  const gatewayLimiterPromises = Object.values(state.gatewaysWithLimiters).flatMap((gateways) =>
+    gateways.map((gateway) => gateway.queue?.stop(stopOptions))
+  );
+
+  await Promise.allSettled([...apiLimiterPromises, ...rpcProviderPromises, ...gatewayLimiterPromises]);
 };
 
 export const setState = (newState: State) => {

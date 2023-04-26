@@ -1,10 +1,12 @@
+import Bottleneck from 'bottleneck';
 import { validSignedData } from '../fixtures';
 import { makeApiRequest, makeSignedDataGatewayRequests } from '../../src/make-request';
-import { Id, initializeState } from '../../src/state';
 import { buildAirseekerConfig, buildLocalSecrets } from '../fixtures/config';
 import { interpolateSecrets } from '../../src/config';
 import { Template } from '../../src/validation';
 import { initializeWallets } from '../../src/wallets';
+import * as state from '../../src/state';
+const { getState, initializeState } = state;
 
 // Jest version 27 has a bug where jest.setTimeout does not work correctly inside describe or test blocks
 // https://github.com/facebook/jest/issues/11607
@@ -34,8 +36,20 @@ it('makes a direct api call', async () => {
   initializeState(interpolateSecrets(config, secrets));
   initializeWallets();
 
+  // Mocking Date.now messes with Bottleneck job expiration (which is needed for fast shutdowns)
+  const initialState = getState();
+  state.setState({
+    ...initialState,
+    apiLimiters: Object.fromEntries(
+      Object.keys(initialState.apiLimiters).map((key) => [
+        key,
+        { schedule: (_options: any, fn: any) => fn() } as Bottleneck,
+      ])
+    ),
+  });
+
   jest.spyOn(Date, 'now').mockImplementation(() => 1664532188111);
-  const ltcTemplate: Id<Template> = {
+  const ltcTemplate: state.Id<Template> = {
     id: '0xc43a79e09e53edfdb601acef6b52000ecb7da353aee45255c518fb9d978d9283',
     endpointId: '0x13dea3311fe0d6b84f4daeab831befbc49e19e6494c41e9e065a09c3c68f43b6',
     parameters:
