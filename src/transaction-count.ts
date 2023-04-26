@@ -20,7 +20,9 @@ export const getTransactionCount = async (
   });
 
   if (!goTransactionCount.success) {
-    logger.warn(`Unable to get transaction count. Error: ${goTransactionCount.error}`, logOptionsSponsorWallet);
+    if (!goTransactionCount.error?.message?.includes('This limiter has been stopped')) {
+      logger.warn(`Unable to get transaction count. Error: ${goTransactionCount.error}`, logOptionsSponsorWallet);
+    }
     return null;
   }
 

@@ -24,6 +24,10 @@ export async function main() {
   process.on('SIGINT', handleStopSignal); // CTRL+C
   process.on('SIGTERM', handleStopSignal);
 
+  process.on('exit', () => {
+    logger.info('Airseeker has quit.');
+  });
+
   initializeProviders();
   initializeWallets();
   await Promise.all([initiateFetchingBeaconData(), initiateDataFeedUpdates()]);
