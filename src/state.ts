@@ -1,6 +1,7 @@
 import { setLogOptions, randomHexString } from '@api3/airnode-utilities';
-import { ethers } from 'ethers';
+import { ethers, utils } from 'ethers';
 import Bottleneck from 'bottleneck';
+import { uniqBy } from 'lodash';
 import { BeaconId, Config, Gateway, LimiterConfig, SignedData } from './validation';
 import { GatewayWithLimiter } from './make-request';
 import {
@@ -45,10 +46,17 @@ export const initializeState = (config: Config) => {
   state = getInitialState(config);
 };
 
+/**
+ * Generates a random ID used when creating Bottleneck limiters.
+ */
+// eslint-disable-next-line functional/prefer-tacit
+export const getRandomId = () => utils.randomBytes(16).toString();
+
 export const buildGatewayLimiter = (gateways: Gateway[], config?: Config, limiterConfig?: LimiterConfig) =>
   gateways.map((gateway) => ({
     ...(gateway as Gateway),
     queue: new Bottleneck({
+      id: getRandomId(),
       maxConcurrent:
         limiterConfig?.maxConcurrent ?? config?.rateLimiting?.maxGatewayConcurrency ?? GATEWAY_MAX_CONCURRENCY_DEFAULT,
       minTime: limiterConfig?.minTime ?? config?.rateLimiting?.minGatewayTime ?? GATEWAY_MIN_TIME_DEFAULT_MS,
@@ -93,6 +101,7 @@ export const buildApiLimiters = (config: Config) => {
         return [
           ois.title,
           new Bottleneck({
+            id: getRandomId(),
             minTime: minTime ?? DIRECT_GATEWAY_MIN_TIME_DEFAULT_MS,
             maxConcurrent: maxConcurrent ?? DIRECT_GATEWAY_MAX_CONCURRENCY_DEFAULT,
           }),
@@ -102,6 +111,7 @@ export const buildApiLimiters = (config: Config) => {
       return [
         ois.title,
         new Bottleneck({
+          id: getRandomId(),
           minTime: DIRECT_GATEWAY_MIN_TIME_DEFAULT_MS,
           maxConcurrent: DIRECT_GATEWAY_MAX_CONCURRENCY_DEFAULT,
         }),
@@ -150,19 +160,30 @@ export const updateState = (updater: StateUpdater) => {
 };
 
 export const expireLimiterJobs = async () => {
+  // Trying to stop already stopping limiters produces very nasty errors.
+  if (getState().stopSignalReceived) {
+    return;
+  }
+
   logger.warn('Terminating all limiters...');
+
+  const limiterStopper = (limiter?: Bottleneck) => {
+    const stopOptions = { dropWaitingJobs: true };
+
+    return limiter?.stop(stopOptions);
+  };
 
   const state = getState();
 
-  const stopOptions = { dropWaitingJobs: true };
-
-  const apiLimiterPromises = Object.values(state.apiLimiters).map((limiter) => limiter.stop(stopOptions));
+  // Limiters should not be stopped multiple times - so we uniq them by their random IDs.
+  const apiLimiterPromises = uniqBy(Object.values(state.apiLimiters), (item) => item.id).map(limiterStopper);
   const rpcProviderPromises = Object.values(state.providers).flatMap((providers) =>
-    providers.flatMap((provider) => provider.rpcProvider.getLimiter().stop(stopOptions))
+    providers.flatMap((provider) => limiterStopper(provider.rpcProvider.getLimiter()))
   );
-  const gatewayLimiterPromises = Object.values(state.gatewaysWithLimiters).flatMap((gateways) =>
-    gateways.map((gateway) => gateway.queue?.stop(stopOptions))
-  );
+  const gatewayLimiterPromises = uniqBy(
+    Object.values(state.gatewaysWithLimiters).flatMap((gateways) => gateways.map((gateway) => gateway.queue)),
+    (item) => item?.id
+  ).map(limiterStopper);
 
   await Promise.allSettled([...apiLimiterPromises, ...rpcProviderPromises, ...gatewayLimiterPromises]);
 };

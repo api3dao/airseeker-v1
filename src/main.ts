@@ -11,9 +11,8 @@ export const handleStopSignal = (signal: string) => {
   logger.info(`Signal ${signal} received`);
   logger.info('Stopping Airseeker gracefully...');
 
-  // Let the process wait for the last cycles instead of killing it immediately
-  updateState((state) => ({ ...state, stopSignalReceived: true }));
   expireLimiterJobs();
+  updateState((state) => ({ ...state, stopSignalReceived: true }));
 };
 
 export async function main() {

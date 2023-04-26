@@ -5,7 +5,7 @@ import { ethers } from 'ethers';
 import { Network } from '@ethersproject/networks';
 import Bottleneck from 'bottleneck';
 import { ConnectionInfo } from '@ethersproject/web';
-import { getState, Provider, Providers, updateState } from './state';
+import { getRandomId, getState, Provider, Providers, updateState } from './state';
 import {
   PROVIDER_MAX_CONCURRENCY_DEFAULT,
   PROVIDER_MIN_TIME_DEFAULT_MS,
@@ -113,6 +113,7 @@ export const initializeProvider = (
     },
     getNetwork(chainId),
     new Bottleneck({
+      id: getRandomId(),
       minTime: rateLimiter?.minTime ?? config?.rateLimiting?.minProviderTime ?? PROVIDER_MIN_TIME_DEFAULT_MS,
       maxConcurrent:
         rateLimiter?.maxConcurrent ?? config?.rateLimiting?.maxProviderConcurrency ?? PROVIDER_MAX_CONCURRENCY_DEFAULT,

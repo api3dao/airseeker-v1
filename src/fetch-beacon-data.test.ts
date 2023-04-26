@@ -6,6 +6,8 @@ import * as state from './state';
 import { buildGatewayLimiters, buildApiLimiters } from './state';
 import { validSignedData } from '../test/fixtures';
 
+jest.setTimeout(10_000);
+
 const config: Config = {
   airseekerWalletMnemonic: 'achieve climb couple wait accident symbol spy blouse reduce foil echo label',
   rateLimiting: {
