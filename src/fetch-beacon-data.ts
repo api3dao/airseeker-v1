@@ -27,7 +27,7 @@ export const initiateFetchingBeaconData = async () => {
     process.exit(NO_FETCH_EXIT_CODE);
   }
 
-  beaconIdsToUpdate.forEach(fetchBeaconDataInLoop);
+  return beaconIdsToUpdate.map(fetchBeaconDataInLoop);
 };
 
 /**
@@ -43,15 +43,22 @@ export const initiateFetchingBeaconData = async () => {
 export const fetchBeaconDataInLoop = async (beaconId: string) => {
   const { config } = getState();
 
+  let lastExecute = 0;
+  let waitTime = 0;
+
   while (!getState().stopSignalReceived) {
-    const startTimestamp = Date.now();
-    const { fetchInterval } = config.beacons[beaconId];
+    if (Date.now() - lastExecute > waitTime) {
+      lastExecute = Date.now();
+      const startTimestamp = Date.now();
+      const { fetchInterval } = config.beacons[beaconId];
 
-    await fetchBeaconData(beaconId);
+      await fetchBeaconData(beaconId);
 
-    const duration = Date.now() - startTimestamp;
-    const waitTime = Math.max(0, fetchInterval * 1_000 - duration);
-    await sleep(waitTime);
+      const duration = Date.now() - startTimestamp;
+      waitTime = Math.max(0, fetchInterval * 1_000 - duration);
+    }
+
+    await sleep(1_000); // regularly re-assess the stop interval
   }
 };
 

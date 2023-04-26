@@ -75,20 +75,26 @@ export const initiateDataFeedUpdates = () => {
     logger.error('No data feed for processing found. Stopping.');
     process.exit(NO_DATA_FEEDS_EXIT_CODE);
   }
-  providerSponsorDataFeedsGroups.forEach(updateDataFeedsInLoop);
+  return providerSponsorDataFeedsGroups.map(updateDataFeedsInLoop);
 };
 
 export const updateDataFeedsInLoop = async (providerSponsorDataFeeds: ProviderSponsorDataFeeds) => {
+  let lastExecute = 0;
+  let waitTime = 0;
+
   while (!getState().stopSignalReceived) {
-    const startTimestamp = Date.now();
-    const { updateInterval } = providerSponsorDataFeeds;
+    if (Date.now() - lastExecute > waitTime) {
+      lastExecute = Date.now();
+      const startTimestamp = Date.now();
+      const { updateInterval } = providerSponsorDataFeeds;
 
-    await updateBeacons(providerSponsorDataFeeds, startTimestamp);
-    await updateBeaconSets(providerSponsorDataFeeds, startTimestamp);
+      await updateBeacons(providerSponsorDataFeeds, startTimestamp);
+      await updateBeaconSets(providerSponsorDataFeeds, startTimestamp);
 
-    const duration = Date.now() - startTimestamp;
-    const waitTime = Math.max(0, updateInterval * 1_000 - duration);
-    await sleep(waitTime);
+      const duration = Date.now() - startTimestamp;
+      waitTime = Math.max(0, updateInterval * 1_000 - duration);
+    }
+    await sleep(500);
   }
 };
 
@@ -265,7 +271,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
 
     // Get the latest gas price
     // We have to grab the limiter from the custom provider as the getGasPrice function contains its own timeouts.
-    const [logs, gasTarget] = await provider.rpcProvider.getLimiter().schedule(getGasFn);
+    const [logs, gasTarget] = await provider.rpcProvider.getLimiter().schedule({ expiration: 30_000 }, getGasFn);
     logs.forEach((log) =>
       log.level === 'ERROR'
         ? logger.error(log.message, null, logOptionsBeaconId)
