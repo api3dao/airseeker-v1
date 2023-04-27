@@ -8,12 +8,13 @@ on:
     types: [opened, synchronize, reopened]
 
 env:
-  TARGET_NODE_VERSION: '14.17.1'
+  TARGET_NODE_VERSION: '16'
 
 jobs:
   documentation:
     name: Check documentation
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     # Don't run twice for a push within an internal PR
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
     steps:
@@ -47,6 +48,7 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     # Don't run twice for a push within an internal PR
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
     steps:
@@ -65,6 +67,7 @@ jobs:
   test-e2e:
     name: Test e2e
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     # Don't run twice for a push within an internal PR
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
     steps:
