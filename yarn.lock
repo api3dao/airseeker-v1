@@ -2130,11 +2130,12 @@
   integrity sha512-2CNmKwxBdEikQGBM+CSN/xKRmp48Z4BYGRCpbeX+w5YJw+e6JEShFNs1yR8dHpoKpj+XG58GCgtNk8izUDrbnQ==
 
 "@types/prompts@^2.0.14":
-  version "2.4.1"
-  resolved "https://registry.yarnpkg.com/@types/prompts/-/prompts-2.4.1.tgz#d47adcb608a0afcd48121ff7c75244694a3a04c5"
-  integrity sha512-1Mqzhzi9W5KlooNE4o0JwSXGUDeQXKldbGn9NO4tpxwZbHXYd+WcKpCksG2lbhH7U9I9LigfsdVsP2QAY0lNPA==
+  version "2.4.4"
+  resolved "https://registry.yarnpkg.com/@types/prompts/-/prompts-2.4.4.tgz#dd5a1d41cb1bcd0fc4464bf44a0c8354f36ea735"
+  integrity sha512-p5N9uoTH76lLvSAaYSZtBCdEXzpOOufsRjnhjVSrZGXikVGHX9+cc9ERtHRV4hvBKHyZb1bg4K+56Bd2TqUn4A==
   dependencies:
     "@types/node" "*"
+    kleur "^3.0.3"
 
 "@types/qs@*":
   version "6.9.7"
