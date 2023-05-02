@@ -17,7 +17,7 @@
     "dist"
   ],
   "engines": {
-    "node": ">=18"
+    "node": "^18.14.0"
   },
   "scripts": {
     "build": "yarn clean && yarn compile && yarn build:ncc",
