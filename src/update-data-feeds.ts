@@ -504,22 +504,20 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
       logger.info(`Deviation threshold reached. Updating.`, logOptionsBeaconSetId);
     }
 
-    logger.info(`### Decided to update`, logOptionsBeaconSetId);
-
+    logger.info(`Got past beaconset update checks - updating children first...`, logOptionsBeaconSetId);
     // Get the latest gas price
     const [logs, gasTarget] = await getGasPrice(provider.rpcProvider, config.chains[chainId].options);
     logs.forEach((log) => (log.level === 'ERROR' ? logger.error(log.message) : logger.info(log.message)));
 
     // Update beacon set constituents first
-    const nonceAfterChildUpdates = await beaconSetBeaconValues.reduce(async (accu, cv) => {
-      const nonce = await accu; // shadowed, naughty
-
+    const nonceAfterChildUpdates = await beaconSetBeaconValues.reduce(async (promisedNonce, { beaconId }) => {
+      logger.info(`Calling updateBeacon for ${beaconId}`, logOptionsBeaconSetId);
       // not entirely sure how to handle the deviation threshold:
       // if we're at this point we know for sure that the beaconset should be updated, so ideally we actually need to
-      // calculate if updating the underlying beacon will have a material affect on the parent, but this is 😬
+      // calculate if updating the underlying beacon will have a material effect on the parent, but this is 😬
       return updateBeacon(
-        { beaconId: cv.beaconId, heartbeatInterval: beaconSet.heartbeatInterval, deviationThreshold: 0.1 },
-        nonce,
+        { beaconId, heartbeatInterval: beaconSet.heartbeatInterval, deviationThreshold: beaconSet.deviationThreshold },
+        await promisedNonce,
         providerSponsorBeacons,
         startTime,
         initialUpdateData
@@ -530,6 +528,8 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
       `Updated ${nonce - transactionCount} constituent beacons of ${beaconSetBeaconValues.length}`,
       logOptionsBeaconSetId
     );
+
+    logger.info(`Attempting update of beacon set`, logOptionsBeaconSetId);
 
     // Update beacon set
     const tx = await go(
