@@ -175,8 +175,11 @@ export const expireLimiterJobs = async () => {
 
   const state = getState();
 
+  // TODO sometimes item for item.id for apiLimiters is undefined
   // Limiters should not be stopped multiple times - so we uniq them by their random IDs.
-  const apiLimiterPromises = uniqBy(Object.values(state.apiLimiters), (item) => item.id).map(limiterStopper);
+  const apiLimiterPromises = uniqBy(Object.values(state.apiLimiters), (item) => item?.id ?? getRandomId()).map(
+    limiterStopper
+  );
   const rpcProviderPromises = Object.values(state.providers).flatMap((providers) =>
     providers.flatMap((provider) => limiterStopper(provider.rpcProvider.getLimiter()))
   );
