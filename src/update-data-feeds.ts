@@ -351,9 +351,10 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
   } = initialUpdateData;
   const { chainId } = provider;
   // Process beacon set updates
-  let nonce = transactionCount;
 
-  for (const beaconSet of beaconSets) {
+  await beaconSets.reduce(async (accu, beaconSet) => {
+    const nonce = await accu;
+
     const logOptionsBeaconSetId = {
       ...logOptions,
       meta: {
@@ -373,13 +374,13 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
     });
     if (!goDataFeed.success) {
       logger.warn(`Unable to read data feed. Error: ${goDataFeed.error}`, logOptionsBeaconSetId);
-      continue;
+      return nonce;
     }
     const beaconSetOnChainData = goDataFeed.data;
     if (!beaconSetOnChainData) {
       const message = `Missing on chain data for beaconSet. Skipping.`;
       logger.warn(message, logOptionsBeaconSetId);
-      continue;
+      return nonce;
     }
 
     // Retrieve values for each beacon within the set from the cache (common memory)
@@ -439,7 +440,7 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
     const beaconSetBeaconValuesResults = await Promise.allSettled(beaconSetBeaconValuesPromises);
     if (beaconSetBeaconValuesResults.some((data) => data.status === 'rejected')) {
       logger.warn('There was an error fetching beacon data for beacon set. Skipping.', logOptionsBeaconSetId);
-      continue;
+      return nonce;
     }
 
     const beaconSetBeaconValues = beaconSetBeaconValuesResults.map(
@@ -456,14 +457,14 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
     const isFulfillmentDataFresh = checkFulfillmentDataTimestamp(beaconSetOnChainData.timestamp, newBeaconSetTimestamp);
     if (!isFulfillmentDataFresh) {
       logger.warn(`Fulfillment data older than on-chain beacon set data. Skipping.`, logOptionsBeaconSetId);
-      continue;
+      return nonce;
     }
 
     // https://github.com/api3dao/airnode-protocol-v1/blob/ac6ede80ef2d8978b3ad08168d452909a538d10b/contracts/api3-server-v1/DataFeedServer.sol#L54
     if (newBeaconSetTimestamp === beaconSetOnChainData.timestamp) {
       if (newBeaconSetValue === beaconSetOnChainData.value) {
         logger.warn('Update attempt would not actually update beaconset', logOptionsBeaconSetId);
-        continue;
+        return nonce;
       }
     }
     logger.info(
@@ -493,11 +494,11 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
       if (shouldUpdate === null) {
         logger.warn(`Unable to fetch current beacon set value`, logOptionsBeaconSetId);
         // This can happen only if we reach the total timeout so it makes no sense to continue with the rest of the beaconSets
-        return;
+        return nonce;
       }
       if (!shouldUpdate) {
         logger.info(`Deviation threshold not reached. Skipping.`, logOptionsBeaconSetId);
-        continue;
+        return nonce;
       }
 
       logger.info(`Deviation threshold reached. Updating.`, logOptionsBeaconSetId);
@@ -509,24 +510,24 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
     const [logs, gasTarget] = await getGasPrice(provider.rpcProvider, config.chains[chainId].options);
     logs.forEach((log) => (log.level === 'ERROR' ? logger.error(log.message) : logger.info(log.message)));
 
-    const preConsituentUpdate = nonce;
     // Update beacon set constituents first
-    for (const beacon of beaconSetBeaconValues) {
-      // const configBeacon = initialUpdateData?.beacons.find(configBeacon => configBeacon.beaconId === beacon.beaconId);
-      // if (!configBeacon) {
-      //   logger.warn(`Unable to locate beacon in config: ${beacon.beaconId}`, logOptionsBeaconSetId);
-      //   continue;
-      // }
-      nonce = await updateBeacon(
-        { beaconId: beacon.beaconId, heartbeatInterval: beaconSet.heartbeatInterval, deviationThreshold: 0.1 },
+    const nonceAfterChildUpdates = await beaconSetBeaconValues.reduce(async (accu, cv) => {
+      const nonce = await accu; // shadowed, naughty
+
+      // not entirely sure how to handle the deviation threshold:
+      // if we're at this point we know for sure that the beaconset should be updated, so ideally we actually need to
+      // calculate if updating the underlying beacon will have a material affect on the parent, but this is 😬
+      return updateBeacon(
+        { beaconId: cv.beaconId, heartbeatInterval: beaconSet.heartbeatInterval, deviationThreshold: 0.1 },
         nonce,
         providerSponsorBeacons,
         startTime,
         initialUpdateData
       );
-    }
+    }, Promise.resolve(nonce));
+
     logger.info(
-      `Updated ${nonce - preConsituentUpdate} constituent beacons of ${beaconSetBeaconValues.length}`,
+      `Updated ${nonce - transactionCount} constituent beacons of ${beaconSetBeaconValues.length}`,
       logOptionsBeaconSetId
     );
 
@@ -536,7 +537,7 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
         contract.connect(sponsorWallet).updateBeaconSetWithBeacons(
           beaconSetBeaconValues.map(({ beaconId }) => beaconId),
           {
-            nonce,
+            nonce: nonceAfterChildUpdates,
             ...gasTarget,
           }
         ),
@@ -549,10 +550,10 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
 
     if (!tx.success) {
       logger.warn(`Unable to update beacon set with nonce ${nonce}. Error: ${tx.error}`, logOptionsBeaconSetId);
-      return;
+      return nonce;
     }
 
     logger.info(`Beacon set successfully updated with nonce ${nonce}. Tx hash ${tx.data.hash}.`, logOptionsBeaconSetId);
-    nonce++;
-  }
+    return nonceAfterChildUpdates + 1;
+  }, Promise.resolve(transactionCount));
 };
