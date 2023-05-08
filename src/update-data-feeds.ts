@@ -164,8 +164,8 @@ export const initializeUpdateCycle = async (
 
 // We pass return value from `prepareGoOptions` (with calculated timeout) to every `go` call in the function to enforce the update cycle.
 // This solution is not precise but since chain operations are the only ones that actually take some time this should be a good enough solution.
-export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataFeeds, startTime: number) => {
-  const initialUpdateData = await initializeUpdateCycle(providerSponsorBeacons, DataFeedType.Beacon, startTime);
+export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDataFeeds, startTime: number) => {
+  const initialUpdateData = await initializeUpdateCycle(providerSponsorDataFeeds, DataFeedType.Beacon, startTime);
   if (!initialUpdateData) return;
   const {
     contract,
@@ -352,8 +352,8 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
 
 // We pass return value from `prepareGoOptions` (with calculated timeout) to every `go` call in the function to enforce the update cycle.
 // This solution is not precise but since chain operations are the only ones that actually take some time this should be a good enough solution.
-export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDataFeeds, startTime: number) => {
-  const initialUpdateData = await initializeUpdateCycle(providerSponsorBeacons, DataFeedType.BeaconSet, startTime);
+export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsorDataFeeds, startTime: number) => {
+  const initialUpdateData = await initializeUpdateCycle(providerSponsorDataFeeds, DataFeedType.BeaconSet, startTime);
   if (!initialUpdateData) return;
   const {
     contract,
