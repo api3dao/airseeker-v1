@@ -3,7 +3,7 @@ import { getGasPrice } from '@api3/airnode-utilities';
 import { go } from '@api3/promise-utils';
 import { ethers } from 'ethers';
 import { chunk, isEmpty, isNil } from 'lodash';
-import { calculateBeaconSetTimestamp, calculateMedian } from './calculations';
+import { calculateMedian } from './calculations';
 import { checkFulfillmentDataTimestamp, checkOnchainDataFreshness, checkUpdateCondition } from './check-condition';
 import {
   DATAFEED_READ_BATCH_SIZE,
@@ -514,8 +514,11 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
         (result) => (result as PromiseFulfilledResult<BeaconSetBeaconValue>).value
       );
 
+      // https://github.com/api3dao/airnode-protocol-v1/blob/main/contracts/api3-server-v1/DataFeedServer.sol#L163
       const newBeaconSetValue = calculateMedian(beaconSetBeaconValues.map((value) => value.value));
-      const newBeaconSetTimestamp = calculateBeaconSetTimestamp(beaconSetBeaconValues.map((value) => value.timestamp));
+      const newBeaconSetTimestamp = calculateMedian(
+        beaconSetBeaconValues.map((value) => ethers.BigNumber.from(value.timestamp))
+      ).toNumber();
 
       // Check that fulfillment data is newer than on chain data
       const isFulfillmentDataFresh = checkFulfillmentDataTimestamp(onChainDataTimestamp, newBeaconSetTimestamp);
