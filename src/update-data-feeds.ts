@@ -561,12 +561,23 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
         logger.info(`Deviation threshold reached. Updating.`, beaconSetUpdateData.logOptionsBeaconSetId);
       }
 
-      beaconSetUpdateCalldatas = [
-        ...beaconSetUpdateCalldatas,
-        contract.interface.encodeFunctionData('updateBeaconSetWithBeacons', [
-          beaconSetBeaconValues.map(({ beaconId }) => beaconId),
-        ]),
-      ];
+      beaconSetUpdateCalldatas = Array.from(
+        new Set([
+          ...beaconSetUpdateCalldatas,
+          ...beaconSetBeaconValues.map(({ airnode, templateId, timestamp, encodedValue, signature }) =>
+            contract.interface.encodeFunctionData('updateBeaconWithSignedData', [
+              airnode,
+              templateId,
+              timestamp,
+              encodedValue,
+              signature,
+            ])
+          ),
+          contract.interface.encodeFunctionData('updateBeaconSetWithBeacons', [
+            beaconSetBeaconValues.map(({ beaconId }) => beaconId),
+          ]),
+        ])
+      );
     }
 
     let nonce = transactionCount;
