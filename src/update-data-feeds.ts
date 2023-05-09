@@ -16,14 +16,14 @@ import { logger, LogOptionsOverride } from './logging';
 import { getState, Provider } from './state';
 import { getTransactionCount } from './transaction-count';
 import { prepareGoOptions, shortenAddress, sleep } from './utils';
-import { Beacon, BeaconSetUpdate, BeaconUpdate, SignedData } from './validation';
+import { Beacon, BeaconSetTrigger, BeaconTrigger, SignedData } from './validation';
 
 type ProviderSponsorDataFeeds = {
   provider: Provider;
   sponsorAddress: string;
   updateInterval: number;
-  beacons: BeaconUpdate[];
-  beaconSets: BeaconSetUpdate[];
+  beaconTriggers: BeaconTrigger[];
+  beaconSetTriggers: BeaconSetTrigger[];
 };
 
 type BeaconSetBeaconValue = {
@@ -61,8 +61,17 @@ export const groupDataFeedsByProviderSponsor = () => {
       const providers = stateProviders[chainId];
 
       const providerSponsorGroups = Object.entries(dataFeedUpdatesPerSponsor).reduce(
-        (acc: ProviderSponsorDataFeeds[], [sponsorAddress, dataFeedUpdate]) => {
-          return [...acc, ...providers.map((provider) => ({ provider, sponsorAddress, ...dataFeedUpdate }))];
+        (acc: ProviderSponsorDataFeeds[], [sponsorAddress, { updateInterval, beacons, beaconSets }]) => {
+          return [
+            ...acc,
+            ...providers.map((provider) => ({
+              provider,
+              sponsorAddress,
+              updateInterval,
+              beaconTriggers: beacons,
+              beaconSetTriggers: beaconSets,
+            })),
+          ];
         },
         []
       );
@@ -111,7 +120,7 @@ export const initializeUpdateCycle = async (
   dataFeedType: DataFeedType,
   startTime: number
 ) => {
-  const { provider, updateInterval, sponsorAddress, beacons, beaconSets } = providerSponsorDataFeeds;
+  const { provider, updateInterval, sponsorAddress, beaconTriggers, beaconSetTriggers } = providerSponsorDataFeeds;
   const { rpcProvider, chainId, providerName } = provider;
   const logOptions = {
     meta: {
@@ -125,8 +134,8 @@ export const initializeUpdateCycle = async (
   logger.debug(`Initializing updates`, logOptions);
 
   if (
-    (dataFeedType === DataFeedType.Beacon && isEmpty(beacons)) ||
-    (dataFeedType === DataFeedType.BeaconSet && isEmpty(beaconSets))
+    (dataFeedType === DataFeedType.Beacon && isEmpty(beaconTriggers)) ||
+    (dataFeedType === DataFeedType.BeaconSet && isEmpty(beaconSetTriggers))
   ) {
     logger.debug(`No ${dataFeedType} found, skipping initialization cycle`, logOptions);
     return null;
@@ -163,8 +172,8 @@ export const initializeUpdateCycle = async (
     totalTimeout,
     logOptions,
     beaconValues,
-    beacons,
-    beaconSets,
+    beaconTriggers,
+    beaconSetTriggers,
     config,
     provider,
   };
@@ -183,15 +192,15 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
     totalTimeout,
     logOptions,
     beaconValues,
-    beacons,
+    beaconTriggers,
     config,
     provider,
   } = initialUpdateData;
   const { chainId } = provider;
 
-  type BeaconUpdateData = {
+  type BeaconUpdate = {
     logOptionsBeaconId: LogOptionsOverride;
-    beaconUpdate: BeaconUpdate;
+    beaconTrigger: BeaconTrigger;
     beacon: Beacon;
     newBeaconResponse: SignedData;
     newBeaconValue: ethers.BigNumber;
@@ -199,52 +208,49 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
   };
 
   // Process beacon read calldatas
-  let beaconUpdates: BeaconUpdateData[] = [];
-
-  // Iterate over beacons listed under triggers section in config
-  for (const beacon of beacons) {
+  const beaconUpdates = beaconTriggers.reduce((acc: BeaconUpdate[], beaconTrigger) => {
     const logOptionsBeaconId = {
       ...logOptions,
       meta: {
         ...logOptions.meta,
         'Sponsor-Wallet': shortenAddress(sponsorWallet.address),
-        'Beacon-ID': beacon.beaconId,
+        'Beacon-ID': beaconTrigger.beaconId,
       },
     };
 
     logger.debug(`Processing beacon update`, logOptionsBeaconId);
 
     // Check whether we have a value from the provider API for given beacon
-    const newBeaconResponse = beaconValues[beacon.beaconId];
+    const newBeaconResponse = beaconValues[beaconTrigger.beaconId];
     if (!newBeaconResponse) {
       logger.warn(`No data available for beacon. Skipping.`, logOptionsBeaconId);
-      continue;
+      return acc;
     }
 
     const newBeaconValue = decodeBeaconValue(newBeaconResponse.encodedValue);
     if (!newBeaconValue) {
       logger.warn(`New beacon value is out of type range. Skipping.`, logOptionsBeaconId);
-      continue;
+      return acc;
     }
 
-    beaconUpdates = [
-      ...beaconUpdates,
+    return [
+      ...acc,
       {
         logOptionsBeaconId,
-        beaconUpdate: beacon,
-        beacon: config.beacons[beacon.beaconId],
+        beaconTrigger,
+        beacon: config.beacons[beaconTrigger.beaconId],
         newBeaconResponse,
         newBeaconValue,
-        dataFeedsCalldata: contract.interface.encodeFunctionData('dataFeeds', [beacon.beaconId]),
+        dataFeedsCalldata: contract.interface.encodeFunctionData('dataFeeds', [beaconTrigger.beaconId]),
       },
     ];
-  }
+  }, []);
 
   for (const readBatch of chunk(beaconUpdates, DATAFEED_READ_BATCH_SIZE)) {
     // Read beacon batch onchain values
     const goDatafeedsTryMulticall = await go(
       () => {
-        const calldatas = readBatch.map((beaconUpdateData) => beaconUpdateData.dataFeedsCalldata);
+        const calldatas = readBatch.map((beaconUpdate) => beaconUpdate.dataFeedsCalldata);
         return contract.connect(voidSigner).callStatic.tryMulticall(calldatas);
       },
       {
@@ -291,7 +297,7 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
       // Check that on chain data is newer than heartbeat interval
       const isOnchainDataFresh = checkOnchainDataFreshness(
         onChainDataTimestamp,
-        beaconUpdateData.beaconUpdate.heartbeatInterval
+        beaconUpdateData.beaconTrigger.heartbeatInterval
       );
       if (!isOnchainDataFresh) {
         logger.info(
@@ -302,7 +308,7 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
         // Check beacon condition
         const shouldUpdate = checkUpdateCondition(
           onChainDataValue,
-          beaconUpdateData.beaconUpdate.deviationThreshold,
+          beaconUpdateData.beaconTrigger.deviationThreshold,
           beaconUpdateData.newBeaconValue
         );
         if (shouldUpdate === null) {
@@ -371,7 +377,7 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
     totalTimeout,
     logOptions,
     beaconValues,
-    beaconSets,
+    beaconSetTriggers,
     config,
     provider,
   } = initialUpdateData;
@@ -379,34 +385,29 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
 
   type BeaconSetUpdateData = {
     logOptionsBeaconSetId: LogOptionsOverride;
-    beaconSetUpdate: BeaconSetUpdate;
+    beaconSetTrigger: BeaconSetTrigger;
     dataFeedsCalldata: string;
   };
 
   // Process beacon set read calldatas
-  let beaconSetUpdates: BeaconSetUpdateData[] = [];
-
-  for (const beaconSet of beaconSets) {
+  const beaconSetUpdates: BeaconSetUpdateData[] = beaconSetTriggers.map((beaconSetTrigger) => {
     const logOptionsBeaconSetId = {
       ...logOptions,
       meta: {
         ...logOptions.meta,
         'Sponsor-Wallet': shortenAddress(sponsorWallet.address),
-        'BeaconSet-ID': beaconSet.beaconSetId,
+        'BeaconSet-ID': beaconSetTrigger.beaconSetId,
       },
     };
 
     logger.debug(`Processing beacon set update`, logOptionsBeaconSetId);
 
-    beaconSetUpdates = [
-      ...beaconSetUpdates,
-      {
-        logOptionsBeaconSetId,
-        beaconSetUpdate: beaconSet,
-        dataFeedsCalldata: contract.interface.encodeFunctionData('dataFeeds', [beaconSet.beaconSetId]),
-      },
-    ];
-  }
+    return {
+      logOptionsBeaconSetId,
+      beaconSetTrigger,
+      dataFeedsCalldata: contract.interface.encodeFunctionData('dataFeeds', [beaconSetTrigger.beaconSetId]),
+    };
+  });
 
   for (const readBatch of chunk(beaconSetUpdates, DATAFEED_READ_BATCH_SIZE)) {
     // Read beacon set batch onchain values
@@ -451,7 +452,7 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
 
       // Retrieve values for each beacon within the set from the cache (common memory)
       const beaconSetBeaconValuesPromises: Promise<BeaconSetBeaconValue>[] = config.beaconSets[
-        beaconSetUpdateData.beaconSetUpdate.beaconSetId
+        beaconSetUpdateData.beaconSetTrigger.beaconSetId
       ].map(async (beaconId) => {
         const logOptionsBeaconId = {
           ...beaconSetUpdateData.logOptionsBeaconSetId,
@@ -541,7 +542,7 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
       // Check that on chain data is newer than heartbeat interval
       const isOnchainDataFresh = checkOnchainDataFreshness(
         onChainDataTimestamp,
-        beaconSetUpdateData.beaconSetUpdate.heartbeatInterval
+        beaconSetUpdateData.beaconSetTrigger.heartbeatInterval
       );
       if (!isOnchainDataFresh) {
         logger.info(
@@ -553,7 +554,7 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
         // If the deviation threshold is reached do the update, skip otherwise
         const shouldUpdate = checkUpdateCondition(
           onChainDataValue,
-          beaconSetUpdateData.beaconSetUpdate.deviationThreshold,
+          beaconSetUpdateData.beaconSetTrigger.deviationThreshold,
           newBeaconSetValue
         );
         if (shouldUpdate === null) {
