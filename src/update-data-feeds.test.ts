@@ -3,7 +3,7 @@ import { ethers } from 'ethers';
 import { initializeProviders } from './providers';
 import * as state from './state';
 import * as api from './update-data-feeds';
-import { BeaconSetUpdate, BeaconUpdate, Config } from './validation';
+import { BeaconSetTrigger, BeaconTrigger, Config } from './validation';
 import { initializeWallets } from './wallets';
 import { buildGatewayLimiters, buildApiLimiters } from './state';
 import { validSignedData } from '../test/fixtures';
@@ -198,8 +198,8 @@ type ComparableProviderSponsorDataFeeds = {
   provider: string;
   sponsorAddress: string;
   updateInterval: number;
-  beacons: BeaconUpdate[];
-  beaconSets: BeaconSetUpdate[];
+  beaconTriggers: BeaconTrigger[];
+  beaconSetTriggers: BeaconSetTrigger[];
 };
 
 const cpsdf: ComparableProviderSponsorDataFeeds[] = [
@@ -207,22 +207,22 @@ const cpsdf: ComparableProviderSponsorDataFeeds[] = [
     provider: 'https://some.self.hosted.mainnet.url',
     sponsorAddress: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
     updateInterval: 1,
-    beacons: config.triggers.dataFeedUpdates['1']['0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC'].beacons,
-    beaconSets: config.triggers.dataFeedUpdates['1']['0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC'].beaconSets,
+    beaconTriggers: config.triggers.dataFeedUpdates['1']['0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC'].beacons,
+    beaconSetTriggers: config.triggers.dataFeedUpdates['1']['0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC'].beaconSets,
   },
   {
     provider: 'https://some.infura.mainnet.url',
     sponsorAddress: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
     updateInterval: 1,
-    beacons: config.triggers.dataFeedUpdates['1']['0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC'].beacons,
-    beaconSets: config.triggers.dataFeedUpdates['1']['0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC'].beaconSets,
+    beaconTriggers: config.triggers.dataFeedUpdates['1']['0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC'].beacons,
+    beaconSetTriggers: config.triggers.dataFeedUpdates['1']['0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC'].beaconSets,
   },
   {
     provider: 'https://some.influra.ropsten.url',
     sponsorAddress: '0x417B205fEdB1b2352c7996B0F050A7a61544c5e2',
     updateInterval: 40,
-    beacons: config.triggers.dataFeedUpdates['3']['0x417B205fEdB1b2352c7996B0F050A7a61544c5e2'].beacons,
-    beaconSets: config.triggers.dataFeedUpdates['3']['0x417B205fEdB1b2352c7996B0F050A7a61544c5e2'].beaconSets,
+    beaconTriggers: config.triggers.dataFeedUpdates['3']['0x417B205fEdB1b2352c7996B0F050A7a61544c5e2'].beacons,
+    beaconSetTriggers: config.triggers.dataFeedUpdates['3']['0x417B205fEdB1b2352c7996B0F050A7a61544c5e2'].beaconSets,
   },
 ];
 
@@ -406,8 +406,8 @@ describe('initializeUpdateCycle', () => {
       totalTimeout,
       logOptions,
       beaconValues,
-      beacons,
-      beaconSets,
+      beaconTriggers,
+      beaconSetTriggers,
       config: initConfig,
       provider,
     } = initialUpdateData!;
@@ -425,8 +425,8 @@ describe('initializeUpdateCycle', () => {
       '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2': undefined,
       '0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469beabcdabcd': validSignedData,
     });
-    expect(beacons).toEqual(groups[0].beacons);
-    expect(beaconSets).toEqual(groups[0].beaconSets);
+    expect(beaconTriggers).toEqual(groups[0].beaconTriggers);
+    expect(beaconSetTriggers).toEqual(groups[0].beaconSetTriggers);
     expect(initConfig).toEqual(config);
     expect(provider).toEqual(groups[0].provider);
   });
