@@ -303,11 +303,6 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
           beaconUpdateData.beaconTrigger.deviationThreshold,
           beaconUpdateData.newBeaconValue
         );
-        if (shouldUpdate === null) {
-          logger.warn(`Unable to fetch current beacon value`, beaconUpdateData.logOptionsBeaconId);
-          // This can happen only if we reach the total timeout so it makes no sense to continue with the rest of the beacons
-          return;
-        }
         if (!shouldUpdate) {
           logger.info(`Deviation threshold not reached. Skipping.`, beaconUpdateData.logOptionsBeaconId);
           continue;
@@ -549,11 +544,6 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
           beaconSetUpdateData.beaconSetTrigger.deviationThreshold,
           newBeaconSetValue
         );
-        if (shouldUpdate === null) {
-          logger.warn(`Unable to fetch current beacon set value`, beaconSetUpdateData.logOptionsBeaconSetId);
-          // This can happen only if we reach the total timeout so it makes no sense to continue with the rest of the beaconSets
-          return;
-        }
         if (!shouldUpdate) {
           logger.info(`Deviation threshold not reached. Skipping.`, beaconSetUpdateData.logOptionsBeaconSetId);
           continue;
