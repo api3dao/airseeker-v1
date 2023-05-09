@@ -421,7 +421,7 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
     const { successes, returndata } = goDatafeedsTryMulticall.data;
 
     // Process beacon set update calldatas
-    let beaconSetUpdateCalldatas: string[] = [];
+    let beaconSetUpdateCalldatas: string[][] = [];
 
     for (let i = 0; i < readBatch.length; i++) {
       const beaconSetReturndata = returndata[i];
@@ -561,9 +561,9 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
         logger.info(`Deviation threshold reached. Updating.`, beaconSetUpdateData.logOptionsBeaconSetId);
       }
 
-      beaconSetUpdateCalldatas = Array.from(
-        new Set([
-          ...beaconSetUpdateCalldatas,
+      beaconSetUpdateCalldatas = [
+        ...beaconSetUpdateCalldatas,
+        [
           ...beaconSetBeaconValues.map(({ airnode, templateId, timestamp, encodedValue, signature }) =>
             contract.interface.encodeFunctionData('updateBeaconWithSignedData', [
               airnode,
@@ -576,12 +576,12 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
           contract.interface.encodeFunctionData('updateBeaconSetWithBeacons', [
             beaconSetBeaconValues.map(({ beaconId }) => beaconId),
           ]),
-        ])
-      );
+        ],
+      ];
     }
 
     let nonce = transactionCount;
-    for (const updateBatch of chunk(beaconSetUpdateCalldatas, DATAFEED_UPDATE_BATCH_SIZE)) {
+    for (const beaconSetUpdateCalldata of beaconSetUpdateCalldatas) {
       // Get the latest gas price
       const getGasFn = () => getGasPrice(provider.rpcProvider.getProvider(), config.chains[chainId].options);
       // We have to grab the limiter from the custom provider as the getGasPrice function contains its own timeouts
@@ -591,11 +591,14 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
       );
 
       // Update beacon set batch onchain values
-      const tx = await go(() => contract.connect(sponsorWallet).tryMulticall(updateBatch, { nonce, ...gasTarget }), {
-        ...prepareGoOptions(startTime, totalTimeout),
-        onAttemptError: (goError) =>
-          logger.warn(`Failed attempt to update beacon set batch. Error ${goError.error}`, logOptions),
-      });
+      const tx = await go(
+        () => contract.connect(sponsorWallet).tryMulticall(beaconSetUpdateCalldata, { nonce, ...gasTarget }),
+        {
+          ...prepareGoOptions(startTime, totalTimeout),
+          onAttemptError: (goError) =>
+            logger.warn(`Failed attempt to update beacon set batch. Error ${goError.error}`, logOptions),
+        }
+      );
       if (!tx.success) {
         logger.warn(
           `Unable send beacon set batch update transaction with nonce ${nonce}. Error: ${tx.error}`,
