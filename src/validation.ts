@@ -133,23 +133,23 @@ export const endpointsSchema = z.record(endpointSchema).superRefine((endpoints, 
   });
 });
 
-export const baseBeaconUpdateSchema = z.object({
+export const baseBeaconTriggerSchema = z.object({
   deviationThreshold: z.number(),
   heartbeatInterval: z.number().int(),
 });
 
-export const beaconUpdateSchema = z
+export const beaconTriggerSchema = z
   .object({
     beaconId: config.evmIdSchema,
   })
-  .merge(baseBeaconUpdateSchema)
+  .merge(baseBeaconTriggerSchema)
   .strict();
 
-export const beaconSetUpdateSchema = z
+export const beaconSetTriggerSchema = z
   .object({
     beaconSetId: config.evmIdSchema,
   })
-  .merge(baseBeaconUpdateSchema)
+  .merge(baseBeaconTriggerSchema)
   .strict();
 
 // chainId -> sponsorAddress -> dataFeeds
@@ -157,8 +157,8 @@ export const dataFeedUpdatesSchema = z.record(
   z.record(
     config.evmAddressSchema,
     z.object({
-      beacons: z.array(beaconUpdateSchema),
-      beaconSets: z.array(beaconSetUpdateSchema),
+      beacons: z.array(beaconTriggerSchema),
+      beaconSets: z.array(beaconSetTriggerSchema),
       updateInterval: z.number().int(),
     })
   )
@@ -409,8 +409,8 @@ export type Gateways = z.infer<typeof gatewaysSchema>;
 export type Template = z.infer<typeof templateSchema>;
 export type Templates = z.infer<typeof templatesSchema>;
 export type DataFeedUpdates = z.infer<typeof dataFeedUpdatesSchema>;
-export type BeaconUpdate = z.infer<typeof beaconUpdateSchema>;
-export type BeaconSetUpdate = z.infer<typeof beaconSetUpdateSchema>;
+export type BeaconTrigger = z.infer<typeof beaconTriggerSchema>;
+export type BeaconSetTrigger = z.infer<typeof beaconSetTriggerSchema>;
 export type Triggers = z.infer<typeof triggersSchema>;
 export type Address = z.infer<typeof config.evmAddressSchema>;
 export type BeaconId = z.infer<typeof config.evmIdSchema>;
