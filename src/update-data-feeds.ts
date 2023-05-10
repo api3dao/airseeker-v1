@@ -4,7 +4,7 @@ import { go } from '@api3/promise-utils';
 import { ethers } from 'ethers';
 import { chunk, isEmpty, isNil } from 'lodash';
 import { calculateMedian } from './calculations';
-import { checkFulfillmentDataTimestamp, checkOnchainDataFreshness, checkUpdateCondition } from './check-condition';
+import { checkConditions } from './check-condition';
 import {
   DATAFEED_READ_BATCH_SIZE,
   DATAFEED_UPDATE_BATCH_SIZE,
@@ -12,8 +12,8 @@ import {
   INT224_MIN,
   NO_DATA_FEEDS_EXIT_CODE,
 } from './constants';
-import { logger, LogOptionsOverride } from './logging';
-import { getState, Provider } from './state';
+import { LogOptionsOverride, logger } from './logging';
+import { Provider, getState } from './state';
 import { getTransactionCount } from './transaction-count';
 import { prepareGoOptions, shortenAddress, sleep } from './utils';
 import { Beacon, BeaconSetTrigger, BeaconTrigger, SignedData } from './validation';
@@ -284,38 +284,17 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
         beaconReturndata
       );
 
-      // Check that fulfillment data is newer than on chain data
-      const isFulfillmentDataFresh = checkFulfillmentDataTimestamp(
+      // Verify all conditions for beacon update are met otherwise skip
+      const [log, result] = checkConditions(
+        onChainDataValue,
         onChainDataTimestamp,
-        parseInt(beaconUpdateData.newBeaconResponse.timestamp, 10)
+        parseInt(beaconUpdateData.newBeaconResponse.timestamp, 10),
+        beaconUpdateData.beaconTrigger,
+        beaconUpdateData.newBeaconValue
       );
-      if (!isFulfillmentDataFresh) {
-        logger.warn(`Fulfillment data older than on-chain data. Skipping.`, beaconUpdateData.logOptionsBeaconId);
+      logger.logPending(log, beaconUpdateData.logOptionsBeaconId);
+      if (!result) {
         continue;
-      }
-
-      // Check that on chain data is newer than heartbeat interval
-      const isOnchainDataFresh = checkOnchainDataFreshness(
-        onChainDataTimestamp,
-        beaconUpdateData.beaconTrigger.heartbeatInterval
-      );
-      if (!isOnchainDataFresh) {
-        logger.info(
-          `On chain data timestamp older than heartbeat. Updating without condition check.`,
-          beaconUpdateData.logOptionsBeaconId
-        );
-      } else {
-        // Check beacon condition
-        const shouldUpdate = checkUpdateCondition(
-          onChainDataValue,
-          beaconUpdateData.beaconTrigger.deviationThreshold,
-          beaconUpdateData.newBeaconValue
-        );
-        if (!shouldUpdate) {
-          logger.info(`Deviation threshold not reached. Skipping.`, beaconUpdateData.logOptionsBeaconId);
-          continue;
-        }
-        logger.info(`Deviation threshold reached. Updating.`, beaconUpdateData.logOptionsBeaconId);
       }
 
       beaconUpdateCalldatas = [
@@ -336,9 +315,7 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
       const getGasFn = () => getGasPrice(provider.rpcProvider.getProvider(), config.chains[chainId].options);
       // We have to grab the limiter from the custom provider as the getGasPrice function contains its own timeouts
       const [logs, gasTarget] = await provider.rpcProvider.getLimiter().schedule({ expiration: 30_000 }, getGasFn);
-      logs.forEach((log) =>
-        log.level === 'ERROR' ? logger.error(log.message, null, logOptions) : logger.info(log.message, logOptions)
-      );
+      logger.logPending(logs, logOptions);
 
       // Update beacon batch onchain values
       const tx = await go(() => contract.connect(sponsorWallet).tryMulticall(updateBatch, { nonce, ...gasTarget }), {
@@ -524,40 +501,17 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
         beaconSetBeaconValues.map((value) => ethers.BigNumber.from(value.timestamp))
       ).toNumber();
 
-      // Check that fulfillment data is newer than on chain data
-      const isFulfillmentDataFresh = checkFulfillmentDataTimestamp(onChainDataTimestamp, newBeaconSetTimestamp);
-      if (!isFulfillmentDataFresh) {
-        logger.warn(
-          `Fulfillment data older than on-chain beacon set data. Skipping.`,
-          beaconSetUpdateData.logOptionsBeaconSetId
-        );
-        continue;
-      }
-
-      // Check that on chain data is newer than heartbeat interval
-      const isOnchainDataFresh = checkOnchainDataFreshness(
+      // Verify all conditions for beacon set update are met otherwise skip
+      const [log, result] = checkConditions(
+        onChainDataValue,
         onChainDataTimestamp,
-        beaconSetUpdateData.beaconSetTrigger.heartbeatInterval
+        newBeaconSetTimestamp,
+        beaconSetUpdateData.beaconSetTrigger,
+        newBeaconSetValue
       );
-      if (!isOnchainDataFresh) {
-        logger.info(
-          `On chain data timestamp older than heartbeat. Updating without condition check.`,
-          beaconSetUpdateData.logOptionsBeaconSetId
-        );
-      } else {
-        // Check beacon set condition
-        // If the deviation threshold is reached do the update, skip otherwise
-        const shouldUpdate = checkUpdateCondition(
-          onChainDataValue,
-          beaconSetUpdateData.beaconSetTrigger.deviationThreshold,
-          newBeaconSetValue
-        );
-        if (!shouldUpdate) {
-          logger.info(`Deviation threshold not reached. Skipping.`, beaconSetUpdateData.logOptionsBeaconSetId);
-          continue;
-        }
-
-        logger.info(`Deviation threshold reached. Updating.`, beaconSetUpdateData.logOptionsBeaconSetId);
+      logger.logPending(log, beaconSetUpdateData.logOptionsBeaconSetId);
+      if (!result) {
+        continue;
       }
 
       beaconSetUpdateCalldatas = [
@@ -585,9 +539,7 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
       const getGasFn = () => getGasPrice(provider.rpcProvider.getProvider(), config.chains[chainId].options);
       // We have to grab the limiter from the custom provider as the getGasPrice function contains its own timeouts
       const [logs, gasTarget] = await provider.rpcProvider.getLimiter().schedule({ expiration: 30_000 }, getGasFn);
-      logs.forEach((log) =>
-        log.level === 'ERROR' ? logger.error(log.message, null, logOptions) : logger.info(log.message, logOptions)
-      );
+      logger.logPending(logs, logOptions);
 
       // Update beacon set batch onchain values
       const tx = await go(
