@@ -1,5 +1,27 @@
 {
   "airseekerWalletMnemonic": "${AIRSEEKER_WALLET_MNEMONIC}",
+  "rateLimiting": {
+    "maxGatewayConcurrency": 5,
+    "minGatewayTime": 200,
+    "maxProviderConcurrency": 5,
+    "minProviderTime": 200,
+    "minDirectGatewayTime": 200,
+    "maxDirectGatewayConcurrency": 5,
+    "overrides": {
+      "signedDataGateways": {
+        "0xA30CA71Ba54E83127214D3271aEA8F5D6bD4Dace": {
+          "minTime": 200,
+          "maxConcurrent": 5
+        }
+      },
+      "directGateways": {
+        "Currency Converter API": {
+          "minTime": 200,
+          "maxConcurrent": 5
+        }
+      }
+    }
+  },
   "log": {
     "format": "plain",
     "level": "INFO"
@@ -73,7 +95,11 @@
       },
       "providers": {
         "infuraRopsten": {
-          "url": "${CP_INFURA_ROPSTEN_URL}"
+          "url": "${CP_INFURA_ROPSTEN_URL}",
+          "rateLimiter": {
+            "minTime": 200,
+            "maxConcurrent": 5
+          }
         }
       },
       "options": {

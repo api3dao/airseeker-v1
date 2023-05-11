@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { ethers } from 'ethers';
-import { ZodError } from 'zod';
+import { ZodError, ZodIssue } from 'zod';
 import { Config, configSchema } from './validation';
 import { interpolateSecrets } from './config';
 
@@ -131,15 +131,20 @@ it('fails if beacons.<beaconId>.airnode is not defined in gateways', () => {
   const interpolatedConfig = interpolateSecrets(config, envVariables);
 
   expect(() => configSchema.parse(interpolatedConfig)).toThrow(
-    new ZodError(
-      Object.entries(config.beacons)
+    new ZodError([
+      ...Object.entries(config.beacons)
         .filter(([_, beacon]) => beacon.fetchMethod !== 'api' && beacon.airnode === gatewayId)
         .map(([beaconId, beacon]) => ({
           code: 'custom',
           message: `Gateway "${beacon.airnode}" is not defined in the config.gateways object`,
           path: ['beacons', beaconId, 'airnode'],
-        }))
-    )
+        })),
+      {
+        code: 'custom',
+        message: `Airnode address "${gatewayId}" in rate limiting overrides is not defined in the gateways object`,
+        path: ['rateLimiting', 'overrides', 'signedDataGateways', gatewayId],
+      },
+    ] as ZodIssue[])
   );
 });
 
@@ -262,6 +267,11 @@ it('fails if endpoints.<entpointId>.oisTitle is not defined in ois[any].title', 
         code: 'custom',
         message: `OIS titled "${config.endpoints[firstEndpointId].oisTitle}" is not defined in the config.ois object`,
         path: ['endpoints', firstEndpointId, 'oisTitle'],
+      },
+      {
+        code: 'custom',
+        message: `OIS Title "${config.endpoints[firstEndpointId].oisTitle}" in rate limiting overrides is not defined in the config.ois array`,
+        path: ['rateLimiting', 'overrides', 'directGateways', config.endpoints[firstEndpointId].oisTitle],
       },
     ])
   );

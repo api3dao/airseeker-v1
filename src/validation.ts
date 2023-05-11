@@ -9,6 +9,8 @@ export const logSchema = z.object({
   level: config.logLevelSchema,
 });
 
+export const limiterConfig = z.object({ minTime: z.number(), maxConcurrent: z.number() });
+
 export const fetchMethodSchema = z.union([z.literal('gateway'), z.literal('api')]);
 
 export const beaconSchema = z
@@ -55,6 +57,7 @@ export const beaconSetsSchema = z
 export const providerSchema = z
   .object({
     url: z.string().url(),
+    rateLimiter: limiterConfig.optional(), // optionally specifies the rate limiter configuration per RPC URL
   })
   .strict();
 
@@ -266,6 +269,57 @@ const validateBeaconSetsReferences: SuperRefinement<{ beacons: Beacons; beaconSe
   });
 };
 
+export const rateLimitingSchema = z.object({
+  maxGatewayConcurrency: z.number().optional(),
+  minGatewayTime: z.number().optional(),
+  maxProviderConcurrency: z.number().optional(),
+  minProviderTime: z.number().optional(),
+  minDirectGatewayTime: z.number().optional(),
+  maxDirectGatewayConcurrency: z.number().optional(),
+  overrides: z
+    .object({
+      signedDataGateways: z.record(limiterConfig).optional(), // key is Airnode address
+      directGateways: z.record(limiterConfig).optional(), // key is ois title
+    })
+    .optional(),
+});
+
+const validateOisRateLimiterReferences: SuperRefinement<{ ois: OIS[]; rateLimiting?: RateLimitingConfig }> = (
+  config,
+  ctx
+) => {
+  const directGateways = config.rateLimiting?.overrides?.directGateways ?? {};
+  const oises = config?.ois ?? [];
+
+  Object.keys(directGateways).forEach((oisTitle) => {
+    if (!oises.find((ois) => ois.title === oisTitle)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `OIS Title "${oisTitle}" in rate limiting overrides is not defined in the config.ois array`,
+        path: ['rateLimiting', 'overrides', 'directGateways', oisTitle],
+      });
+    }
+  });
+};
+
+const validateSignedDateGatewaysRateLimiterReferences: SuperRefinement<{
+  gateways: Record<string, any>;
+  rateLimiting?: RateLimitingConfig;
+}> = (config, ctx) => {
+  const signedDataGateways = config.rateLimiting?.overrides?.signedDataGateways ?? {};
+  const gateways = config?.gateways ?? {};
+
+  Object.keys(signedDataGateways).forEach((airnode) => {
+    if (!gateways[airnode]) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Airnode address "${airnode}" in rate limiting overrides is not defined in the gateways object`,
+        path: ['rateLimiting', 'overrides', 'signedDataGateways', airnode],
+      });
+    }
+  });
+};
+
 const validateDataFeedUpdatesReferences: SuperRefinement<{
   beacons: Beacons;
   beaconSets: BeaconSets;
@@ -322,13 +376,16 @@ export const configSchema = z
     ois: z.array(oisSchema),
     apiCredentials: z.array(config.apiCredentialsSchema),
     endpoints: endpointsSchema,
+    rateLimiting: rateLimitingSchema.optional(),
   })
   .strict()
   .superRefine(validateBeaconsReferences)
   .superRefine(validateBeaconSetsReferences)
   .superRefine(validateTemplatesReferences)
   .superRefine(validateOisReferences)
-  .superRefine(validateDataFeedUpdatesReferences);
+  .superRefine(validateDataFeedUpdatesReferences)
+  .superRefine(validateOisRateLimiterReferences)
+  .superRefine(validateSignedDateGatewaysRateLimiterReferences);
 export const encodedValueSchema = z.string().regex(/^0x[a-fA-F0-9]{64}$/);
 export const signatureSchema = z.string().regex(/^0x[a-fA-F0-9]{130}$/);
 export const signedDataSchemaLegacy = z.object({
@@ -363,3 +420,5 @@ export type SignedData = z.infer<typeof signedDataSchema>;
 export type Endpoint = z.infer<typeof endpointSchema>;
 export type Endpoints = z.infer<typeof endpointsSchema>;
 export type FetchMethod = z.infer<typeof fetchMethodSchema>;
+export type LimiterConfig = z.infer<typeof limiterConfig>;
+export type RateLimitingConfig = z.infer<typeof rateLimitingSchema>;

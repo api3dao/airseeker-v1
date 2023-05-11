@@ -4,9 +4,10 @@ import { go } from '@api3/promise-utils';
 import { ethers } from 'ethers';
 import axios from 'axios';
 import anyPromise from 'promise.any';
+import Bottleneck from 'bottleneck';
 import { logger } from './logging';
-import { Gateway, SignedData, signedDataSchema, signedDataSchemaLegacy, Template, Endpoint } from './validation';
-import { GATEWAY_TIMEOUT_MS } from './constants';
+import { Gateway, SignedData, signedDataSchema, signedDataSchemaLegacy, Template } from './validation';
+import { GATEWAY_TIMEOUT_MS, TOTAL_TIMEOUT_HEADROOM_DEFAULT_MS } from './constants';
 import { Id, getState } from './state';
 
 export const urlJoin = (baseUrl: string, endpointId: string) => {
@@ -29,8 +30,10 @@ export function signWithTemplateId(templateId: string, timestamp: string, data: 
   );
 }
 
+export type GatewayWithLimiter = Gateway & { queue?: Bottleneck };
+
 export const makeSignedDataGatewayRequests = async (
-  gateways: Gateway[],
+  gateways: GatewayWithLimiter[],
   template: Id<Template>
 ): Promise<SignedData> => {
   const { endpointId, parameters, id: templateId } = template;
@@ -38,25 +41,31 @@ export const makeSignedDataGatewayRequests = async (
 
   // Initiate HTTP request to each of the gateways and resolve with the data (or reject otherwise)
   const requests = gateways.map(async (gateway) => {
-    const { apiKey, url } = gateway;
+    const { apiKey, url, queue } = gateway;
 
     const fullUrl = urlJoin(url, endpointId);
 
-    const goRes = await go(async () => {
-      const { data } = await axios({
-        url: fullUrl,
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          'x-api-key': apiKey,
-        },
-        data: { encodedParameters: parameters },
-        timeout: GATEWAY_TIMEOUT_MS,
-      });
+    const goResFn = () =>
+      go(
+        async () => {
+          const { data } = await axios({
+            url: fullUrl,
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+              'x-api-key': apiKey,
+            },
+            data: { encodedParameters: parameters },
+            timeout: GATEWAY_TIMEOUT_MS,
+          });
 
-      return data;
-    });
+          return data;
+        },
+        { totalTimeoutMs: GATEWAY_TIMEOUT_MS - TOTAL_TIMEOUT_HEADROOM_DEFAULT_MS }
+      );
+
+    const goRes = await (queue ? queue.schedule({ expiration: 60_000 }, goResFn) : goResFn());
 
     if (!goRes.success) {
       const message = `Failed to make signed data gateway request for gateway: "${fullUrl}". Error: "${goRes.error}"`;
@@ -104,21 +113,27 @@ export const makeSignedDataGatewayRequests = async (
 export const makeApiRequest = async (template: Id<Template>): Promise<SignedData> => {
   const {
     config: { endpoints, ois, apiCredentials },
+    apiLimiters,
   } = getState();
   const logOptionsTemplateId = { meta: { 'Template-ID': template.id } };
 
-  const parameters: node.ApiCallParameters = abi.decode(template.parameters);
-  const endpoint: Endpoint = endpoints[template.endpointId];
+  const parameters = abi.decode(template.parameters);
+  const endpoint = endpoints[template.endpointId];
 
   const aggregatedApiCall: node.BaseAggregatedApiCall = {
     parameters,
     ...endpoint,
   };
-  const [_, apiCallResponse] = await node.api.callApi({
-    type: 'http-gateway',
-    config: { ois, apiCredentials },
-    aggregatedApiCall,
-  });
+
+  const limiter = apiLimiters[template.id];
+
+  const [_, apiCallResponse] = await limiter.schedule({ expiration: 90_000 }, () =>
+    node.api.callApi({
+      type: 'http-gateway',
+      config: { ois, apiCredentials },
+      aggregatedApiCall,
+    })
+  );
 
   if (!apiCallResponse.success) {
     const message = `Failed to make direct API request for the endpoint [${endpoint.oisTitle}] ${endpoint.endpointName}.`;

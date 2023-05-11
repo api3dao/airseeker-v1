@@ -5,13 +5,7 @@ import { getState, updateState } from './state';
 import { makeSignedDataGatewayRequests, makeApiRequest } from './make-request';
 import { sleep } from './utils';
 import { SignedData } from './validation';
-import {
-  GATEWAY_TIMEOUT_MS,
-  INFINITE_RETRIES,
-  NO_FETCH_EXIT_CODE,
-  RANDOM_BACKOFF_MAX_MS,
-  RANDOM_BACKOFF_MIN_MS,
-} from './constants';
+import { NO_FETCH_EXIT_CODE, RANDOM_BACKOFF_MAX_MS, RANDOM_BACKOFF_MIN_MS } from './constants';
 
 export const initiateFetchingBeaconData = async () => {
   logger.debug('Initiating fetching all beacon data');
@@ -33,7 +27,7 @@ export const initiateFetchingBeaconData = async () => {
     process.exit(NO_FETCH_EXIT_CODE);
   }
 
-  beaconIdsToUpdate.forEach(fetchBeaconDataInLoop);
+  return beaconIdsToUpdate.map(fetchBeaconDataInLoop);
 };
 
 /**
@@ -43,30 +37,37 @@ export const initiateFetchingBeaconData = async () => {
  * do not overlap. We measure the total running time of the "fetchBeaconData" and then wait the remaining time
  * accordingly.
  *
- * It is possible that the gateway is down and the the data fetching will take the full "fetchInterval" duration. In
+ * It is possible that the gateway is down and that the data fetching will take the full "fetchInterval" duration. In
  * that case we do not want to wait, but start calling the gateway immediately as part of the next fetch cycle.
  */
 export const fetchBeaconDataInLoop = async (beaconId: string) => {
   const { config } = getState();
 
+  let lastExecute = 0;
+  let waitTime = 0;
+
   while (!getState().stopSignalReceived) {
-    const startTimestamp = Date.now();
-    const { fetchInterval } = config.beacons[beaconId];
+    if (Date.now() - lastExecute > waitTime) {
+      lastExecute = Date.now();
+      const startTimestamp = Date.now();
+      const { fetchInterval } = config.beacons[beaconId];
 
-    await fetchBeaconData(beaconId);
+      await fetchBeaconData(beaconId);
 
-    const duration = Date.now() - startTimestamp;
-    const waitTime = Math.max(0, fetchInterval * 1_000 - duration);
-    await sleep(waitTime);
+      const duration = Date.now() - startTimestamp;
+      waitTime = Math.max(0, fetchInterval * 1_000 - duration);
+    }
+
+    await sleep(1_000); // regularly re-assess the stop interval
   }
 };
 
 export const fetchBeaconData = async (beaconId: string) => {
   const logOptionsBeaconId = { meta: { 'Beacon-ID': beaconId } };
   logger.debug('Fetching beacon data', logOptionsBeaconId);
-  const { config } = getState();
+  const { config, gatewaysWithLimiters } = getState();
 
-  const { fetchInterval, airnode, templateId, fetchMethod } = config.beacons[beaconId];
+  const { airnode, templateId, fetchMethod } = config.beacons[beaconId];
   const template = config.templates[templateId];
 
   let fetchFn: () => Promise<SignedData>;
@@ -79,8 +80,8 @@ export const fetchBeaconData = async (beaconId: string) => {
       break;
     }
     case 'gateway': {
-      const gateway = config.gateways[airnode];
-      fetchFn = () => makeSignedDataGatewayRequests(gateway, { ...template, id: templateId });
+      const gateways = gatewaysWithLimiters[airnode];
+      fetchFn = () => makeSignedDataGatewayRequests(gateways, { ...template, id: templateId });
       onAttemptError = (goError: GoResultError<Error>) =>
         logger.warn(`Failed attempt to call signed data gateway. Error: ${goError.error}`, logOptionsBeaconId);
       break;
@@ -91,10 +92,8 @@ export const fetchBeaconData = async (beaconId: string) => {
   }
 
   const goRes = await go(fetchFn, {
-    attemptTimeoutMs: GATEWAY_TIMEOUT_MS,
-    retries: INFINITE_RETRIES,
+    retries: 2,
     delay: { type: 'random', minDelayMs: RANDOM_BACKOFF_MIN_MS, maxDelayMs: RANDOM_BACKOFF_MAX_MS },
-    totalTimeoutMs: fetchInterval * 1_000,
     onAttemptError,
   });
   if (!goRes.success) {

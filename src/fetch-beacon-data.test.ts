@@ -3,10 +3,21 @@ import * as api from './fetch-beacon-data';
 import { Config } from './validation';
 import * as makeRequestApi from './make-request';
 import * as state from './state';
+import { buildGatewayLimiters, buildApiLimiters } from './state';
 import { validSignedData } from '../test/fixtures';
+
+jest.setTimeout(10_000);
 
 const config: Config = {
   airseekerWalletMnemonic: 'achieve climb couple wait accident symbol spy blouse reduce foil echo label',
+  rateLimiting: {
+    maxGatewayConcurrency: 50,
+    minGatewayTime: 1,
+    maxProviderConcurrency: 50,
+    minProviderTime: 1,
+    maxDirectGatewayConcurrency: 50,
+    minDirectGatewayTime: 1,
+  },
   log: {
     format: 'plain',
     level: 'INFO',
@@ -306,6 +317,8 @@ describe('fetchBeaconDataInLoop', () => {
       if (requestCount === 2) {
         return {
           config,
+          gatewaysWithLimiters: buildGatewayLimiters(config.gateways),
+          apiLimiters: buildApiLimiters(config),
           stopSignalReceived: true,
           beaconValues: {},
           providers: {},
@@ -316,6 +329,8 @@ describe('fetchBeaconDataInLoop', () => {
       } else {
         return {
           config,
+          gatewaysWithLimiters: buildGatewayLimiters(config.gateways),
+          apiLimiters: buildApiLimiters(config),
           stopSignalReceived: false,
           beaconValues: {},
           providers: {},
