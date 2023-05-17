@@ -487,26 +487,13 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
             break;
           }
 
-          // Get the beaconSet trigger from the config which has deviationThreshold and
-          // heartbeatInterval used in the condition checks down below and use it against all child beacons
-          const beaconTrigger = beaconSetTriggers.find(
-            ({ beaconSetId }) => beaconSetId.toLowerCase() === beaconSetId.toLowerCase()
-          );
-          if (!beaconTrigger) {
-            // TODO: this might be need to be replaced by a zod schema validation
-            const message = `Missing beacon trigger in config.`;
-            logger.warn(message, logOptionsBeaconId);
-            shouldSkipBeaconSetUpdate = true;
-            break;
-          }
-
           // Verify all conditions for beacon update are met
           // If condition check returns true then beacon update is required
           const [log, result] = checkConditions(
             onChainBeaconValue,
             onChainBeaconTimestamp,
             parseInt(apiBeaconResponse.timestamp, 10),
-            beaconTrigger,
+            beaconSetUpdateData.beaconSetTrigger,
             decodedValue
           );
           logger.logPending(log, logOptionsBeaconId);
