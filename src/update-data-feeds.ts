@@ -338,7 +338,6 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
     totalTimeout,
     logOptions,
     beaconValues,
-    beaconTriggers,
     beaconSetTriggers,
     config,
     provider,
@@ -448,7 +447,7 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
         updateBeaconWithSignedDataCalldatas: string[];
       };
 
-      // Proccess each beacon in the current beacon set
+      // Process each beacon in the current beacon set
       let beaconSetBeaconUpdateData: BeaconSetBeaconUpdateData = {
         beaconSetBeaconValues: [],
         updateBeaconWithSignedDataCalldatas: [],
@@ -496,26 +495,13 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
             break;
           }
 
-          // Get the beacon trigger from the config which has deviationThreshold and
-          // heartbeatInterval used in the condition checks down below
-          const beaconTrigger = beaconTriggers.find(
-            ({ beaconId }) => beaconId.toLowerCase() === beaconId.toLowerCase()
-          );
-          if (!beaconTrigger) {
-            // TODO: this might be need to be replaced by a zod schema validation
-            const message = `Missing beacon trigger in config.`;
-            logger.warn(message, logOptionsBeaconId);
-            shouldSkipBeaconSetUpdate = true;
-            break;
-          }
-
           // Verify all conditions for beacon update are met
           // If condition check returns true then beacon update is required
           const [log, result] = checkConditions(
             onChainBeaconValue,
             onChainBeaconTimestamp,
             parseInt(apiBeaconResponse.timestamp, 10),
-            beaconTrigger,
+            beaconSetUpdateData.beaconSetTrigger,
             decodedValue
           );
           logger.logPending(log, logOptionsBeaconId);
