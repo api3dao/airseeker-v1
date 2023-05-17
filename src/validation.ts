@@ -398,25 +398,6 @@ export const signedDataSchema = z.object({
   signature: signatureSchema,
 });
 
-export const baseBeaconUpdateSchema = z.object({
-  deviationThreshold: z.number(),
-  heartbeatInterval: z.number().int(),
-});
-
-export const beaconUpdateSchema = z
-  .object({
-    beaconId: config.evmIdSchema,
-  })
-  .merge(baseBeaconUpdateSchema)
-  .strict();
-
-export const beaconSetUpdateSchema = z
-  .object({
-    beaconSetId: config.evmIdSchema,
-  })
-  .merge(baseBeaconUpdateSchema)
-  .strict();
-
 export type Config = z.infer<typeof configSchema>;
 export type Beacon = z.infer<typeof beaconSchema>;
 export type Beacons = z.infer<typeof beaconsSchema>;
@@ -428,8 +409,6 @@ export type Gateways = z.infer<typeof gatewaysSchema>;
 export type Template = z.infer<typeof templateSchema>;
 export type Templates = z.infer<typeof templatesSchema>;
 export type DataFeedUpdates = z.infer<typeof dataFeedUpdatesSchema>;
-export type BeaconUpdate = z.infer<typeof beaconUpdateSchema>;
-export type BeaconSetUpdate = z.infer<typeof beaconSetUpdateSchema>;
 export type BeaconTrigger = z.infer<typeof beaconTriggerSchema>;
 export type BeaconSetTrigger = z.infer<typeof beaconSetTriggerSchema>;
 export type Triggers = z.infer<typeof triggersSchema>;
