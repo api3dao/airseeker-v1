@@ -315,22 +315,32 @@ describe('updateBeaconSets', () => {
     txCountSpy.mockResolvedValueOnce(212);
 
     const timestamp = 1649664085;
-    const dataFeedsMock = jest.fn().mockReturnValueOnce(
-      Promise.resolve({
-        timestamp: timestamp - 30,
-        value: ethers.BigNumber.from(41000000000),
-      })
-    );
 
     const tryMulticallMock = jest
       .fn()
       .mockReturnValueOnce({ hash: ethers.utils.hexlify(ethers.utils.randomBytes(32)) });
-    const callStaticTryMulticallMock = jest.fn().mockReturnValueOnce({
-      successes: [true],
-      returndata: [
-        ethers.utils.defaultAbiCoder.encode(['int224', 'uint32'], [ethers.BigNumber.from(40000000000), timestamp - 25]),
-      ],
-    });
+    const callStaticTryMulticallMock = jest
+      .fn()
+      .mockReturnValueOnce({
+        successes: [true],
+        returndata: [
+          ethers.utils.defaultAbiCoder.encode(
+            ['int224', 'uint32'],
+            [ethers.BigNumber.from(40000000000), timestamp - 25]
+          ),
+        ],
+      })
+      .mockReturnValueOnce({
+        successes: [true, true, true],
+        returndata: [
+          ethers.utils.defaultAbiCoder.encode(
+            ['int224', 'uint32'],
+            [ethers.BigNumber.from(41000000000), timestamp - 30]
+          ),
+          ethers.utils.defaultAbiCoder.encode(['int224', 'uint32'], [ethers.BigNumber.from(40000000000), timestamp]),
+          ethers.utils.defaultAbiCoder.encode(['int224', 'uint32'], [ethers.BigNumber.from(40000000000), timestamp]),
+        ],
+      });
     jest.spyOn(Api3ServerV1Factory, 'connect').mockImplementation(
       (_dapiServerAddress, _provider) =>
         ({
@@ -338,11 +348,24 @@ describe('updateBeaconSets', () => {
             return this;
           },
           tryMulticall: tryMulticallMock,
-          dataFeeds: dataFeedsMock,
           interface: {
-            encodeFunctionData: (functionFragment: string, _values: [any]): string => {
+            encodeFunctionData: (functionFragment: string, values: [any]): string => {
               if (functionFragment === 'dataFeeds')
                 return '0x67a7cfb741c3d6e0ee82ae3d33356c4dceb84e98d1a0b361db0f51081fc5a2541ae51683';
+
+              if (functionFragment === 'readDataFeedWithId') {
+                switch (values[0]) {
+                  case '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c':
+                    return '0xa5fc076f2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c';
+                  case '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2':
+                    return '0xa5fc076fa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2';
+                  case '0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469beabcdabcd':
+                    return '0xa5fc076f8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469beabcdabcd';
+                }
+              }
+
+              if (functionFragment === 'updateBeaconWithSignedData')
+                return '0x1a0a0b3e0000000000000000000000005656d3a378b1aadfddcf4196ea364a9d786172909ec34b00a5019442dcd05a4860ff2bf015164b368cb83fcb756088fcabcdabcd000000000000000000000000000000000000000000000000000000006253e05500000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000009dc41b78000000000000000000000000000000000000000000000000000000000000000418aace553ec28f53cc976c8a2469d50f16de121d248495117aca36feb4950957827570e0648f82bdbc0afa6cb69dd9fe37dc7f9d58ae3aa06450e627e06c1b8031b00000000000000000000000000000000000000000000000000000000000000';
 
               if (functionFragment === 'updateBeaconSetWithBeacons')
                 return '0x00aae33f00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000002924b5d4cb3ec6366ae4302a1ca6aec035594ea3ea48a102d160b50b0c43ebfb5bf7ce55d109fd196de2a8bf1515d166c56c9decbe9cb473656bbca30d5743990';
@@ -358,8 +381,7 @@ describe('updateBeaconSets', () => {
 
     await api.updateBeaconSets(groups[0], Date.now());
 
-    expect(dataFeedsMock).toHaveBeenCalledTimes(1);
-    expect(callStaticTryMulticallMock).toHaveBeenCalledTimes(1);
+    expect(callStaticTryMulticallMock).toHaveBeenCalledTimes(2);
     expect(tryMulticallMock).toHaveBeenCalledTimes(1);
   });
 });
