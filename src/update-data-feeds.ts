@@ -330,7 +330,6 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
     totalTimeout,
     logOptions,
     beaconValues,
-    beaconTriggers,
     beaconSetTriggers,
     config,
     provider,
@@ -440,7 +439,7 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
         updateBeaconWithSignedDataCalldatas: string[];
       };
 
-      // Proccess each beacon in the current beacon set
+      // Process each beacon in the current beacon set
       let beaconSetBeaconUpdateData: BeaconSetBeaconUpdateData = {
         beaconSetBeaconValues: [],
         updateBeaconWithSignedDataCalldatas: [],
@@ -488,10 +487,10 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
             break;
           }
 
-          // Get the beacon trigger from the config which has deviationThreshold and
-          // heartbeatInterval used in the condition checks down below
-          const beaconTrigger = beaconTriggers.find(
-            ({ beaconId }) => beaconId.toLowerCase() === beaconId.toLowerCase()
+          // Get the beaconSet trigger from the config which has deviationThreshold and
+          // heartbeatInterval used in the condition checks down below and use it against all child beacons
+          const beaconTrigger = beaconSetTriggers.find(
+            ({ beaconSetId }) => beaconSetId.toLowerCase() === beaconSetId.toLowerCase()
           );
           if (!beaconTrigger) {
             // TODO: this might be need to be replaced by a zod schema validation
