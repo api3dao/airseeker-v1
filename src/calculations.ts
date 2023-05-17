@@ -1,4 +1,4 @@
-import { BigNumber, ethers } from 'ethers';
+import { ethers } from 'ethers';
 import { HUNDRED_PERCENT } from './constants';
 
 export const calculateUpdateInPercentage = (initialValue: ethers.BigNumber, updatedValue: ethers.BigNumber) => {
@@ -20,7 +20,3 @@ export const calculateMedian = (arr: ethers.BigNumber[]) => {
   });
   return arr.length % 2 !== 0 ? nums[mid] : nums[mid - 1].add(nums[mid]).div(2);
 };
-
-// https://github.com/api3dao/airnode-protocol-v1/blob/main/contracts/api3-server-v1/DataFeedServer.sol#L164
-export const calculateBeaconSetTimestamp = (beaconSetBeaconTimestamps: string[]) =>
-  calculateMedian(beaconSetBeaconTimestamps.map((ts) => BigNumber.from(ts)));
