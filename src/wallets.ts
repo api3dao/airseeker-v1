@@ -85,7 +85,7 @@ export const getSponsorBalanceStatus = async (
 
   const balanceProviders = providers.map(async ({ rpcProvider }) => isBalanceZero(rpcProvider, sponsorWalletAddress));
   const goAnyResult = await go(() => Promise.any(balanceProviders));
-  
+
   if (!goAnyResult.success) {
     const message = `Failed to get balance for ${sponsorWalletAddress}. No provider was resolved. Error: ${goAnyResult.error.message}`;
     logger.warn(message, logOptions);

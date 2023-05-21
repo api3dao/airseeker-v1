@@ -47,6 +47,7 @@ afterEach(() => {
 });
 
 describe('initializeWallets', () => {
+  // This test ensures the initialization of the wallets and their private keys.
   it('initialize wallets', () => {
     const { airseekerWalletPrivateKey, sponsorWalletsPrivateKey } = state.getState();
 
@@ -71,6 +72,7 @@ describe('retrieveSponsorWalletAddress', () => {
     jest.spyOn(state, 'getState');
   });
 
+  // This test checks if the function retrieves the correct wallet address for a given sponsor address.
   it('should return the wallet address corresponding to the sponsor address', () => {
     const sponsorAddress = '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC';
     const expectedWalletAddress = '0x1129eEDf4996cF133e0e9555d4c9d305c9918EC5';
@@ -81,6 +83,7 @@ describe('retrieveSponsorWalletAddress', () => {
     expect(state.getState).toHaveBeenCalledTimes(1);
   });
 
+  // This test checks if the function throws an error when the sponsor address does not have an associated private key.
   it('should throw if private key of sponsor wallet not found for the sponsor', () => {
     const sponsorAddress = '0x0000000000000000000000000000000000000000';
     const expectedErrorMessage = `Pre-generated private key not found for sponsor ${sponsorAddress}`;
@@ -89,6 +92,7 @@ describe('retrieveSponsorWalletAddress', () => {
 });
 
 describe('isBalanceZero', () => {
+  // This test checks if the function correctly identifies a zero balance.
   it('should return true if the balance is zero', async () => {
     const rpcProvider = {
       getBalance: jest.fn().mockResolvedValueOnce(ethers.BigNumber.from('0x0')),
@@ -104,7 +108,8 @@ describe('isBalanceZero', () => {
     expect(rpcProvider.getBalance).toHaveBeenCalledWith(sponsorWalletAddress);
   });
 
-  it('should return false if the balance is different than zero', async () => {
+  // This test checks if the function correctly identifies a non-zero balance.
+  it('should return false if the balance is non-zero', async () => {
     const rpcProvider = {
       getBalance: jest.fn().mockResolvedValueOnce(ethers.BigNumber.from('0x3')),
     } as unknown as RateLimitedProvider;
@@ -119,6 +124,7 @@ describe('isBalanceZero', () => {
     expect(rpcProvider.getBalance).toHaveBeenCalledWith(sponsorWalletAddress);
   });
 
+  // This test checks if the function properly throws an error when the balance retrieval fails.
   it('should throw an error if the balance retrieval fails', async () => {
     const rpcProvider = {
       getBalance: jest.fn().mockRejectedValue(new Error('RPC Error while retrieving balance')),
@@ -135,6 +141,7 @@ describe('isBalanceZero', () => {
 });
 
 describe('getSponsorBalanceStatus', () => {
+  // This test checks if the function can correctly retrieve the balance status when at least one provider is successful.
   it('should return the SponsorBalanceStatus if one of providers returns successfully', async () => {
     const chainSponsorGroup: wallets.ChainSponsorGroup = {
       chainId: 'chainId1',
@@ -156,7 +163,7 @@ describe('getSponsorBalanceStatus', () => {
         },
       ],
     };
-    
+
     jest.spyOn(wallets, 'retrieveSponsorWalletAddress').mockImplementation(() => 'sponsorWalletAddress1');
     jest.spyOn(wallets, 'isBalanceZero');
 
@@ -182,6 +189,7 @@ describe('getSponsorBalanceStatus', () => {
     expect(sponsorBalanceStatus).toEqual(expectedSponsorBalanceStatus);
   });
 
+  // This test checks if the function returns null when all providers fail to retrieve the balance.
   it('should return null if balance retrieval fails for all providers', async () => {
     const chainSponsorGroup: wallets.ChainSponsorGroup = {
       chainId: 'chainId1',
@@ -218,6 +226,7 @@ describe('getSponsorBalanceStatus', () => {
     );
   });
 
+  // This test checks if the function returns null when the retrieval of the sponsor wallet fails.
   it('should return null if sponsor wallet retrieval fails', async () => {
     const chainSponsorGroup: wallets.ChainSponsorGroup = {
       chainId: 'chainId1',
@@ -252,6 +261,7 @@ describe('getSponsorBalanceStatus', () => {
 });
 
 describe('filterSponsorWallets', () => {
+  // This test checks if the function correctly updates the state configuration.
   it('should update the config state to include only funded sponsors', async () => {
     const stateProviders: state.Providers = {
       1: [
@@ -300,7 +310,7 @@ describe('filterSponsorWallets', () => {
 
     await wallets.filterEmptySponsors();
     const { config: resultedConfig } = state.getState();
-    
+
     expect(state.updateState).toHaveBeenCalledTimes(1);
     expect(logger.info).toHaveBeenCalledTimes(1);
     expect(logger.info).toHaveBeenCalledWith(
