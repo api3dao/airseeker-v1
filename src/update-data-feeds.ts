@@ -1,4 +1,4 @@
-import { Api3ServerV1__factory as Api3ServerV1Factory } from '@api3/airnode-protocol-v1';
+import { Api3ServerV1, Api3ServerV1__factory as Api3ServerV1Factory } from '@api3/airnode-protocol-v1';
 import { go } from '@api3/promise-utils';
 import { getGasPrice } from '@api3/airnode-utilities';
 import { ethers } from 'ethers';
@@ -6,11 +6,25 @@ import { isEmpty, isNil } from 'lodash';
 import { calculateBeaconSetTimestamp, calculateMedian } from './calculations';
 import { checkFulfillmentDataTimestamp, checkOnchainDataFreshness, checkUpdateCondition } from './check-condition';
 import { INT224_MAX, INT224_MIN, NO_DATA_FEEDS_EXIT_CODE } from './constants';
-import { logger } from './logging';
-import { getState, Provider } from './state';
+import { LogOptionsOverride, logger } from './logging';
+import { BeaconValueStorage, getState, Provider } from './state';
 import { getTransactionCount } from './transaction-count';
 import { prepareGoOptions, shortenAddress, sleep } from './utils';
-import { BeaconSetUpdate, BeaconUpdate, SignedData } from './validation';
+import { BeaconSetUpdate, BeaconUpdate, Config, SignedData } from './validation';
+
+type InitialUpdateData = {
+  contract: Api3ServerV1;
+  sponsorWallet: ethers.Wallet;
+  transactionCount: number;
+  voidSigner: ethers.VoidSigner;
+  totalTimeout: number;
+  logOptions: LogOptionsOverride;
+  beaconValues: BeaconValueStorage;
+  beacons: BeaconUpdate[];
+  beaconSets: BeaconSetUpdate[];
+  config: Config;
+  provider: Provider;
+};
 
 type ProviderSponsorDataFeeds = {
   provider: Provider;
@@ -87,10 +101,11 @@ export const updateDataFeedsInLoop = async (providerSponsorDataFeeds: ProviderSp
       lastExecute = Date.now();
       const startTimestamp = Date.now();
       const { updateInterval } = providerSponsorDataFeeds;
-
-      await updateBeacons(providerSponsorDataFeeds, startTimestamp);
-      await updateBeaconSets(providerSponsorDataFeeds, startTimestamp);
-
+      const initialUpdateData = await initializeUpdateCycle(providerSponsorDataFeeds, startTimestamp);
+      if (initialUpdateData) {
+        await updateBeacons(initialUpdateData, startTimestamp);
+        await updateBeaconSets(initialUpdateData, startTimestamp);
+      }
       const duration = Date.now() - startTimestamp;
       waitTime = Math.max(0, updateInterval * 1_000 - duration);
     }
@@ -102,9 +117,8 @@ export const updateDataFeedsInLoop = async (providerSponsorDataFeeds: ProviderSp
 // This solution is not precise but since chain operations are the only ones that actually take some time this should be a good enough solution.
 export const initializeUpdateCycle = async (
   providerSponsorDataFeeds: ProviderSponsorDataFeeds,
-  dataFeedType: DataFeedType,
   startTime: number
-) => {
+): Promise<InitialUpdateData | null> => {
   const { config, beaconValues, sponsorWalletsPrivateKey } = getState();
   const { provider, updateInterval, sponsorAddress, beacons, beaconSets } = providerSponsorDataFeeds;
   const { rpcProvider, chainId, providerName } = provider;
@@ -113,7 +127,6 @@ export const initializeUpdateCycle = async (
       'Chain-ID': chainId,
       Provider: providerName,
       Sponsor: shortenAddress(sponsorAddress),
-      DataFeedType: dataFeedType,
     },
   };
 
@@ -158,9 +171,7 @@ export const initializeUpdateCycle = async (
 
 // We pass return value from `prepareGoOptions` (with calculated timeout) to every `go` call in the function to enforce the update cycle.
 // This solution is not precise but since chain operations are the only ones that actually take some time this should be a good enough solution.
-export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataFeeds, startTime: number) => {
-  const initialUpdateData = await initializeUpdateCycle(providerSponsorBeacons, DataFeedType.Beacon, startTime);
-  if (!initialUpdateData) return;
+export const updateBeacons = async (initialUpdateData: InitialUpdateData, startTime: number) => {
   const {
     contract,
     sponsorWallet,
@@ -301,9 +312,7 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
 
 // We pass return value from `prepareGoOptions` (with calculated timeout) to every `go` call in the function to enforce the update cycle.
 // This solution is not precise but since chain operations are the only ones that actually take some time this should be a good enough solution.
-export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDataFeeds, startTime: number) => {
-  const initialUpdateData = await initializeUpdateCycle(providerSponsorBeacons, DataFeedType.BeaconSet, startTime);
-  if (!initialUpdateData) return;
+export const updateBeaconSets = async (initialUpdateData: InitialUpdateData, startTime: number) => {
   const {
     contract,
     sponsorWallet,
