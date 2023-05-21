@@ -23,7 +23,7 @@
     "build": "yarn clean && yarn compile && yarn build:ncc",
     "clean": "rimraf -rf ./ncc ./build ./dist *.tgz",
     "compile": "tsc --build tsconfig.json",
-    "build:ncc": "ncc build -m -o ncc -s --target es2020 src/serverless.ts",
+    "build:ncc": "ncc build -m -o ncc -s --target es2021 src/serverless.ts",
     "dev:create-local-config": "ts-node scripts/create-local-config.js",
     "dev:setup-local-node": "hardhat run scripts/setup-local-node.js",
     "dev:api": "ts-node test/server/server.ts",
