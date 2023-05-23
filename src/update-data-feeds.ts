@@ -527,11 +527,8 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
           ],
         };
       }
-      if (shouldSkipBeaconSetUpdate || beaconSetBeaconUpdateData.updateBeaconWithSignedDataCalldatas.length === 0) {
-        logger.warn(
-          'Missing beacon data or no beacon needs update.Skipping.',
-          beaconSetUpdateData.logOptionsBeaconSetId
-        );
+      if (shouldSkipBeaconSetUpdate) {
+        logger.warn('Missing beacon data.Skipping.', beaconSetUpdateData.logOptionsBeaconSetId);
         continue;
       }
 
