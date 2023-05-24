@@ -262,7 +262,7 @@ describe('getSponsorBalanceStatus', () => {
 
 describe('filterSponsorWallets', () => {
   // This test checks if the function correctly updates the state configuration.
-  it('should update the config state to include only funded sponsors', async () => {
+  it('should update the state to include only funded sponsors', async () => {
     const stateProviders: state.Providers = {
       1: [
         {
@@ -304,12 +304,17 @@ describe('filterSponsorWallets', () => {
       },
     };
 
+    const expectedSponsorWalletsPrivateKey = {
+      '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC':
+        '0xcda66e77ae4eaab188a15717955f23cb7ee2a15f024eb272a7561cede1be427c',
+    };
+
     jest.spyOn(logger, 'info');
     jest.spyOn(state, 'updateState');
     jest.spyOn(state, 'getState');
 
     await wallets.filterEmptySponsors();
-    const { config: resultedConfig } = state.getState();
+    const { config: resultedConfig, sponsorWalletsPrivateKey: resultedSponsorWalletsPrivateKey } = state.getState();
 
     expect(state.updateState).toHaveBeenCalledTimes(1);
     expect(logger.info).toHaveBeenCalledTimes(1);
@@ -317,5 +322,6 @@ describe('filterSponsorWallets', () => {
       'Fetched balances for 3/3 sponsor wallets. Continuing with 1 funded sponsors.'
     );
     expect(resultedConfig).toStrictEqual(expectedConfig);
+    expect(resultedSponsorWalletsPrivateKey).toStrictEqual(expectedSponsorWalletsPrivateKey);
   });
 });

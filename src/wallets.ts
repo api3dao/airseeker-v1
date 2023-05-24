@@ -96,7 +96,7 @@ export const getSponsorBalanceStatus = async (
 };
 
 export const filterEmptySponsors = async () => {
-  const { config, providers: stateProviders } = getState();
+  const { config, providers: stateProviders, sponsorWalletsPrivateKey } = getState();
 
   const chainSponsorGroups = Object.entries(config.triggers.dataFeedUpdates).reduce(
     (acc: ChainSponsorGroup[], [chainId, dataFeedUpdatesPerSponsor]) => {
@@ -125,9 +125,20 @@ export const filterEmptySponsors = async () => {
     };
   }, {});
 
+  const fundedSponsorWalletsPrivateKey = fundedBalanceGroups.reduce(
+    (acc: SponsorWalletsPrivateKey, { sponsorAddress }) => {
+      return {
+        ...acc,
+        [sponsorAddress]: sponsorWalletsPrivateKey[sponsorAddress],
+      };
+    },
+    {}
+  );
+
   updateState((state) => ({
     ...state,
     config: { ...config, triggers: { ['dataFeedUpdates']: fundedDataFeedUpdates } },
+    sponsorWalletsPrivateKey: fundedSponsorWalletsPrivateKey,
   }));
 
   logger.info(
