@@ -119,8 +119,8 @@ export const initializeUpdateCycle = async (
   logger.debug(`Initializing updates`, logOptions);
 
   if (
-    (dataFeedType === DataFeedType.Beacon && beacons.length === 0) ||
-    (dataFeedType === DataFeedType.BeaconSet && beaconSets.length === 0)
+    (dataFeedType === DataFeedType.Beacon && isEmpty(beacons)) ||
+    (dataFeedType === DataFeedType.BeaconSet && isEmpty(beaconSets))
   ) {
     logger.debug(`No ${dataFeedType} found, skipping initialization cycle`, logOptions);
     return null;
