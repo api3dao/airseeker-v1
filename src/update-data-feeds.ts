@@ -1,10 +1,18 @@
+import { TextEncoder } from 'util';
 import { Api3ServerV1__factory as Api3ServerV1Factory } from '@api3/airnode-protocol-v1';
 import { getGasPrice } from '@api3/airnode-utilities';
 import { go } from '@api3/promise-utils';
-import { ethers } from 'ethers';
+import { BigNumber, ethers } from 'ethers';
 import { chunk, isEmpty, isNil } from 'lodash';
+import { getOpsGenieLimiter } from '@api3/operations-utilities';
+import { keccak256 } from 'ethers/lib/utils';
+import { Pool } from 'node-postgres';
 import { calculateMedian } from './calculations';
-import { checkConditions } from './check-condition';
+import {
+  checkConditions,
+  DEVIATION_THRESHOLD_REACHED_MESSAGE,
+  ON_CHAIN_TIMESTAMP_OLDER_THAN_HEARTBEAT_MESSAGE,
+} from './check-condition';
 import {
   DATAFEED_READ_BATCH_SIZE,
   DATAFEED_UPDATE_BATCH_SIZE,
@@ -17,6 +25,86 @@ import { Provider, getState } from './state';
 import { getTransactionCount } from './transaction-count';
 import { prepareGoOptions, shortenAddress, sleep } from './utils';
 import { Beacon, BeaconSetTrigger, BeaconTrigger, SignedData } from './validation';
+
+const parse = require('pg-connection-string').parse;
+
+const opsGenieConfig = { responders: [], apiKey: process.env.OPSGENIE_API_KEY ?? '' };
+const { limitedCloseOpsGenieAlertWithAlias, limitedSendToOpsGenieLowLevel } = getOpsGenieLimiter();
+
+class DBLink {
+  pool;
+  initComplete = false;
+
+  constructor() {
+    this.pool = new Pool({
+      ...parse('postgresql://postgres:password@localhost:5432/postgres?schema=telemetry&connection_limit=1&pool_timeout=120'),//process.env.DATABASE_URL,
+      statement_timeout: 10_000,
+      application_name: 'airseeker',
+      connectionTimeoutMillis: 10_000,
+      idleTimeoutMillis: 30_000,
+      max: 2,
+    });
+  }
+
+  async init() {
+    try {
+      // eslint-disable-next-line functional/immutable-data
+      this.initComplete = true;
+      // await this.pool.connect();
+      await this.pool.query(`
+          CREATE TABLE IF NOT EXISTS "DataFeedApiValue"
+          (
+              "id"         UUID             NOT NULL DEFAULT gen_random_uuid(),
+              "when"       TIMESTAMPTZ     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              "dataFeedId" TEXT             NOT NULL,
+              "apiValue"   NUMERIC(78) NOT NULL,
+              "timestamp"  TIMESTAMPTZ     NOT NULL,
+              "type"       TEXT             NOT NULL,
+
+              CONSTRAINT "DataFeedApiValue_pkey" PRIMARY KEY ("id")
+          );`);
+    } catch (e) {
+      const err = e as Error;
+      // eslint-disable-next-line no-console
+      console.error(err.message);
+      // eslint-disable-next-line no-console
+      console.error(err.stack);
+    }
+  }
+
+  async sendToDb({ dataFeedId, apiValue, timestamp, type }: {
+    dataFeedId: string,
+    apiValue: BigNumber,
+    timestamp: Date,
+    type: 'Beacon' | 'BeaconSet'
+  }) {
+    if (!this.initComplete) {
+      await this.init();
+    }
+    console.log([dataFeedId, apiValue.toString(), timestamp, type]);
+
+    try {
+      await this.pool.query(
+        `INSERT INTO "DataFeedApiValue"
+             ("dataFeedId", "apiValue", "timestamp", "type")
+         VALUES ($1, $2::NUMERIC(78), $3, $4);
+        `,
+        [dataFeedId, apiValue.toString(), timestamp, type],
+      );
+    } catch (e) {
+      const err = e as Error;
+      // eslint-disable-next-line no-console
+      console.error('###', err.message);
+      // eslint-disable-next-line no-console
+      console.error('###', err.stack);
+      console.error('!!!', { dataFeedId, apiValue, timestamp, type });
+    }
+  }
+}
+
+const db = new DBLink();
+
+export const generateOpsGenieAlias = (description: string) => keccak256(new TextEncoder().encode(description));
 
 type ProviderSponsorDataFeeds = {
   provider: Provider;
@@ -34,7 +122,7 @@ export enum DataFeedType {
 // Based on https://github.com/api3dao/airnode-protocol-v1/blob/main/contracts/dapis/DapiServer.sol#L878
 export const decodeBeaconValue = (encodedBeaconValue: string) => {
   const decodedBeaconValue = ethers.BigNumber.from(
-    ethers.utils.defaultAbiCoder.decode(['int256'], encodedBeaconValue)[0]
+    ethers.utils.defaultAbiCoder.decode(['int256'], encodedBeaconValue)[0],
   );
   if (decodedBeaconValue.gt(INT224_MAX) || decodedBeaconValue.lt(INT224_MIN)) {
     return null;
@@ -62,12 +150,12 @@ export const groupDataFeedsByProviderSponsor = () => {
             })),
           ];
         },
-        []
+        [],
       );
 
       return [...acc, ...providerSponsorGroups];
     },
-    []
+    [],
   );
 };
 
@@ -107,9 +195,9 @@ export const updateDataFeedsInLoop = async (providerSponsorDataFeeds: ProviderSp
 export const initializeUpdateCycle = async (
   providerSponsorDataFeeds: ProviderSponsorDataFeeds,
   dataFeedType: DataFeedType,
-  startTime: number
+  startTime: number,
 ) => {
-  const { config, beaconValues, sponsorWalletsPrivateKey } = getState();
+  const { config, beaconValues, sponsorWalletsPrivateKey, prisma } = getState();
   const { provider, updateInterval, sponsorAddress, beaconTriggers, beaconSetTriggers } = providerSponsorDataFeeds;
   const { rpcProvider, chainId, providerName } = provider;
   const logOptions = {
@@ -136,7 +224,7 @@ export const initializeUpdateCycle = async (
   const transactionCount = await getTransactionCount(
     provider,
     sponsorWallet.address,
-    prepareGoOptions(startTime, totalTimeout)
+    prepareGoOptions(startTime, totalTimeout),
   );
   if (isNil(transactionCount)) {
     logger.warn(`Unable to fetch transaction count`, logOptions);
@@ -157,6 +245,7 @@ export const initializeUpdateCycle = async (
     beaconSetTriggers,
     config,
     provider,
+    prisma,
   };
 };
 
@@ -176,6 +265,7 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
     beaconTriggers,
     config,
     provider,
+    prisma,
   } = initialUpdateData;
   const { chainId } = provider;
 
@@ -187,6 +277,9 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
     newBeaconValue: ethers.BigNumber;
     dataFeedsCalldata: string;
   };
+
+  const monitorOnly = config?.monitoring?.monitorOnly;
+  const deviationAlertMultiplier = config.monitoring?.deviationMultiplier ?? 2;
 
   // Process beacon read calldatas
   const beaconUpdates = beaconTriggers.reduce((acc: BeaconUpdate[], beaconTrigger) => {
@@ -238,7 +331,7 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
         ...prepareGoOptions(startTime, totalTimeout),
         onAttemptError: (goError) =>
           logger.warn(`Failed attempt to read beacon data using multicall. Error ${goError.error}`, logOptions),
-      }
+      },
     );
     if (!goDatafeedsTryMulticall.success) {
       logger.warn(`Unable to read beacon data using multicall. Error: ${goDatafeedsTryMulticall.error}`, logOptions);
@@ -262,8 +355,73 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
       // Decode on-chain data returned by tryMulticall
       const [onChainDataValue, onChainDataTimestamp] = ethers.utils.defaultAbiCoder.decode(
         ['int224', 'uint32'],
-        beaconReturndata
+        beaconReturndata,
       );
+
+      if (monitorOnly) {
+        await db.sendToDb({
+          dataFeedId: beaconUpdateData.beaconTrigger.beaconId,
+          apiValue: BigNumber.from(beaconUpdateData.newBeaconResponse.encodedValue),
+          timestamp: new Date(parseInt(beaconUpdateData.newBeaconResponse.timestamp, 10) * 1_000),
+          type: 'Beacon',
+        });
+
+        const revisedTrigger = {
+          ...beaconUpdateData.beaconTrigger,
+          deviationThreshold: beaconUpdateData.beaconTrigger.deviationThreshold * deviationAlertMultiplier,
+        };
+
+        const [log, result] = checkConditions(
+          onChainDataValue,
+          onChainDataTimestamp,
+          parseInt(beaconUpdateData.newBeaconResponse.timestamp, 10),
+          revisedTrigger,
+          beaconUpdateData.newBeaconValue,
+        );
+
+        if (!result) {
+          await Promise.allSettled([
+            limitedCloseOpsGenieAlertWithAlias(generateOpsGenieAlias(`${ON_CHAIN_TIMESTAMP_OLDER_THAN_HEARTBEAT_MESSAGE}${revisedTrigger.beaconId}${chainId}`), opsGenieConfig),
+            limitedCloseOpsGenieAlertWithAlias(generateOpsGenieAlias(`${DEVIATION_THRESHOLD_REACHED_MESSAGE}${revisedTrigger.beaconId}${chainId}`), opsGenieConfig)]);
+
+          return;
+        }
+
+        await Promise.allSettled(log.map(async (logEntry) => {
+          if (logEntry.message === ON_CHAIN_TIMESTAMP_OLDER_THAN_HEARTBEAT_MESSAGE) {
+            await limitedSendToOpsGenieLowLevel({
+                priority: 'P3',
+                alias: generateOpsGenieAlias(`${logEntry.message}${revisedTrigger.beaconId}${chainId}`),
+                message: `On chain timestamp older than heartbeat for ${revisedTrigger.beaconId} on chain ${chainId}`,
+                description: JSON.stringify({
+                  onChainDataValue,
+                  onChainDataTimestamp,
+                  beaconResponseTimestamp: parseInt(beaconUpdateData.newBeaconResponse.timestamp, 10),
+                  trigger: revisedTrigger,
+                  newBeaconValue: beaconUpdateData.newBeaconValue,
+                }, null, 2),
+              },
+              opsGenieConfig);
+          }
+
+
+          if (logEntry.message === DEVIATION_THRESHOLD_REACHED_MESSAGE) {
+            await limitedSendToOpsGenieLowLevel({
+                priority: 'P3',
+                alias: generateOpsGenieAlias(`${logEntry.message}${revisedTrigger.beaconId}${chainId}`),
+                message: `Deviation threshold exceeded for ${revisedTrigger.beaconId} on chain ${chainId}`,
+                description: JSON.stringify({
+                  onChainDataValue,
+                  onChainDataTimestamp,
+                  beaconResponseTimestamp: parseInt(beaconUpdateData.newBeaconResponse.timestamp, 10),
+                  trigger: revisedTrigger,
+                  newBeaconValue: beaconUpdateData.newBeaconValue,
+                }, null, 2),
+              },
+              opsGenieConfig);
+          }
+        }));
+      }
 
       // Verify all conditions for beacon update are met otherwise skip
       const [log, result] = checkConditions(
@@ -271,7 +429,7 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
         onChainDataTimestamp,
         parseInt(beaconUpdateData.newBeaconResponse.timestamp, 10),
         beaconUpdateData.beaconTrigger,
-        beaconUpdateData.newBeaconValue
+        beaconUpdateData.newBeaconValue,
       );
       logger.logPending(log, beaconUpdateData.logOptionsBeaconId);
       if (!result) {
@@ -288,6 +446,11 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
           beaconUpdateData.newBeaconResponse.signature,
         ]),
       ];
+    }
+
+    if (getState().config.monitoring?.monitorOnly) {
+      logger.warn(`Monitoring only enabled, skipping on-chain actions`, logOptions);
+      return;
     }
 
     let nonce = transactionCount;
@@ -310,7 +473,7 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
       }
       logger.info(
         `Beacon batch update transaction was successfully sent with nonce ${nonce}. Tx hash ${tx.data.hash}.`,
-        logOptions
+        logOptions,
       );
       nonce++;
     }
@@ -334,8 +497,12 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
     beaconSetTriggers,
     config,
     provider,
+    prisma,
   } = initialUpdateData;
   const { chainId } = provider;
+
+  const monitorOnly = config?.monitoring?.monitorOnly;
+  const deviationAlertMultiplier = config.monitoring?.deviationMultiplier ?? 2;
 
   type BeaconSetUpdateData = {
     logOptionsBeaconSetId: LogOptionsOverride;
@@ -374,7 +541,7 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
         ...prepareGoOptions(startTime, totalTimeout),
         onAttemptError: (goError) =>
           logger.warn(`Failed attempt to read beaconSet data using multicall. Error ${goError.error}`, logOptions),
-      }
+      },
     );
     if (!goDatafeedsTryMulticall.success) {
       logger.warn(`Unable to read beaconSet data using multicall. Error: ${goDatafeedsTryMulticall.error}`, logOptions);
@@ -392,7 +559,7 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
       if (!successes[i]) {
         logger.warn(
           `Unable to read data feed. Error: ${beaconSetReturndata}`,
-          beaconSetUpdateData.logOptionsBeaconSetId
+          beaconSetUpdateData.logOptionsBeaconSetId,
         );
         continue;
       }
@@ -400,14 +567,14 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
       // Decode on-chain data returned by tryMulticall
       const [onChainBeaconSetValue, onChainBeaconSetTimestamp] = ethers.utils.defaultAbiCoder.decode(
         ['int224', 'uint32'],
-        beaconSetReturndata
+        beaconSetReturndata,
       );
 
       const beaconSetBeaconIds = config.beaconSets[beaconSetUpdateData.beaconSetTrigger.beaconSetId];
 
       // Read beacon onchain values for current beacon set with a single tryMulticall call
       const readDataFeedWithIdCalldatas = beaconSetBeaconIds.map((beaconId) =>
-        contract.interface.encodeFunctionData('readDataFeedWithId', [beaconId])
+        contract.interface.encodeFunctionData('readDataFeedWithId', [beaconId]),
       );
       const goReadDataFeedWithIdTryMulticall = await go(
         () => contract.connect(voidSigner).callStatic.tryMulticall(Object.values(readDataFeedWithIdCalldatas)),
@@ -416,14 +583,14 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
           onAttemptError: (goError) =>
             logger.warn(
               `Failed attempt to read beacon data using multicall. Error ${goError.error}`,
-              beaconSetUpdateData.logOptionsBeaconSetId
+              beaconSetUpdateData.logOptionsBeaconSetId,
             ),
-        }
+        },
       );
       if (!goReadDataFeedWithIdTryMulticall.success) {
         logger.warn(
           `Unable to read beacon data using multicall. Error: ${goReadDataFeedWithIdTryMulticall.error}`,
-          beaconSetUpdateData.logOptionsBeaconSetId
+          beaconSetUpdateData.logOptionsBeaconSetId,
         );
         continue;
       }
@@ -472,7 +639,7 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
         // Decode on-chain beacon returned by tryMulticall
         const [onChainBeaconValue, onChainBeaconTimestamp] = ethers.utils.defaultAbiCoder.decode(
           ['int224', 'uint32'],
-          beaconReturndata
+          beaconReturndata,
         );
 
         let value = onChainBeaconValue;
@@ -511,6 +678,19 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
             decodedValue
           );
           logger.logPending(log, logOptionsBeaconId);
+
+          if (getState().config.monitoring?.monitorOnly) {
+            await db.sendToDb({
+              dataFeedId: beaconId,
+              apiValue: BigNumber.from(apiBeaconResponse.encodedValue),
+              timestamp: new Date(parseInt(apiBeaconResponse.timestamp) * 1_000),
+              type: 'Beacon',
+            });
+
+            return;
+          }
+
+
           const { airnode, templateId } = config.beacons[beaconId];
           if (result) {
             value = decodedValue;
@@ -536,18 +716,99 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
       if (shouldSkipBeaconSetUpdate || beaconSetBeaconUpdateData.updateBeaconWithSignedDataCalldatas.length === 0) {
         logger.warn(
           'Missing beacon data or no beacon needs update.Skipping.',
-          beaconSetUpdateData.logOptionsBeaconSetId
+          beaconSetUpdateData.logOptionsBeaconSetId,
         );
         continue;
       }
 
       // https://github.com/api3dao/airnode-protocol-v1/blob/main/contracts/api3-server-v1/DataFeedServer.sol#L163
       const newBeaconSetValue = calculateMedian(
-        beaconSetBeaconUpdateData.beaconSetBeaconValues.map((value) => value.value)
+        beaconSetBeaconUpdateData.beaconSetBeaconValues.map((value) => value.value),
       );
       const newBeaconSetTimestamp = calculateMedian(
-        beaconSetBeaconUpdateData.beaconSetBeaconValues.map((value) => ethers.BigNumber.from(value.timestamp))
+        beaconSetBeaconUpdateData.beaconSetBeaconValues.map((value) => ethers.BigNumber.from(value.timestamp)),
       ).toNumber();
+
+      if (getState().config.monitoring?.monitorOnly) {
+        await prisma?.dataFeedApiValue.create({
+          data: {
+            dataFeedId: beaconSetUpdateData.beaconSetTrigger.beaconSetId,
+            apiValue: BigNumber.from(newBeaconSetValue).toNumber(),
+            timestamp: new Date(newBeaconSetTimestamp * 1_000),
+            type: 'BeaconSet',
+          },
+        });
+
+      }
+
+      if (monitorOnly) {
+        await prisma?.dataFeedApiValue.create({
+          data: {
+            dataFeedId: beaconSetUpdateData.beaconSetTrigger.beaconSetId,
+            apiValue: BigNumber.from(newBeaconSetValue).toNumber(),
+            timestamp: new Date(newBeaconSetTimestamp * 1_000),
+            type: 'BeaconSet',
+          },
+        });
+
+        const revisedTrigger = {
+          ...beaconSetUpdateData.beaconSetTrigger,
+          deviationThreshold: beaconSetUpdateData.beaconSetTrigger.deviationThreshold * deviationAlertMultiplier,
+        };
+
+        const [log, result] = checkConditions(
+          onChainBeaconSetValue,
+          onChainBeaconSetTimestamp,
+          newBeaconSetTimestamp,
+          revisedTrigger,
+          newBeaconSetValue,
+        );
+
+        if (!result) {
+          await Promise.allSettled([
+            limitedCloseOpsGenieAlertWithAlias(generateOpsGenieAlias(`${ON_CHAIN_TIMESTAMP_OLDER_THAN_HEARTBEAT_MESSAGE}${revisedTrigger.beaconSetId}${chainId}`), opsGenieConfig),
+            limitedCloseOpsGenieAlertWithAlias(generateOpsGenieAlias(`${DEVIATION_THRESHOLD_REACHED_MESSAGE}${revisedTrigger.beaconSetId}${chainId}`), opsGenieConfig)]);
+
+          return;
+        }
+
+        await Promise.allSettled(log.map(async (logEntry) => {
+          if (logEntry.message === ON_CHAIN_TIMESTAMP_OLDER_THAN_HEARTBEAT_MESSAGE) {
+            await limitedSendToOpsGenieLowLevel({
+                priority: 'P3',
+                alias: generateOpsGenieAlias(`${logEntry.message}${revisedTrigger.beaconSetId}${chainId}`),
+                message: `On chain timestamp older than heartbeat for ${revisedTrigger.beaconSetId} on chain ${chainId}`,
+                description: JSON.stringify({
+                  onChainBeaconSetValue,
+                  onChainBeaconSetTimestamp,
+                  newBeaconSetTimestamp,
+                  trigger: revisedTrigger,
+                  newBeaconValue: newBeaconSetValue,
+                }, null, 2),
+              },
+              opsGenieConfig);
+          }
+
+
+          if (logEntry.message === DEVIATION_THRESHOLD_REACHED_MESSAGE) {
+            await limitedSendToOpsGenieLowLevel({
+                priority: 'P3',
+                alias: generateOpsGenieAlias(`${logEntry.message}${revisedTrigger.beaconSetId}${chainId}`),
+                message: `Deviation threshold exceeded for ${revisedTrigger.beaconSetId} on chain ${chainId}`,
+                description: JSON.stringify({
+                  onChainBeaconSetValue,
+                  onChainBeaconSetTimestamp,
+                  newBeaconSetTimestamp,
+                  trigger: revisedTrigger,
+                  newBeaconValue: newBeaconSetValue,
+                }, null, 2),
+              },
+              opsGenieConfig);
+          }
+        }));
+        continue;
+      }
+
 
       // Verify all conditions for beacon set update are met otherwise skip
       const [log, result] = checkConditions(
@@ -555,9 +816,10 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
         onChainBeaconSetTimestamp,
         newBeaconSetTimestamp,
         beaconSetUpdateData.beaconSetTrigger,
-        newBeaconSetValue
+        newBeaconSetValue,
       );
       logger.logPending(log, beaconSetUpdateData.logOptionsBeaconSetId);
+
       if (!result) {
         continue;
       }
@@ -571,6 +833,11 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
           contract.interface.encodeFunctionData('updateBeaconSetWithBeacons', [beaconSetBeaconIds]),
         ],
       ];
+    }
+
+    if (monitorOnly) {
+      logger.warn(`Monitoring only enabled, skipping on-chain actions`, logOptions);
+      return;
     }
 
     let nonce = transactionCount;
@@ -588,19 +855,19 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
           ...prepareGoOptions(startTime, totalTimeout),
           onAttemptError: (goError) =>
             logger.warn(`Failed attempt to update beacon set batch. Error ${goError.error}`, logOptions),
-        }
+        },
       );
       if (!tx.success) {
         logger.warn(
           `Unable send beacon set batch update transaction with nonce ${nonce}. Error: ${tx.error}`,
-          logOptions
+          logOptions,
         );
         return;
       }
 
       logger.info(
         `Beacon set batch update transaction was successfully sent with nonce ${nonce}. Tx hash ${tx.data.hash}.`,
-        logOptions
+        logOptions,
       );
       nonce++;
     }

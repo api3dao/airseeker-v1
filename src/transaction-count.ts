@@ -1,6 +1,6 @@
 import { go, GoAsyncOptions } from '@api3/promise-utils';
 import { logger } from './logging';
-import { Provider } from './state';
+import { getState, Provider } from './state';
 import { shortenAddress } from './utils';
 
 export const getTransactionCount = async (
@@ -12,6 +12,11 @@ export const getTransactionCount = async (
   const logOptionsSponsorWallet = {
     meta: { 'Chain-ID': chainId, Provider: providerName, 'Sponsor-Wallet': shortenAddress(sponsorWalletAddress) },
   };
+  
+  if (getState().config.monitoring?.monitorOnly) {
+    logger.warn(`Monitoring only enabled, skipping transaction count retrieval`, logOptionsSponsorWallet);
+    return 0;
+  }
 
   const goTransactionCount = await go(() => rpcProvider.getTransactionCount(sponsorWalletAddress), {
     ...goOptions,
