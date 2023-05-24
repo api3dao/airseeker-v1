@@ -105,7 +105,6 @@ export const initializeUpdateCycle = async (
   dataFeedType: DataFeedType,
   startTime: number
 ) => {
-  const { config, beaconValues, sponsorWalletsPrivateKey } = getState();
   const { provider, updateInterval, sponsorAddress, beacons, beaconSets } = providerSponsorDataFeeds;
   const { rpcProvider, chainId, providerName } = provider;
   const logOptions = {
@@ -119,6 +118,15 @@ export const initializeUpdateCycle = async (
 
   logger.debug(`Initializing updates`, logOptions);
 
+  if (
+    (dataFeedType === DataFeedType.Beacon && isEmpty(beacons)) ||
+    (dataFeedType === DataFeedType.BeaconSet && isEmpty(beaconSets))
+  ) {
+    logger.debug(`No ${dataFeedType} found, skipping initialization cycle`, logOptions);
+    return null;
+  }
+
+  const { config, beaconValues, sponsorWalletsPrivateKey } = getState();
   // All the beacon updates for given provider & sponsor have up to <updateInterval> seconds to finish
   const totalTimeout = updateInterval * 1_000;
 

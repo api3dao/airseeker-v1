@@ -435,4 +435,27 @@ describe('initializeUpdateCycle', () => {
     const groups = api.groupDataFeedsByProviderSponsor();
     expect(await api.initializeUpdateCycle(groups[0], api.DataFeedType.Beacon, Date.now())).toBeNull();
   });
+
+  it('returns null if no feeds are found for selected data feed type', async () => {
+    state.updateState((currentState) => ({
+      ...currentState,
+      beaconValues: {
+        '0x2ba0526238b0f2671b7981fd7a263730619c8e849a528088fd4a92350a8c2f2c': validSignedData,
+        '0xa5ddf304a7dcec62fa55449b7fe66b33339fd8b249db06c18423d5b0da7716c2': undefined as any,
+        '0x8fa9d00cb8f2d95b1299623d97a97696ed03d0e3350e4ea638f469beabcdabcd': validSignedData,
+      },
+    }));
+
+    const txCountSpy = jest.spyOn(ethers.providers.StaticJsonRpcProvider.prototype, 'getTransactionCount');
+    txCountSpy.mockResolvedValueOnce(212);
+
+    const groups = api.groupDataFeedsByProviderSponsor();
+
+    // Sponsor `0x417B205fEdB1b2352c7996B0F050A7a61544c5e2` on chain `3` have no beacon set
+    const group = groups.find(
+      ({ sponsorAddress, provider }) =>
+        sponsorAddress === '0x417B205fEdB1b2352c7996B0F050A7a61544c5e2' && provider.chainId === '3'
+    );
+    expect(await api.initializeUpdateCycle(group as any, api.DataFeedType.BeaconSet, Date.now())).toBeNull();
+  });
 });
