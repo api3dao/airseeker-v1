@@ -25,7 +25,7 @@ export type Provider = {
 };
 // chainId => Provider[]
 export type Providers = Record<string, Provider[]>;
-// sponsorAddress => sponsorWallet
+// sponsorAddress => sponsorWalletPrivateKey
 export type SponsorWalletsPrivateKey = Record<string, string>;
 
 export interface State {
