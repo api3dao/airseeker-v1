@@ -4,6 +4,9 @@ import { HUNDRED_PERCENT } from './constants';
 import { LogsData, logger } from './logging';
 import { BeaconSetTrigger, BeaconTrigger } from './validation';
 
+export const ON_CHAIN_TIMESTAMP_OLDER_THAN_HEARTBEAT_MESSAGE = 'On chain data timestamp older than heartbeat. Updating without condition check.';
+export const DEVIATION_THRESHOLD_REACHED_MESSAGE = 'Deviation threshold reached. Updating.';
+
 export const checkConditions = (
   onChainDataValue: ethers.BigNumber,
   onChainDataTimestamp: number,
@@ -21,13 +24,13 @@ export const checkConditions = (
   // Check that on chain data is newer than heartbeat interval
   const isOnchainDataFresh = checkOnchainDataFreshness(onChainDataTimestamp, trigger.heartbeatInterval);
   if (!isOnchainDataFresh) {
-    const log = logger.pend('INFO', 'On chain data timestamp older than heartbeat. Updating without condition check.');
+    const log = logger.pend('INFO', ON_CHAIN_TIMESTAMP_OLDER_THAN_HEARTBEAT_MESSAGE);
     return [[log], true];
   } else {
     // Check beacon condition
     const shouldUpdate = checkUpdateCondition(onChainDataValue, trigger.deviationThreshold, apiValue);
     if (!shouldUpdate) {
-      const log = logger.pend('WARN', 'Deviation threshold not reached. Skipping.');
+      const log = logger.pend('WARN', DEVIATION_THRESHOLD_REACHED_MESSAGE);
       return [[log], false];
     }
   }
