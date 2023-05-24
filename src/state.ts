@@ -2,6 +2,7 @@ import { setLogOptions, randomHexString } from '@api3/airnode-utilities';
 import { ethers, utils } from 'ethers';
 import Bottleneck from 'bottleneck';
 import { uniqBy } from 'lodash';
+import { PrismaClient } from '@prisma/client';
 import { BeaconId, Config, Gateway, LimiterConfig, SignedData } from './validation';
 import { GatewayWithLimiter } from './make-request';
 import {
@@ -30,6 +31,7 @@ export type SponsorWalletsPrivateKey = Record<string, string>;
 
 export interface State {
   config: Config;
+  prisma?: PrismaClient;
   stopSignalReceived: boolean;
   beaconValues: BeaconValueStorage;
   providers: Providers;
@@ -144,6 +146,7 @@ export const getInitialState = (config: Config) => {
 
   return {
     config,
+    prisma: config.monitoring?.monitorOnly ? new PrismaClient() : undefined,
     stopSignalReceived: false,
     beaconValues: {},
     providers: {},
