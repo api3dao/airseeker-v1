@@ -13,6 +13,7 @@ import {
 } from './constants';
 import { RateLimitedProvider } from './providers';
 import { logger } from './logging';
+import prisma from './database';
 
 export type Id<T> = T & {
   id: string;
@@ -146,7 +147,7 @@ export const getInitialState = (config: Config) => {
 
   return {
     config,
-    prisma: config.monitoring?.monitorOnly ? new PrismaClient() : undefined,
+    prisma: config.monitoring?.monitorOnly ? prisma : undefined,
     stopSignalReceived: false,
     beaconValues: {},
     providers: {},
