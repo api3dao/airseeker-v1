@@ -1,18 +1,13 @@
-import { TextEncoder } from 'util';
 import { Api3ServerV1__factory as Api3ServerV1Factory } from '@api3/airnode-protocol-v1';
 import { getGasPrice } from '@api3/airnode-utilities';
 import { go } from '@api3/promise-utils';
 import { BigNumber, ethers } from 'ethers';
 import { chunk, isEmpty, isNil } from 'lodash';
-import { getOpsGenieLimiter } from '@api3/operations-utilities';
-import { keccak256 } from 'ethers/lib/utils';
-import { PrismaClient } from '@prisma/client';
-import { calculateMedian, calculateUpdateInPercentage } from './calculations';
-import { checkConditions, UpdateStatus } from './check-condition';
+import { calculateMedian } from './calculations';
+import { checkConditions } from './check-condition';
 import {
   DATAFEED_READ_BATCH_SIZE,
   DATAFEED_UPDATE_BATCH_SIZE,
-  HUNDRED_PERCENT,
   INT224_MAX,
   INT224_MIN,
   NO_DATA_FEEDS_EXIT_CODE,
@@ -22,11 +17,7 @@ import { getState, Provider } from './state';
 import { getTransactionCount } from './transaction-count';
 import { prepareGoOptions, shortenAddress, sleep } from './utils';
 import { Beacon, BeaconSetTrigger, BeaconTrigger, SignedData } from './validation';
-
-const opsGenieConfig = { responders: [], apiKey: process.env.OPSGENIE_API_KEY ?? '' };
-const { limitedCloseOpsGenieAlertWithAlias, limitedSendToOpsGenieLowLevel } = getOpsGenieLimiter();
-
-export const generateOpsGenieAlias = (description: string) => keccak256(new TextEncoder().encode(description));
+import { checkAndReport } from './alerting';
 
 type ProviderSponsorDataFeeds = {
   provider: Provider;
@@ -40,11 +31,6 @@ export enum DataFeedType {
   Beacon = 'Beacon',
   BeaconSet = 'BeaconSet',
 }
-
-const prettyFormatObject = (source: any) =>
-  Object.entries(source)
-    .map(([key, value]) => `${key}: ${value}`)
-    .join('\n');
 
 // Based on https://github.com/api3dao/airnode-protocol-v1/blob/main/contracts/dapis/DapiServer.sol#L878
 export const decodeBeaconValue = (encodedBeaconValue: string) => {
@@ -95,90 +81,6 @@ export const initiateDataFeedUpdates = () => {
     process.exit(NO_DATA_FEEDS_EXIT_CODE);
   }
   return providerSponsorDataFeedsGroups.map(updateDataFeedsInLoop);
-};
-
-// checkAndReport(beaconSetUpdateData.beaconSetTrigger.beaconSetId, BigNumber.from(newBeaconSetValue), newBeaconSetTimestamp, chainId, beaconSetUpdateData.beaconSetTrigger, deviationAlertMultiplier
-
-const checkAndReport = async (
-  type: 'Beacon' | 'BeaconSet',
-  prisma: PrismaClient,
-  dataFeedId: string,
-  onChainValue: BigNumber,
-  onChainTimestamp: number,
-  offChainValue: BigNumber,
-  offChainTimestamp: number,
-  chainId: string,
-  trigger: Pick<BeaconTrigger | BeaconSetTrigger, 'deviationThreshold' | 'heartbeatInterval'>,
-  deviationAlertMultiplier: number
-) => {
-  await prisma?.dataFeedApiValue.create({
-    data: {
-      dataFeedId,
-      apiValue: parseFloat(offChainValue.toString()),
-      timestamp: new Date(offChainTimestamp * 1_000),
-      type,
-    },
-  });
-
-  await prisma?.deviationValue.create({
-    data: {
-      dataFeedId,
-      deviation: parseFloat(calculateUpdateInPercentage(onChainValue, offChainValue).toString()) / HUNDRED_PERCENT,
-      chainId,
-    },
-  });
-
-  const currentDeviation =
-    parseFloat(calculateUpdateInPercentage(onChainValue, offChainValue).toString()) / HUNDRED_PERCENT;
-  const alertDeviationThreshold = trigger.deviationThreshold * deviationAlertMultiplier;
-
-  const description = prettyFormatObject({
-    type,
-    onChainValue: onChainValue.toString(),
-    offChainValue: offChainValue.toString(),
-    onChainTimestamp: new Date(onChainTimestamp * 1_000),
-    offChainTimestamp: new Date(offChainTimestamp * 1_000),
-    alertDeviationThreshold: trigger.deviationThreshold,
-    currentDeviation: `${currentDeviation} %`,
-    heartbeatInterval: trigger.heartbeatInterval,
-    dataFeedId,
-  });
-
-  // TODO expose multiplier for heartbeat threshold
-  if (currentDeviation > alertDeviationThreshold) {
-    await limitedSendToOpsGenieLowLevel(
-      {
-        priority: 'P3',
-        alias: generateOpsGenieAlias(`${UpdateStatus.DEVIATION_THRESHOLD_REACHED_MESSAGE}${dataFeedId}${chainId}`),
-        message: `${UpdateStatus.DEVIATION_THRESHOLD_REACHED_MESSAGE} for ${type} with ${dataFeedId} on chain ${chainId}`,
-        description,
-      },
-      opsGenieConfig
-    );
-  } else if (offChainTimestamp - onChainTimestamp > (trigger.heartbeatInterval ?? 86400) * 1.1) {
-    await limitedSendToOpsGenieLowLevel(
-      {
-        priority: 'P3',
-        alias: generateOpsGenieAlias(
-          `${UpdateStatus.ON_CHAIN_TIMESTAMP_OLDER_THAN_HEARTBEAT_MESSAGE}${dataFeedId}${chainId}`
-        ),
-        message: `${UpdateStatus.ON_CHAIN_TIMESTAMP_OLDER_THAN_HEARTBEAT_MESSAGE} for ${type} with ${dataFeedId} on chain ${chainId}`,
-        description,
-      },
-      opsGenieConfig
-    );
-  } else {
-    await Promise.allSettled([
-      limitedCloseOpsGenieAlertWithAlias(
-        generateOpsGenieAlias(`${UpdateStatus.ON_CHAIN_TIMESTAMP_OLDER_THAN_HEARTBEAT_MESSAGE}${dataFeedId}${chainId}`),
-        opsGenieConfig
-      ),
-      limitedCloseOpsGenieAlertWithAlias(
-        generateOpsGenieAlias(`${UpdateStatus.DEVIATION_THRESHOLD_REACHED_MESSAGE}${dataFeedId}${chainId}`),
-        opsGenieConfig
-      ),
-    ]);
-  }
 };
 
 export const updateDataFeedsInLoop = async (providerSponsorDataFeeds: ProviderSponsorDataFeeds) => {
@@ -290,7 +192,6 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
   };
 
   const monitorOnly = config?.monitoring?.monitorOnly;
-  const deviationAlertMultiplier = config.monitoring?.deviationMultiplier ?? 2;
 
   // Process beacon read calldatas
   const beaconUpdates = beaconTriggers.reduce((acc: BeaconUpdate[], beaconTrigger) => {
@@ -370,43 +271,47 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
       );
 
       if (monitorOnly) {
-        await checkAndReport(
-          'Beacon',
-          prisma!,
-          beaconUpdateData.beaconTrigger.beaconId,
-          onChainDataValue,
-          onChainDataTimestamp,
-          BigNumber.from(beaconUpdateData.newBeaconResponse.encodedValue),
-          parseInt(beaconUpdateData.newBeaconResponse.timestamp, 10),
-          chainId,
-          beaconUpdateData.beaconTrigger,
-          deviationAlertMultiplier
-        );
-      } else {
-        // Verify all conditions for beacon update are met otherwise skip
-        const [log, result] = checkConditions(
-          onChainDataValue,
-          onChainDataTimestamp,
-          parseInt(beaconUpdateData.newBeaconResponse.timestamp, 10),
-          beaconUpdateData.beaconTrigger,
-          beaconUpdateData.newBeaconValue
-        );
-        logger.logPending(log, beaconUpdateData.logOptionsBeaconId);
-        if (!result) {
-          continue;
-        }
-
-        beaconUpdateCalldatas = [
-          ...beaconUpdateCalldatas,
-          contract.interface.encodeFunctionData('updateBeaconWithSignedData', [
-            beaconUpdateData.beacon.airnode,
-            beaconUpdateData.beacon.templateId,
-            beaconUpdateData.newBeaconResponse.timestamp,
-            beaconUpdateData.newBeaconResponse.encodedValue,
-            beaconUpdateData.newBeaconResponse.signature,
-          ]),
-        ];
+        await Promise.allSettled([
+          checkAndReport(
+            'Beacon',
+            prisma!,
+            beaconUpdateData.beaconTrigger.beaconId,
+            onChainDataValue,
+            onChainDataTimestamp,
+            BigNumber.from(beaconUpdateData.newBeaconResponse.encodedValue),
+            parseInt(beaconUpdateData.newBeaconResponse.timestamp, 10),
+            chainId,
+            beaconUpdateData.beaconTrigger,
+            config?.monitoring?.deviationMultiplier,
+            config?.monitoring?.heartbeatMultiplier
+          ),
+        ]);
+        continue;
       }
+
+      // Verify all conditions for beacon update are met otherwise skip
+      const [log, result] = checkConditions(
+        onChainDataValue,
+        onChainDataTimestamp,
+        parseInt(beaconUpdateData.newBeaconResponse.timestamp, 10),
+        beaconUpdateData.beaconTrigger,
+        beaconUpdateData.newBeaconValue
+      );
+      logger.logPending(log, beaconUpdateData.logOptionsBeaconId);
+      if (!result) {
+        continue;
+      }
+
+      beaconUpdateCalldatas = [
+        ...beaconUpdateCalldatas,
+        contract.interface.encodeFunctionData('updateBeaconWithSignedData', [
+          beaconUpdateData.beacon.airnode,
+          beaconUpdateData.beacon.templateId,
+          beaconUpdateData.newBeaconResponse.timestamp,
+          beaconUpdateData.newBeaconResponse.encodedValue,
+          beaconUpdateData.newBeaconResponse.signature,
+        ]),
+      ];
     }
 
     if (monitorOnly) {
@@ -462,7 +367,6 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
   const { chainId } = provider;
 
   const monitorOnly = config?.monitoring?.monitorOnly;
-  const deviationAlertMultiplier = config.monitoring?.deviationMultiplier ?? 2;
 
   type BeaconSetUpdateData = {
     logOptionsBeaconSetId: LogOptionsOverride;
@@ -640,18 +544,21 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
           logger.logPending(log, logOptionsBeaconId);
 
           if (monitorOnly) {
-            await checkAndReport(
-              'Beacon',
-              prisma!,
-              beaconId,
-              onChainBeaconValue,
-              onChainBeaconTimestamp,
-              decodedValue,
-              parseInt(apiBeaconResponse.timestamp, 10),
-              chainId,
-              beaconSetUpdateData.beaconSetTrigger,
-              deviationAlertMultiplier
-            );
+            await Promise.allSettled([
+              checkAndReport(
+                'Beacon',
+                prisma!,
+                beaconId,
+                onChainBeaconValue,
+                onChainBeaconTimestamp,
+                decodedValue,
+                parseInt(apiBeaconResponse.timestamp, 10),
+                chainId,
+                beaconSetUpdateData.beaconSetTrigger,
+                config?.monitoring?.deviationMultiplier,
+                config?.monitoring?.heartbeatMultiplier
+              ),
+            ]);
           } else {
             // Verify all conditions for beacon update are met
             // If condition check returns true then beacon update is required
@@ -704,18 +611,21 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
       ).toNumber();
 
       if (monitorOnly) {
-        await checkAndReport(
-          'Beacon',
-          prisma!,
-          beaconSetUpdateData.beaconSetTrigger.beaconSetId,
-          onChainBeaconSetValue,
-          onChainBeaconSetTimestamp,
-          newBeaconSetValue,
-          newBeaconSetTimestamp,
-          chainId,
-          beaconSetUpdateData.beaconSetTrigger,
-          deviationAlertMultiplier
-        );
+        await Promise.allSettled([
+          checkAndReport(
+            'Beacon',
+            prisma!,
+            beaconSetUpdateData.beaconSetTrigger.beaconSetId,
+            onChainBeaconSetValue,
+            onChainBeaconSetTimestamp,
+            newBeaconSetValue,
+            newBeaconSetTimestamp,
+            chainId,
+            beaconSetUpdateData.beaconSetTrigger,
+            config?.monitoring?.deviationMultiplier,
+            config?.monitoring?.heartbeatMultiplier
+          ),
+        ]);
       } else {
         // Verify all conditions for beacon set update are met otherwise skip
         const [log, result] = checkConditions(
