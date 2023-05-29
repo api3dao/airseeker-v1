@@ -1,34 +1,29 @@
 import { Api3ServerV1__factory as Api3ServerV1Factory } from '@api3/airnode-protocol-v1';
-import { go } from '@api3/promise-utils';
 import { getGasPrice } from '@api3/airnode-utilities';
+import { go } from '@api3/promise-utils';
 import { ethers } from 'ethers';
-import { isEmpty, isNil } from 'lodash';
-import { calculateBeaconSetTimestamp, calculateMedian } from './calculations';
-import { checkFulfillmentDataTimestamp, checkOnchainDataFreshness, checkUpdateCondition } from './check-condition';
-import { INT224_MAX, INT224_MIN, NO_DATA_FEEDS_EXIT_CODE } from './constants';
-import { logger } from './logging';
-import { getState, Provider } from './state';
+import { chunk, isEmpty, isNil } from 'lodash';
+import { calculateMedian } from './calculations';
+import { checkConditions } from './check-condition';
+import {
+  DATAFEED_READ_BATCH_SIZE,
+  DATAFEED_UPDATE_BATCH_SIZE,
+  INT224_MAX,
+  INT224_MIN,
+  NO_DATA_FEEDS_EXIT_CODE,
+} from './constants';
+import { LogOptionsOverride, logger } from './logging';
+import { Provider, getState } from './state';
 import { getTransactionCount } from './transaction-count';
 import { prepareGoOptions, shortenAddress, sleep } from './utils';
-import { BeaconSetUpdate, BeaconUpdate, SignedData } from './validation';
+import { Beacon, BeaconSetTrigger, BeaconTrigger, SignedData } from './validation';
 
 type ProviderSponsorDataFeeds = {
   provider: Provider;
   sponsorAddress: string;
   updateInterval: number;
-  beacons: BeaconUpdate[];
-  beaconSets: BeaconSetUpdate[];
-};
-
-type BeaconSetBeaconValue = {
-  beaconId: string;
-  airnode: string;
-  templateId: string;
-  fetchInterval: number;
-  timestamp: string;
-  encodedValue: string;
-  signature: string;
-  value: ethers.BigNumber;
+  beaconTriggers: BeaconTrigger[];
+  beaconSetTriggers: BeaconSetTrigger[];
 };
 
 export enum DataFeedType {
@@ -55,8 +50,17 @@ export const groupDataFeedsByProviderSponsor = () => {
       const providers = stateProviders[chainId];
 
       const providerSponsorGroups = Object.entries(dataFeedUpdatesPerSponsor).reduce(
-        (acc: ProviderSponsorDataFeeds[], [sponsorAddress, dataFeedUpdate]) => {
-          return [...acc, ...providers.map((provider) => ({ provider, sponsorAddress, ...dataFeedUpdate }))];
+        (acc: ProviderSponsorDataFeeds[], [sponsorAddress, { updateInterval, beacons, beaconSets }]) => {
+          return [
+            ...acc,
+            ...providers.map((provider) => ({
+              provider,
+              sponsorAddress,
+              updateInterval,
+              beaconTriggers: beacons,
+              beaconSetTriggers: beaconSets,
+            })),
+          ];
         },
         []
       );
@@ -105,7 +109,7 @@ export const initializeUpdateCycle = async (
   dataFeedType: DataFeedType,
   startTime: number
 ) => {
-  const { provider, updateInterval, sponsorAddress, beacons, beaconSets } = providerSponsorDataFeeds;
+  const { provider, updateInterval, sponsorAddress, beaconTriggers, beaconSetTriggers } = providerSponsorDataFeeds;
   const { rpcProvider, chainId, providerName } = provider;
   const logOptions = {
     meta: {
@@ -119,8 +123,8 @@ export const initializeUpdateCycle = async (
   logger.debug(`Initializing updates`, logOptions);
 
   if (
-    (dataFeedType === DataFeedType.Beacon && isEmpty(beacons)) ||
-    (dataFeedType === DataFeedType.BeaconSet && isEmpty(beaconSets))
+    (dataFeedType === DataFeedType.Beacon && isEmpty(beaconTriggers)) ||
+    (dataFeedType === DataFeedType.BeaconSet && isEmpty(beaconSetTriggers))
   ) {
     logger.debug(`No ${dataFeedType} found, skipping initialization cycle`, logOptions);
     return null;
@@ -157,8 +161,8 @@ export const initializeUpdateCycle = async (
     totalTimeout,
     logOptions,
     beaconValues,
-    beacons,
-    beaconSets,
+    beaconTriggers,
+    beaconSetTriggers,
     config,
     provider,
   };
@@ -166,8 +170,8 @@ export const initializeUpdateCycle = async (
 
 // We pass return value from `prepareGoOptions` (with calculated timeout) to every `go` call in the function to enforce the update cycle.
 // This solution is not precise but since chain operations are the only ones that actually take some time this should be a good enough solution.
-export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataFeeds, startTime: number) => {
-  const initialUpdateData = await initializeUpdateCycle(providerSponsorBeacons, DataFeedType.Beacon, startTime);
+export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDataFeeds, startTime: number) => {
+  const initialUpdateData = await initializeUpdateCycle(providerSponsorDataFeeds, DataFeedType.Beacon, startTime);
   if (!initialUpdateData) return;
   const {
     contract,
@@ -177,140 +181,154 @@ export const updateBeacons = async (providerSponsorBeacons: ProviderSponsorDataF
     totalTimeout,
     logOptions,
     beaconValues,
-    beacons,
+    beaconTriggers,
     config,
     provider,
   } = initialUpdateData;
   const { chainId } = provider;
 
-  // Process beacon updates
-  let nonce = transactionCount;
+  type BeaconUpdate = {
+    logOptionsBeaconId: LogOptionsOverride;
+    beaconTrigger: BeaconTrigger;
+    beacon: Beacon;
+    newBeaconResponse: SignedData;
+    newBeaconValue: ethers.BigNumber;
+    dataFeedsCalldata: string;
+  };
 
-  for (const beacon of beacons) {
+  // Process beacon read calldatas
+  const beaconUpdates = beaconTriggers.reduce((acc: BeaconUpdate[], beaconTrigger) => {
     const logOptionsBeaconId = {
       ...logOptions,
       meta: {
         ...logOptions.meta,
         'Sponsor-Wallet': shortenAddress(sponsorWallet.address),
-        'Beacon-ID': beacon.beaconId,
+        'Beacon-ID': beaconTrigger.beaconId,
       },
     };
 
-    const beaconUpdateData = { ...beacon, ...config.beacons[beacon.beaconId] };
+    logger.debug(`Processing beacon update`, logOptionsBeaconId);
 
-    logger.debug(`Updating beacon`, logOptionsBeaconId);
-    // Check whether we have a value for given beacon
-    const newBeaconResponse = beaconValues[beaconUpdateData.beaconId];
+    // Check whether we have a value from the provider API for given beacon
+    const newBeaconResponse = beaconValues[beaconTrigger.beaconId];
     if (!newBeaconResponse) {
       logger.warn(`No data available for beacon. Skipping.`, logOptionsBeaconId);
-      continue;
+      return acc;
     }
 
     const newBeaconValue = decodeBeaconValue(newBeaconResponse.encodedValue);
     if (!newBeaconValue) {
       logger.warn(`New beacon value is out of type range. Skipping.`, logOptionsBeaconId);
-      continue;
+      return acc;
     }
 
-    const goDataFeed = await go(() => contract.connect(voidSigner).dataFeeds(beaconUpdateData.beaconId), {
-      ...prepareGoOptions(startTime, totalTimeout),
-      onAttemptError: (goError) =>
-        logger.warn(`Failed attempt to read data feed. Error: ${goError.error}`, logOptionsBeaconId),
-    });
-    if (!goDataFeed.success) {
-      logger.warn(`Unable to read data feed. Error: ${goDataFeed.error}`, logOptionsBeaconId);
-      continue;
-    }
-    const onChainData = goDataFeed.data;
-    if (!onChainData) {
-      const message = `Missing on chain data for beacon. Skipping.`;
-      logger.warn(message, logOptionsBeaconId);
-      continue;
-    }
+    return [
+      ...acc,
+      {
+        logOptionsBeaconId,
+        beaconTrigger,
+        beacon: config.beacons[beaconTrigger.beaconId],
+        newBeaconResponse,
+        newBeaconValue,
+        dataFeedsCalldata: contract.interface.encodeFunctionData('dataFeeds', [beaconTrigger.beaconId]),
+      },
+    ];
+  }, []);
 
-    // Check that fulfillment data is newer than on chain data
-    const isFulfillmentDataFresh = checkFulfillmentDataTimestamp(
-      onChainData.timestamp,
-      parseInt(newBeaconResponse.timestamp, 10)
-    );
-    if (!isFulfillmentDataFresh) {
-      logger.warn(`Fulfillment data older than on-chain data. Skipping.`, logOptionsBeaconId);
-      continue;
-    }
-
-    // Check that on chain data is newer than heartbeat interval
-    const isOnchainDataFresh = checkOnchainDataFreshness(onChainData.timestamp, beaconUpdateData.heartbeatInterval);
-    if (!isOnchainDataFresh) {
-      logger.info(
-        `On chain data timestamp older than heartbeat. Updating without condition check.`,
-        logOptionsBeaconId
-      );
-    } else {
-      // Check beacon condition
-      const shouldUpdate = checkUpdateCondition(onChainData.value, beaconUpdateData.deviationThreshold, newBeaconValue);
-      if (shouldUpdate === null) {
-        logger.warn(`Unable to fetch current beacon value`, logOptionsBeaconId);
-        // This can happen only if we reach the total timeout so it makes no sense to continue with the rest of the beacons
-        return;
-      }
-      if (!shouldUpdate) {
-        logger.info(`Deviation threshold not reached. Skipping.`, logOptionsBeaconId);
-        continue;
-      }
-
-      logger.info(`Deviation threshold reached. Updating.`, logOptionsBeaconId);
-    }
-
-    // Get the latest gas price
-    const getGasFn = () => getGasPrice(provider.rpcProvider.getProvider(), config.chains[chainId].options);
-    // We have to grab the limiter from the custom provider as the getGasPrice function contains its own timeouts
-    const [logs, gasTarget] = await provider.rpcProvider.getLimiter().schedule({ expiration: 30_000 }, getGasFn);
-    logs.forEach((log) =>
-      log.level === 'ERROR'
-        ? logger.error(log.message, null, logOptionsBeaconId)
-        : logger.info(log.message, logOptionsBeaconId)
-    );
-
-    // Update beacon
-    const tx = await go(
-      () =>
-        contract
-          .connect(sponsorWallet)
-          .updateBeaconWithSignedData(
-            beaconUpdateData.airnode,
-            beaconUpdateData.templateId,
-            newBeaconResponse.timestamp,
-            newBeaconResponse.encodedValue,
-            newBeaconResponse.signature,
-            {
-              nonce,
-              ...gasTarget,
-            }
-          ),
+  for (const readBatch of chunk(beaconUpdates, DATAFEED_READ_BATCH_SIZE)) {
+    // Read beacon batch onchain values
+    const goDatafeedsTryMulticall = await go(
+      () => {
+        const calldatas = readBatch.map((beaconUpdate) => beaconUpdate.dataFeedsCalldata);
+        return contract.connect(voidSigner).callStatic.tryMulticall(calldatas);
+      },
       {
         ...prepareGoOptions(startTime, totalTimeout),
         onAttemptError: (goError) =>
-          logger.warn(`Failed attempt to update beacon. Error ${goError.error}`, logOptionsBeaconId),
+          logger.warn(`Failed attempt to read beacon data using multicall. Error ${goError.error}`, logOptions),
       }
     );
-
-    if (!tx.success) {
-      logger.warn(`Unable to update beacon with nonce ${nonce}. Error: ${tx.error}`, logOptionsBeaconId);
-      return;
+    if (!goDatafeedsTryMulticall.success) {
+      logger.warn(`Unable to read beacon data using multicall. Error: ${goDatafeedsTryMulticall.error}`, logOptions);
+      continue;
     }
 
-    logger.info(
-      `Beacon successfully updated with value ${newBeaconValue} and nonce ${nonce}. Tx hash ${tx.data.hash}.`,
-      logOptionsBeaconId
-    );
-    nonce++;
+    const { successes, returndata } = goDatafeedsTryMulticall.data;
+
+    // Process beacon update calldatas
+    let beaconUpdateCalldatas: string[] = [];
+
+    for (let i = 0; i < readBatch.length; i++) {
+      const beaconReturndata = returndata[i];
+      const beaconUpdateData = readBatch[i];
+
+      if (!successes[i]) {
+        logger.warn(`Unable to read data feed. Error: ${beaconReturndata}`, beaconUpdateData.logOptionsBeaconId);
+        continue;
+      }
+
+      // Decode on-chain data returned by tryMulticall
+      const [onChainDataValue, onChainDataTimestamp] = ethers.utils.defaultAbiCoder.decode(
+        ['int224', 'uint32'],
+        beaconReturndata
+      );
+
+      // Verify all conditions for beacon update are met otherwise skip
+      const [log, result] = checkConditions(
+        onChainDataValue,
+        onChainDataTimestamp,
+        parseInt(beaconUpdateData.newBeaconResponse.timestamp, 10),
+        beaconUpdateData.beaconTrigger,
+        beaconUpdateData.newBeaconValue
+      );
+      logger.logPending(log, beaconUpdateData.logOptionsBeaconId);
+      if (!result) {
+        continue;
+      }
+
+      beaconUpdateCalldatas = [
+        ...beaconUpdateCalldatas,
+        contract.interface.encodeFunctionData('updateBeaconWithSignedData', [
+          beaconUpdateData.beacon.airnode,
+          beaconUpdateData.beacon.templateId,
+          beaconUpdateData.newBeaconResponse.timestamp,
+          beaconUpdateData.newBeaconResponse.encodedValue,
+          beaconUpdateData.newBeaconResponse.signature,
+        ]),
+      ];
+    }
+
+    let nonce = transactionCount;
+    for (const updateBatch of chunk(beaconUpdateCalldatas, DATAFEED_UPDATE_BATCH_SIZE)) {
+      // Get the latest gas price
+      const getGasFn = () => getGasPrice(provider.rpcProvider.getProvider(), config.chains[chainId].options);
+      // We have to grab the limiter from the custom provider as the getGasPrice function contains its own timeouts
+      const [logs, gasTarget] = await provider.rpcProvider.getLimiter().schedule({ expiration: 30_000 }, getGasFn);
+      logger.logPending(logs, logOptions);
+
+      // Update beacon batch onchain values
+      const tx = await go(() => contract.connect(sponsorWallet).tryMulticall(updateBatch, { nonce, ...gasTarget }), {
+        ...prepareGoOptions(startTime, totalTimeout),
+        onAttemptError: (goError) =>
+          logger.warn(`Failed attempt to update beacon batch. Error ${goError.error}`, logOptions),
+      });
+      if (!tx.success) {
+        logger.warn(`Unable send beacon batch update transaction with nonce ${nonce}. Error: ${tx.error}`, logOptions);
+        return;
+      }
+      logger.info(
+        `Beacon batch update transaction was successfully sent with nonce ${nonce}. Tx hash ${tx.data.hash}.`,
+        logOptions
+      );
+      nonce++;
+    }
   }
 };
 
 // We pass return value from `prepareGoOptions` (with calculated timeout) to every `go` call in the function to enforce the update cycle.
 // This solution is not precise but since chain operations are the only ones that actually take some time this should be a good enough solution.
-export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDataFeeds, startTime: number) => {
-  const initialUpdateData = await initializeUpdateCycle(providerSponsorBeacons, DataFeedType.BeaconSet, startTime);
+export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsorDataFeeds, startTime: number) => {
+  const initialUpdateData = await initializeUpdateCycle(providerSponsorDataFeeds, DataFeedType.BeaconSet, startTime);
   if (!initialUpdateData) return;
   const {
     contract,
@@ -320,172 +338,262 @@ export const updateBeaconSets = async (providerSponsorBeacons: ProviderSponsorDa
     totalTimeout,
     logOptions,
     beaconValues,
-    beaconSets,
+    beaconSetTriggers,
     config,
     provider,
   } = initialUpdateData;
   const { chainId } = provider;
-  // Process beacon set updates
-  let nonce = transactionCount;
 
-  for (const beaconSet of beaconSets) {
+  type BeaconSetUpdateData = {
+    logOptionsBeaconSetId: LogOptionsOverride;
+    beaconSetTrigger: BeaconSetTrigger;
+    dataFeedsCalldata: string;
+  };
+
+  // Process beacon set read calldatas
+  const beaconSetUpdates: BeaconSetUpdateData[] = beaconSetTriggers.map((beaconSetTrigger) => {
     const logOptionsBeaconSetId = {
       ...logOptions,
       meta: {
         ...logOptions.meta,
         'Sponsor-Wallet': shortenAddress(sponsorWallet.address),
-        'BeaconSet-ID': beaconSet.beaconSetId,
+        'BeaconSet-ID': beaconSetTrigger.beaconSetId,
       },
     };
 
-    logger.debug(`Updating beacon set`, logOptionsBeaconSetId);
+    logger.debug(`Processing beacon set update`, logOptionsBeaconSetId);
 
-    // Fetch beacon set value & timestamp from the chain
-    const goDataFeed = await go(() => contract.connect(voidSigner).dataFeeds(beaconSet.beaconSetId), {
-      ...prepareGoOptions(startTime, totalTimeout),
-      onAttemptError: (goError) =>
-        logger.warn(`Failed attempt to read data feed. Error: ${goError.error}`, logOptionsBeaconSetId),
-    });
-    if (!goDataFeed.success) {
-      logger.warn(`Unable to read data feed. Error: ${goDataFeed.error}`, logOptionsBeaconSetId);
+    return {
+      logOptionsBeaconSetId,
+      beaconSetTrigger,
+      dataFeedsCalldata: contract.interface.encodeFunctionData('dataFeeds', [beaconSetTrigger.beaconSetId]),
+    };
+  });
+
+  for (const readBatch of chunk(beaconSetUpdates, DATAFEED_READ_BATCH_SIZE)) {
+    // Read beacon set batch onchain values
+    const goDatafeedsTryMulticall = await go(
+      () => {
+        const calldatas = readBatch.map((beaconSetUpdateData) => beaconSetUpdateData.dataFeedsCalldata);
+        return contract.connect(voidSigner).callStatic.tryMulticall(calldatas);
+      },
+      {
+        ...prepareGoOptions(startTime, totalTimeout),
+        onAttemptError: (goError) =>
+          logger.warn(`Failed attempt to read beaconSet data using multicall. Error ${goError.error}`, logOptions),
+      }
+    );
+    if (!goDatafeedsTryMulticall.success) {
+      logger.warn(`Unable to read beaconSet data using multicall. Error: ${goDatafeedsTryMulticall.error}`, logOptions);
       continue;
     }
-    const beaconSetOnChainData = goDataFeed.data;
-    if (!beaconSetOnChainData) {
-      const message = `Missing on chain data for beaconSet. Skipping.`;
-      logger.warn(message, logOptionsBeaconSetId);
-      continue;
-    }
+    const { successes, returndata } = goDatafeedsTryMulticall.data;
 
-    // Retrieve values for each beacon within the set from the cache (common memory)
-    const beaconSetBeaconValuesPromises: Promise<BeaconSetBeaconValue>[] = config.beaconSets[beaconSet.beaconSetId].map(
-      async (beaconId) => {
+    // Process beacon set update calldatas
+    let beaconSetUpdateCalldatas: string[][] = [];
+
+    for (let i = 0; i < readBatch.length; i++) {
+      const beaconSetReturndata = returndata[i];
+      const beaconSetUpdateData = readBatch[i];
+
+      if (!successes[i]) {
+        logger.warn(
+          `Unable to read data feed. Error: ${beaconSetReturndata}`,
+          beaconSetUpdateData.logOptionsBeaconSetId
+        );
+        continue;
+      }
+
+      // Decode on-chain data returned by tryMulticall
+      const [onChainBeaconSetValue, onChainBeaconSetTimestamp] = ethers.utils.defaultAbiCoder.decode(
+        ['int224', 'uint32'],
+        beaconSetReturndata
+      );
+
+      const beaconSetBeaconIds = config.beaconSets[beaconSetUpdateData.beaconSetTrigger.beaconSetId];
+
+      // Read beacon onchain values for current beacon set with a single tryMulticall call
+      const readDataFeedWithIdCalldatas = beaconSetBeaconIds.map((beaconId) =>
+        contract.interface.encodeFunctionData('readDataFeedWithId', [beaconId])
+      );
+      const goReadDataFeedWithIdTryMulticall = await go(
+        () => contract.connect(voidSigner).callStatic.tryMulticall(Object.values(readDataFeedWithIdCalldatas)),
+        {
+          ...prepareGoOptions(startTime, totalTimeout),
+          onAttemptError: (goError) =>
+            logger.warn(
+              `Failed attempt to read beacon data using multicall. Error ${goError.error}`,
+              beaconSetUpdateData.logOptionsBeaconSetId
+            ),
+        }
+      );
+      if (!goReadDataFeedWithIdTryMulticall.success) {
+        logger.warn(
+          `Unable to read beacon data using multicall. Error: ${goReadDataFeedWithIdTryMulticall.error}`,
+          beaconSetUpdateData.logOptionsBeaconSetId
+        );
+        continue;
+      }
+      const { successes: readDataFeedWithIdSuccesses, returndata: readDataFeedWithIdReturndatas } =
+        goReadDataFeedWithIdTryMulticall.data;
+
+      type BeaconSetBeaconUpdateData = {
+        // These values are used to calculate the median value and timestamp prior to beacon set condition checks
+        beaconSetBeaconValues: {
+          value: ethers.BigNumber;
+          timestamp: number;
+        }[];
+        // This array contains all the calldatas for updating beacon values
+        updateBeaconWithSignedDataCalldatas: string[];
+      };
+
+      // Process each beacon in the current beacon set
+      let beaconSetBeaconUpdateData: BeaconSetBeaconUpdateData = {
+        beaconSetBeaconValues: [],
+        updateBeaconWithSignedDataCalldatas: [],
+      };
+      let shouldSkipBeaconSetUpdate = false;
+      for (let i = 0; i < beaconSetBeaconIds.length; i++) {
+        const beaconId = beaconSetBeaconIds[i];
         const logOptionsBeaconId = {
-          ...logOptionsBeaconSetId,
+          ...beaconSetUpdateData.logOptionsBeaconSetId,
           meta: {
-            ...logOptionsBeaconSetId.meta,
+            ...beaconSetUpdateData.logOptionsBeaconSetId.meta,
             'Beacon-ID': beaconId,
           },
         };
 
-        const beaconResponse: SignedData = beaconValues[beaconId];
+        // Cached API value
+        const apiBeaconResponse: SignedData | undefined = beaconValues[beaconId];
+        // Onchain beacon data
+        const beaconReturndata = readDataFeedWithIdReturndatas[i];
 
-        // Check whether we have a value for given beacon
-        if (!beaconResponse) {
-          logger.warn('Missing off chain data for beacon.', logOptionsBeaconId);
-          // If there's no value for a given beacon, fetch it from the chain
-          const goDataFeed = await go(() => contract.connect(voidSigner).dataFeeds(beaconId), {
-            ...prepareGoOptions(startTime, totalTimeout),
-            onAttemptError: (goError) =>
-              logger.warn(`Failed attempt to read data feed. Error: ${goError.error}`, logOptionsBeaconSetId),
-          });
-          if (!goDataFeed.success) {
-            logger.warn(`Unable to read data feed. Error: ${goDataFeed.error}`, logOptionsBeaconSetId);
-            throw new Error(goDataFeed.error.message);
-          }
-          const beaconValueOnChain = goDataFeed.data;
-          // If the value is not available on the chain skip the update
-          if (!beaconValueOnChain) {
-            const message = `Missing on chain data for beacon.`;
+        if (!apiBeaconResponse && !readDataFeedWithIdSuccesses[i]) {
+          // There is no API data nor onchain value for current beacon
+          // Therefore break this look and set the flag to skip the beacon set update
+          logger.warn(`No beacon data. Error: ${beaconReturndata}`, logOptionsBeaconId);
+          shouldSkipBeaconSetUpdate = true;
+          break;
+        }
+
+        // Decode on-chain beacon returned by tryMulticall
+        const [onChainBeaconValue, onChainBeaconTimestamp] = ethers.utils.defaultAbiCoder.decode(
+          ['int224', 'uint32'],
+          beaconReturndata
+        );
+
+        let value = onChainBeaconValue;
+        let timestamp = onChainBeaconTimestamp;
+        let calldata = undefined;
+        if (apiBeaconResponse) {
+          // There is a new beacon value in the API response
+          const decodedValue = decodeBeaconValue(apiBeaconResponse.encodedValue);
+          if (!decodedValue) {
+            const message = `New beacon value is out of type range.`;
             logger.warn(message, logOptionsBeaconId);
-            throw new Error(message);
+            shouldSkipBeaconSetUpdate = true;
+            break;
           }
 
-          return {
-            beaconId,
-            timestamp: beaconValueOnChain.timestamp.toString(),
-            encodedValue: '0x',
-            signature: '0x',
-            value: beaconValueOnChain.value,
-            ...config.beacons[beaconId],
-          };
+          // Verify all conditions for beacon update are met
+          // If condition check returns true then beacon update is required
+          const [log, result] = checkConditions(
+            onChainBeaconValue,
+            onChainBeaconTimestamp,
+            parseInt(apiBeaconResponse.timestamp, 10),
+            beaconSetUpdateData.beaconSetTrigger,
+            decodedValue
+          );
+          logger.logPending(log, logOptionsBeaconId);
+          const { airnode, templateId } = config.beacons[beaconId];
+          if (result) {
+            value = decodedValue;
+            timestamp = parseInt(apiBeaconResponse.timestamp, 10);
+            calldata = contract.interface.encodeFunctionData('updateBeaconWithSignedData', [
+              airnode,
+              templateId,
+              apiBeaconResponse.timestamp,
+              apiBeaconResponse.encodedValue,
+              apiBeaconResponse.signature,
+            ]);
+          }
         }
 
-        const decodedValue = decodeBeaconValue(beaconResponse.encodedValue);
-        if (!decodedValue) {
-          const message = `New beacon value is out of type range.`;
-          logger.warn(message, logOptionsBeaconId);
-          throw new Error(message);
-        }
-
-        return { beaconId, ...beaconResponse, value: decodedValue, ...config.beacons[beaconId] };
+        beaconSetBeaconUpdateData = {
+          beaconSetBeaconValues: [...beaconSetBeaconUpdateData.beaconSetBeaconValues, { value, timestamp }],
+          updateBeaconWithSignedDataCalldatas: [
+            ...beaconSetBeaconUpdateData.updateBeaconWithSignedDataCalldatas,
+            ...(calldata ? [calldata] : []),
+          ],
+        };
       }
-    );
-    const beaconSetBeaconValuesResults = await Promise.allSettled(beaconSetBeaconValuesPromises);
-    if (beaconSetBeaconValuesResults.some((data) => data.status === 'rejected')) {
-      logger.warn('There was an error fetching beacon data for beacon set. Skipping.', logOptionsBeaconSetId);
-      continue;
-    }
-
-    const beaconSetBeaconValues = beaconSetBeaconValuesResults.map(
-      (result) => (result as PromiseFulfilledResult<BeaconSetBeaconValue>).value
-    );
-
-    const newBeaconSetValue = calculateMedian(beaconSetBeaconValues.map((value) => value.value));
-    const newBeaconSetTimestamp = calculateBeaconSetTimestamp(beaconSetBeaconValues.map((value) => value.timestamp));
-
-    // Check that fulfillment data is newer than on chain data
-    const isFulfillmentDataFresh = checkFulfillmentDataTimestamp(beaconSetOnChainData.timestamp, newBeaconSetTimestamp);
-    if (!isFulfillmentDataFresh) {
-      logger.warn(`Fulfillment data older than on-chain beacon set data. Skipping.`, logOptionsBeaconSetId);
-      continue;
-    }
-
-    // Check that on chain data is newer than heartbeat interval
-    const isOnchainDataFresh = checkOnchainDataFreshness(beaconSetOnChainData.timestamp, beaconSet.heartbeatInterval);
-    if (!isOnchainDataFresh) {
-      logger.info(
-        `On chain data timestamp older than heartbeat. Updating without condition check.`,
-        logOptionsBeaconSetId
-      );
-    } else {
-      // Check beacon set condition
-      // If the deviation threshold is reached do the update, skip otherwise
-      const shouldUpdate = checkUpdateCondition(
-        beaconSetOnChainData.value,
-        beaconSet.deviationThreshold,
-        newBeaconSetValue
-      );
-      if (shouldUpdate === null) {
-        logger.warn(`Unable to fetch current beacon set value`, logOptionsBeaconSetId);
-        // This can happen only if we reach the total timeout so it makes no sense to continue with the rest of the beaconSets
-        return;
-      }
-      if (!shouldUpdate) {
-        logger.info(`Deviation threshold not reached. Skipping.`, logOptionsBeaconSetId);
+      if (shouldSkipBeaconSetUpdate) {
+        logger.warn('Missing beacon data.Skipping.', beaconSetUpdateData.logOptionsBeaconSetId);
         continue;
       }
 
-      logger.info(`Deviation threshold reached. Updating.`, logOptionsBeaconSetId);
-    }
+      // https://github.com/api3dao/airnode-protocol-v1/blob/main/contracts/api3-server-v1/DataFeedServer.sol#L163
+      const newBeaconSetValue = calculateMedian(
+        beaconSetBeaconUpdateData.beaconSetBeaconValues.map((value) => value.value)
+      );
+      const newBeaconSetTimestamp = calculateMedian(
+        beaconSetBeaconUpdateData.beaconSetBeaconValues.map((value) => ethers.BigNumber.from(value.timestamp))
+      ).toNumber();
 
-    // Get the latest gas price
-    const [logs, gasTarget] = await getGasPrice(provider.rpcProvider, config.chains[chainId].options);
-    logs.forEach((log) => (log.level === 'ERROR' ? logger.error(log.message) : logger.info(log.message)));
-
-    // Update beacon set
-    const tx = await go(
-      () =>
-        contract.connect(sponsorWallet).updateBeaconSetWithBeacons(
-          beaconSetBeaconValues.map(({ beaconId }) => beaconId),
-          {
-            nonce,
-            ...gasTarget,
-          }
-        ),
-      {
-        ...prepareGoOptions(startTime, totalTimeout),
-        onAttemptError: (goError) =>
-          logger.warn(`Failed attempt to update beacon set. Error ${goError.error}`, logOptionsBeaconSetId),
+      // Verify all conditions for beacon set update are met otherwise skip
+      const [log, result] = checkConditions(
+        onChainBeaconSetValue,
+        onChainBeaconSetTimestamp,
+        newBeaconSetTimestamp,
+        beaconSetUpdateData.beaconSetTrigger,
+        newBeaconSetValue
+      );
+      logger.logPending(log, beaconSetUpdateData.logOptionsBeaconSetId);
+      if (!result) {
+        continue;
       }
-    );
 
-    if (!tx.success) {
-      logger.warn(`Unable to update beacon set with nonce ${nonce}. Error: ${tx.error}`, logOptionsBeaconSetId);
-      return;
+      beaconSetUpdateCalldatas = [
+        ...beaconSetUpdateCalldatas,
+        [
+          ...beaconSetBeaconUpdateData.updateBeaconWithSignedDataCalldatas,
+          // All beaconSet beaconIds must be passed in as an array because
+          // the contract function derives the beaconSetId based on the beaconIds
+          contract.interface.encodeFunctionData('updateBeaconSetWithBeacons', [beaconSetBeaconIds]),
+        ],
+      ];
     }
 
-    logger.info(`Beacon set successfully updated with nonce ${nonce}. Tx hash ${tx.data.hash}.`, logOptionsBeaconSetId);
-    nonce++;
+    let nonce = transactionCount;
+    for (const beaconSetUpdateCalldata of beaconSetUpdateCalldatas) {
+      // Get the latest gas price
+      const getGasFn = () => getGasPrice(provider.rpcProvider.getProvider(), config.chains[chainId].options);
+      // We have to grab the limiter from the custom provider as the getGasPrice function contains its own timeouts
+      const [logs, gasTarget] = await provider.rpcProvider.getLimiter().schedule({ expiration: 30_000 }, getGasFn);
+      logger.logPending(logs, logOptions);
+
+      // Update beacon set batch onchain values
+      const tx = await go(
+        () => contract.connect(sponsorWallet).tryMulticall(beaconSetUpdateCalldata, { nonce, ...gasTarget }),
+        {
+          ...prepareGoOptions(startTime, totalTimeout),
+          onAttemptError: (goError) =>
+            logger.warn(`Failed attempt to update beacon set batch. Error ${goError.error}`, logOptions),
+        }
+      );
+      if (!tx.success) {
+        logger.warn(
+          `Unable send beacon set batch update transaction with nonce ${nonce}. Error: ${tx.error}`,
+          logOptions
+        );
+        return;
+      }
+
+      logger.info(
+        `Beacon set batch update transaction was successfully sent with nonce ${nonce}. Tx hash ${tx.data.hash}.`,
+        logOptions
+      );
+      nonce++;
+    }
   }
 };
