@@ -1,4 +1,11 @@
-import { logger as airnodeLogger, getLogOptions, LogOptions } from '@api3/airnode-utilities';
+import {
+  logger as airnodeLogger,
+  getLogOptions,
+  LogLevel,
+  LogOptions,
+  PendingLog,
+  LogsData,
+} from '@api3/airnode-utilities';
 import merge from 'lodash/merge';
 
 export type LogOptionsOverride = Partial<Pick<LogOptions, 'meta'>>;
@@ -13,6 +20,11 @@ const log = (message: string, logOptionsOverride?: LogOptionsOverride) =>
   airnodeLogger.log(message, merge({}, getLogOptions(), logOptionsOverride));
 const warn = (message: string, logOptionsOverride?: LogOptionsOverride) =>
   airnodeLogger.warn(message, merge({}, getLogOptions(), logOptionsOverride));
+const logPending = (pendingLogs: PendingLog[], logOptionsOverride?: LogOptionsOverride) =>
+  airnodeLogger.logPending(pendingLogs, merge({}, getLogOptions(), logOptionsOverride));
+const pend = (level: LogLevel, message: string, error?: Error | null) => airnodeLogger.pend(level, message, error);
+
+export { LogsData };
 
 export const logger = {
   debug,
@@ -20,4 +32,6 @@ export const logger = {
   info,
   log,
   warn,
+  logPending,
+  pend,
 };
