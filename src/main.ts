@@ -6,7 +6,7 @@ import { initiateFetchingBeaconData } from './fetch-beacon-data';
 import { initiateDataFeedUpdates } from './update-data-feeds';
 import { initializeProviders } from './providers';
 import { filterEmptySponsors, initializeWallets } from './wallets';
-import { expireLimiterJobs, initializeState, updateState } from './state';
+import { expireLimiterJobs, getState, initializeState, updateState } from './state';
 import { Config } from './validation';
 
 export const handleStopSignal = (signal: string) => {
@@ -15,12 +15,10 @@ export const handleStopSignal = (signal: string) => {
 
   expireLimiterJobs();
   updateState((state) => ({ ...state, stopSignalReceived: true }));
+  heartbeatReporter(getState().config);
 };
 
 const heartbeatReporter = async (config: Config) => {
-  // wait for close to the 15 minute timeout
-  await new Promise((r) => setTimeout(r, 14 * 60 * 1_000));
-
   const opsGenieApiKey = config?.monitoring?.opsGenieApiKey;
   const heartbeatId = config?.monitoring?.heartbeatId;
 
@@ -49,5 +47,5 @@ export async function main() {
     await filterEmptySponsors();
   }
 
-  await Promise.all([initiateFetchingBeaconData(), initiateDataFeedUpdates(), heartbeatReporter(config)]);
+  await Promise.all([initiateFetchingBeaconData(), initiateDataFeedUpdates()]);
 }

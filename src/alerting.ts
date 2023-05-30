@@ -113,7 +113,6 @@ export const checkAndReport = async (
     chainId,
   });
 
-  // TODO expose multiplier for heartbeat threshold
   if (currentDeviation > alertDeviationThreshold) {
     await Promise.allSettled([
       limitedSendToOpsGenieLowLevel(

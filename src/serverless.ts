@@ -4,7 +4,7 @@ import { main } from './main';
  * We need a separate function from main to keep Jest happy (without having a dedicated Jest check).
  */
 export async function handler() {
-  await main();
+  main();
 
   await new Promise((_resolve) => {});
 }

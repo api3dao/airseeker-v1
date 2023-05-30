@@ -22,6 +22,13 @@
       }
     }
   },
+  "monitoring": {
+    "monitorOnly": false,
+    "deviationMultiplier": 1.1,
+    "heartbeatMultiplier": 1.1,
+    "opsGenieApiKey": "a-uuid",
+    "heartbeatId": "airseeker-telemetry"
+  },
   "log": {
     "format": "plain",
     "level": "INFO"
