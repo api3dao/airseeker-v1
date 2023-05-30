@@ -540,30 +540,29 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
                 config?.monitoring?.heartbeatMultiplier
               ),
             ]);
-            continue;
-          }
-
-          // Verify all conditions for beacon update are met
-          // If condition check returns true then beacon update is required
-          const [log, result] = checkConditions(
-            onChainBeaconValue,
-            onChainBeaconTimestamp,
-            parseInt(apiBeaconResponse.timestamp, 10),
-            beaconSetUpdateData.beaconSetTrigger,
-            decodedValue
-          );
-          logger.logPending(log, logOptionsBeaconId);
-          const { airnode, templateId } = config.beacons[beaconId];
-          if (result) {
-            value = decodedValue;
-            timestamp = parseInt(apiBeaconResponse.timestamp, 10);
-            calldata = contract.interface.encodeFunctionData('updateBeaconWithSignedData', [
-              airnode,
-              templateId,
-              apiBeaconResponse.timestamp,
-              apiBeaconResponse.encodedValue,
-              apiBeaconResponse.signature,
-            ]);
+          } else {
+            // Verify all conditions for beacon update are met
+            // If condition check returns true then beacon update is required
+            const [log, result] = checkConditions(
+              onChainBeaconValue,
+              onChainBeaconTimestamp,
+              parseInt(apiBeaconResponse.timestamp, 10),
+              beaconSetUpdateData.beaconSetTrigger,
+              decodedValue
+            );
+            logger.logPending(log, logOptionsBeaconId);
+            const { airnode, templateId } = config.beacons[beaconId];
+            if (result) {
+              value = decodedValue;
+              timestamp = parseInt(apiBeaconResponse.timestamp, 10);
+              calldata = contract.interface.encodeFunctionData('updateBeaconWithSignedData', [
+                airnode,
+                templateId,
+                apiBeaconResponse.timestamp,
+                apiBeaconResponse.encodedValue,
+                apiBeaconResponse.signature,
+              ]);
+            }
           }
         }
 
