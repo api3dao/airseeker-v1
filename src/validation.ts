@@ -369,9 +369,9 @@ export const configSchema = z
     monitoring: z
       .object({
         monitorOnly: z.boolean(),
-        deviationMultiplier: z.number(),
-        heartbeatMultiplier: z.number(),
-        opsGenieApiKey: z.string(),
+        deviationMultiplier: z.number().positive(),
+        heartbeatMultiplier: z.number().positive(),
+        opsGenieApiKey: z.string().uuid(),
         heartbeatId: z.string(),
       })
       .deepPartial()
