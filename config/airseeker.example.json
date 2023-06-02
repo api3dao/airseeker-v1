@@ -26,7 +26,7 @@
     "monitorOnly": false,
     "deviationMultiplier": 1.1,
     "heartbeatMultiplier": 1.1,
-    "opsGenieApiKey": "a-uuid",
+    "opsGenieApiKey": "93b56a7e-9f17-4fd8-a269-42cc803a0f08",
     "heartbeatId": "airseeker-telemetry"
   },
   "log": {
