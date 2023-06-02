@@ -295,7 +295,7 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
       }
 
       // Verify all conditions for beacon update are met otherwise skip
-      const [log, result] = checkConditions(
+      const [log, { result }] = checkConditions(
         onChainDataValue,
         onChainDataTimestamp,
         parseInt(beaconUpdateData.newBeaconResponse.timestamp, 10),
@@ -540,7 +540,7 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
           } else {
             // Verify all conditions for beacon update are met
             // If condition check returns true then beacon update is required
-            const [log, result] = checkConditions(
+            const [log, { result }] = checkConditions(
               onChainBeaconValue,
               onChainBeaconTimestamp,
               parseInt(apiBeaconResponse.timestamp, 10),
@@ -585,7 +585,7 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
       ).toNumber();
 
       // Verify all conditions for beacon set update are met otherwise skip
-      const [log, result] = checkConditions(
+      const [log, { result }] = checkConditions(
         onChainBeaconSetValue,
         onChainBeaconSetTimestamp,
         newBeaconSetTimestamp,
