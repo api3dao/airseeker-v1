@@ -1,8 +1,8 @@
 import { TextEncoder } from 'util';
 import { keccak256 } from 'ethers/lib/utils';
-import { PrismaClient } from '@prisma/client';
 import { BigNumber } from 'ethers';
 import * as utils from '@api3/operations-utilities';
+import prisma from './database';
 import { BeaconSetTrigger, BeaconTrigger } from './validation';
 import { calculateUpdateInPercentage } from './calculations';
 import { HUNDRED_PERCENT } from './constants';
@@ -49,7 +49,6 @@ export const prettyDuration = (sec_num: number) => {
 
 export const checkAndReport = async (
   type: 'Beacon' | 'BeaconSet',
-  prisma: PrismaClient,
   dataFeedId: string,
   onChainValue: BigNumber,
   onChainTimestamp: number,
@@ -61,7 +60,7 @@ export const checkAndReport = async (
   heartbeatMultiplier = 1.1
 ) => {
   const prismaPromises = await Promise.allSettled([
-    prisma?.dataFeedApiValue.create({
+    prisma.dataFeedApiValue.create({
       data: {
         dataFeedId,
         apiValue: parseFloat(offChainValue.toString()),
@@ -69,7 +68,7 @@ export const checkAndReport = async (
         type,
       },
     }),
-    prisma?.deviationValue.create({
+    prisma.deviationValue.create({
       data: {
         dataFeedId,
         deviation: parseFloat(calculateUpdateInPercentage(onChainValue, offChainValue).toString()) / HUNDRED_PERCENT,
@@ -113,7 +112,10 @@ export const checkAndReport = async (
     chainId,
   });
 
-  if (currentDeviation > alertDeviationThreshold) {
+  const deviationExceeded = currentDeviation > alertDeviationThreshold;
+  const tsHeartbeatExceeded = tsDeltaAbs > (trigger.heartbeatInterval ?? 86400) * heartbeatMultiplier;
+
+  if (deviationExceeded) {
     await Promise.allSettled([
       limitedSendToOpsGenieLowLevel(
         {
@@ -125,7 +127,16 @@ export const checkAndReport = async (
         opsGenieConfig
       ),
     ]);
-  } else if (tsDeltaAbs > (trigger.heartbeatInterval ?? 86400) * heartbeatMultiplier) {
+  } else {
+    await Promise.allSettled([
+      limitedCloseOpsGenieAlertWithAlias(
+        generateOpsGenieAlias(`${UpdateStatus.DEVIATION_THRESHOLD_REACHED_MESSAGE}${dataFeedId}${chainId}`),
+        opsGenieConfig
+      ),
+    ]);
+  }
+
+  if (tsHeartbeatExceeded) {
     await Promise.allSettled([
       limitedSendToOpsGenieLowLevel(
         {
@@ -133,7 +144,7 @@ export const checkAndReport = async (
           alias: generateOpsGenieAlias(
             `${UpdateStatus.ON_CHAIN_TIMESTAMP_OLDER_THAN_HEARTBEAT_MESSAGE}${dataFeedId}${chainId}`
           ),
-          message: `${UpdateStatus.ON_CHAIN_TIMESTAMP_OLDER_THAN_HEARTBEAT_MESSAGE} for ${type} with ${dataFeedId}`,
+          message: `${UpdateStatus.ON_CHAIN_TIMESTAMP_OLDER_THAN_HEARTBEAT_MESSAGE} for ${type} with ${dataFeedId} on chain ${chainId}`,
           description,
         },
         opsGenieConfig
@@ -143,10 +154,6 @@ export const checkAndReport = async (
     await Promise.allSettled([
       limitedCloseOpsGenieAlertWithAlias(
         generateOpsGenieAlias(`${UpdateStatus.ON_CHAIN_TIMESTAMP_OLDER_THAN_HEARTBEAT_MESSAGE}${dataFeedId}${chainId}`),
-        opsGenieConfig
-      ),
-      limitedCloseOpsGenieAlertWithAlias(
-        generateOpsGenieAlias(`${UpdateStatus.DEVIATION_THRESHOLD_REACHED_MESSAGE}${dataFeedId}${chainId}`),
         opsGenieConfig
       ),
     ]);

@@ -34,7 +34,6 @@ describe('alerting', () => {
   it('checks, reports and does not alert', async () => {
     await checkAndReport(
       'Beacon',
-      prisma,
       '0xa2828adc015a2a59989b0841d5ff383aad229dd0d7070542a46da72d5e5a1171',
       BigNumber.from(100),
       1000000000,
@@ -55,7 +54,6 @@ describe('alerting', () => {
   it('checks, reports and does alert due to exceeded deviation threshold', async () => {
     await checkAndReport(
       'Beacon',
-      prisma,
       '0xa2828adc015a2a59989b0841d5ff383aad229dd0d7070542a46da72d5e5a1171',
       BigNumber.from(100),
       1000000000,
@@ -76,7 +74,6 @@ describe('alerting', () => {
   it('checks, reports and does alert due to exceeded heartbeat staleness', async () => {
     await checkAndReport(
       'Beacon',
-      prisma,
       '0xa2828adc015a2a59989b0841d5ff383aad229dd0d7070542a46da72d5e5a1171',
       BigNumber.from(100),
       1000000000,
@@ -97,7 +94,6 @@ describe('alerting', () => {
   it('handles big numbers', async () => {
     await checkAndReport(
       'Beacon',
-      prisma,
       '0xa2828adc015a2a59989b0841d5ff383aad229dd0d7070542a46da72d5e5a1171',
       BigNumber.from(100),
       1000000000,

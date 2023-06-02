@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { PendingLog } from '@api3/airnode-utilities';
+import { LogsData } from '@api3/airnode-utilities';
 import { calculateUpdateInPercentage } from './calculations';
 import { HUNDRED_PERCENT } from './constants';
 import { logger } from './logging';
@@ -11,35 +11,40 @@ export enum UpdateStatus {
   DEVIATION_THRESHOLD_REACHED_MESSAGE = 'Deviation threshold exceeded',
 }
 
+interface CheckConditionsResult {
+  result: boolean;
+  updateStatus: UpdateStatus;
+}
+
 export const checkConditions = (
   onChainDataValue: ethers.BigNumber,
   onChainDataTimestamp: number,
   fulfillmentDataTimestamp: number,
   trigger: Pick<BeaconTrigger | BeaconSetTrigger, 'deviationThreshold' | 'heartbeatInterval'>,
   apiValue: ethers.BigNumber
-): [PendingLog[], boolean, UpdateStatus] => {
+): LogsData<CheckConditionsResult> => {
   // Check that fulfillment data is newer than on chain data
   const isFulfillmentDataFresh = checkFulfillmentDataTimestamp(onChainDataTimestamp, fulfillmentDataTimestamp);
   if (!isFulfillmentDataFresh) {
     const log = logger.pend('WARN', UpdateStatus.FULFILLMENT_DATA_OLDER_THAN_ON_CHAIN_MESSAGE);
-    return [[log], false, UpdateStatus.FULFILLMENT_DATA_OLDER_THAN_ON_CHAIN_MESSAGE];
+    return [[log], { result: false, updateStatus: UpdateStatus.FULFILLMENT_DATA_OLDER_THAN_ON_CHAIN_MESSAGE }];
   }
 
   // Check that on chain data is newer than heartbeat interval
   const isOnchainDataFresh = checkOnchainDataFreshness(onChainDataTimestamp, trigger.heartbeatInterval);
   if (!isOnchainDataFresh) {
     const log = logger.pend('INFO', UpdateStatus.ON_CHAIN_TIMESTAMP_OLDER_THAN_HEARTBEAT_MESSAGE);
-    return [[log], true, UpdateStatus.ON_CHAIN_TIMESTAMP_OLDER_THAN_HEARTBEAT_MESSAGE];
+    return [[log], { result: true, updateStatus: UpdateStatus.ON_CHAIN_TIMESTAMP_OLDER_THAN_HEARTBEAT_MESSAGE }];
   } else {
     // Check beacon condition
     const shouldUpdate = checkUpdateCondition(onChainDataValue, trigger.deviationThreshold, apiValue);
     if (!shouldUpdate) {
       const log = logger.pend('WARN', UpdateStatus.DEVIATION_THRESHOLD_REACHED_MESSAGE);
-      return [[log], false, UpdateStatus.DEVIATION_THRESHOLD_REACHED_MESSAGE];
+      return [[log], { result: false, updateStatus: UpdateStatus.DEVIATION_THRESHOLD_REACHED_MESSAGE }];
     }
   }
   const log = logger.pend('INFO', 'Deviation threshold reached. Updating.');
-  return [[log], true, UpdateStatus.NONE];
+  return [[log], { result: true, updateStatus: UpdateStatus.NONE }];
 };
 
 export const checkUpdateCondition = (

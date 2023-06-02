@@ -18,7 +18,6 @@ import { getTransactionCount } from './transaction-count';
 import { prepareGoOptions, shortenAddress, sleep } from './utils';
 import { Beacon, BeaconSetTrigger, BeaconTrigger, SignedData } from './validation';
 import { checkAndReport } from './alerting';
-import prisma from './database';
 
 type ProviderSponsorDataFeeds = {
   provider: Provider;
@@ -281,7 +280,6 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
         await Promise.allSettled([
           checkAndReport(
             'Beacon',
-            prisma!,
             beaconUpdateData.beaconTrigger.beaconId,
             onChainDataValue,
             onChainDataTimestamp,
@@ -528,7 +526,6 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
             await Promise.allSettled([
               checkAndReport(
                 'Beacon',
-                prisma!,
                 beaconId,
                 onChainBeaconValue,
                 onChainBeaconTimestamp,
