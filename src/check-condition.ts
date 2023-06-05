@@ -1,8 +1,20 @@
 import { ethers } from 'ethers';
+import { LogsData } from '@api3/airnode-utilities';
 import { calculateUpdateInPercentage } from './calculations';
 import { HUNDRED_PERCENT } from './constants';
-import { LogsData, logger } from './logging';
+import { logger } from './logging';
 import { BeaconSetTrigger, BeaconTrigger } from './validation';
+export enum UpdateStatus {
+  NONE,
+  FULFILLMENT_DATA_OLDER_THAN_ON_CHAIN_MESSAGE = 'Fulfillment data older than on-chain data. Skipping.',
+  ON_CHAIN_TIMESTAMP_OLDER_THAN_HEARTBEAT_MESSAGE = 'On chain data timestamp older than heartbeat',
+  DEVIATION_THRESHOLD_REACHED_MESSAGE = 'Deviation threshold exceeded',
+}
+
+interface CheckConditionsResult {
+  result: boolean;
+  updateStatus: UpdateStatus;
+}
 
 export const checkConditions = (
   onChainDataValue: ethers.BigNumber,
@@ -10,29 +22,29 @@ export const checkConditions = (
   fulfillmentDataTimestamp: number,
   trigger: Pick<BeaconTrigger | BeaconSetTrigger, 'deviationThreshold' | 'heartbeatInterval'>,
   apiValue: ethers.BigNumber
-): LogsData<boolean> => {
+): LogsData<CheckConditionsResult> => {
   // Check that fulfillment data is newer than on chain data
   const isFulfillmentDataFresh = checkFulfillmentDataTimestamp(onChainDataTimestamp, fulfillmentDataTimestamp);
   if (!isFulfillmentDataFresh) {
-    const log = logger.pend('WARN', 'Fulfillment data older than on-chain data. Skipping.');
-    return [[log], false];
+    const log = logger.pend('WARN', UpdateStatus.FULFILLMENT_DATA_OLDER_THAN_ON_CHAIN_MESSAGE);
+    return [[log], { result: false, updateStatus: UpdateStatus.FULFILLMENT_DATA_OLDER_THAN_ON_CHAIN_MESSAGE }];
   }
 
   // Check that on chain data is newer than heartbeat interval
   const isOnchainDataFresh = checkOnchainDataFreshness(onChainDataTimestamp, trigger.heartbeatInterval);
   if (!isOnchainDataFresh) {
-    const log = logger.pend('INFO', 'On chain data timestamp older than heartbeat. Updating without condition check.');
-    return [[log], true];
+    const log = logger.pend('INFO', UpdateStatus.ON_CHAIN_TIMESTAMP_OLDER_THAN_HEARTBEAT_MESSAGE);
+    return [[log], { result: true, updateStatus: UpdateStatus.ON_CHAIN_TIMESTAMP_OLDER_THAN_HEARTBEAT_MESSAGE }];
   } else {
     // Check beacon condition
     const shouldUpdate = checkUpdateCondition(onChainDataValue, trigger.deviationThreshold, apiValue);
     if (!shouldUpdate) {
-      const log = logger.pend('WARN', 'Deviation threshold not reached. Skipping.');
-      return [[log], false];
+      const log = logger.pend('WARN', UpdateStatus.DEVIATION_THRESHOLD_REACHED_MESSAGE);
+      return [[log], { result: false, updateStatus: UpdateStatus.DEVIATION_THRESHOLD_REACHED_MESSAGE }];
     }
   }
   const log = logger.pend('INFO', 'Deviation threshold reached. Updating.');
-  return [[log], true];
+  return [[log], { result: true, updateStatus: UpdateStatus.NONE }];
 };
 
 export const checkUpdateCondition = (

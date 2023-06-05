@@ -1,0 +1,35 @@
+// Generates a JS/TS client with associated types
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "darwin-arm64", "linux-arm64-openssl-1.0.x"]
+}
+
+// Configures the datasource, not sure how to fallback to defaults, maybe an .env file?
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL") // eg = "postgresql://johndoe:mypassword@localhost:5432/mydb?schema=public"
+}
+
+enum DataFeedType {
+  Beacon
+  BeaconSet
+}
+
+model DataFeedApiValue {
+  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  when       DateTime     @default(now())
+  dataFeedId String
+  apiValue   Float
+  timestamp  DateTime
+  type       DataFeedType
+  @@index([dataFeedId])
+}
+
+model DeviationValue {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  when       DateTime @default(now())
+  dataFeedId String
+  chainId    String
+  deviation  Float
+  @@index([dataFeedId, chainId])
+}

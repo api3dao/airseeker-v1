@@ -29,3 +29,5 @@ secrets.env
 
 # Vercel ncc build files
 ncc
+
+.DS_Store

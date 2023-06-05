@@ -366,6 +366,16 @@ const validateDataFeedUpdatesReferences: SuperRefinement<{
 export const configSchema = z
   .object({
     airseekerWalletMnemonic: z.string(),
+    monitoring: z
+      .object({
+        monitorOnly: z.boolean(),
+        deviationMultiplier: z.number().positive(),
+        heartbeatMultiplier: z.number().positive(),
+        opsGenieApiKey: z.string().uuid(),
+        heartbeatId: z.string(),
+      })
+      .deepPartial()
+      .optional(),
     log: logSchema,
     beacons: beaconsSchema,
     beaconSets: beaconSetsSchema,

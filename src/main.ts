@@ -1,11 +1,13 @@
 import * as path from 'path';
+import { sendOpsGenieHeartbeat } from '@api3/operations-utilities/dist';
 import { logger } from './logging';
 import { loadConfig } from './config';
 import { initiateFetchingBeaconData } from './fetch-beacon-data';
 import { initiateDataFeedUpdates } from './update-data-feeds';
 import { initializeProviders } from './providers';
 import { filterEmptySponsors, initializeWallets } from './wallets';
-import { expireLimiterJobs, initializeState, updateState } from './state';
+import { expireLimiterJobs, getState, initializeState, updateState } from './state';
+import { Config } from './validation';
 
 export const handleStopSignal = (signal: string) => {
   logger.info(`Signal ${signal} received`);
@@ -13,6 +15,17 @@ export const handleStopSignal = (signal: string) => {
 
   expireLimiterJobs();
   updateState((state) => ({ ...state, stopSignalReceived: true }));
+  heartbeatReporter(getState().config);
+};
+
+const heartbeatReporter = async (config: Config) => {
+  const opsGenieApiKey = config?.monitoring?.opsGenieApiKey;
+  const heartbeatId = config?.monitoring?.heartbeatId;
+
+  // tell OpsGenie we ran
+  if (opsGenieApiKey && heartbeatId) {
+    await sendOpsGenieHeartbeat(heartbeatId, { apiKey: opsGenieApiKey, responders: [] });
+  }
 };
 
 export async function main() {
@@ -30,6 +43,9 @@ export async function main() {
 
   initializeProviders();
   initializeWallets();
-  await filterEmptySponsors();
+  if (!config?.monitoring?.monitorOnly) {
+    await filterEmptySponsors();
+  }
+
   await Promise.all([initiateFetchingBeaconData(), initiateDataFeedUpdates()]);
 }

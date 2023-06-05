@@ -1,7 +1,7 @@
 import { Api3ServerV1__factory as Api3ServerV1Factory } from '@api3/airnode-protocol-v1';
 import { getGasPrice } from '@api3/airnode-utilities';
 import { go } from '@api3/promise-utils';
-import { ethers } from 'ethers';
+import { BigNumber, ethers } from 'ethers';
 import { chunk, isEmpty, isNil } from 'lodash';
 import { calculateMedian } from './calculations';
 import { checkConditions } from './check-condition';
@@ -17,6 +17,7 @@ import { Provider, getState } from './state';
 import { getTransactionCount } from './transaction-count';
 import { prepareGoOptions, shortenAddress, sleep } from './utils';
 import { Beacon, BeaconSetTrigger, BeaconTrigger, SignedData } from './validation';
+import { checkAndReport } from './alerting';
 
 type ProviderSponsorDataFeeds = {
   provider: Provider;
@@ -187,6 +188,8 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
   } = initialUpdateData;
   const { chainId } = provider;
 
+  const monitorOnly = config?.monitoring?.monitorOnly;
+
   type BeaconUpdate = {
     logOptionsBeaconId: LogOptionsOverride;
     beaconTrigger: BeaconTrigger;
@@ -273,8 +276,26 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
         beaconReturndata
       );
 
+      if (monitorOnly) {
+        await Promise.allSettled([
+          checkAndReport(
+            'Beacon',
+            beaconUpdateData.beaconTrigger.beaconId,
+            onChainDataValue,
+            onChainDataTimestamp,
+            BigNumber.from(beaconUpdateData.newBeaconResponse.encodedValue),
+            parseInt(beaconUpdateData.newBeaconResponse.timestamp, 10),
+            chainId,
+            beaconUpdateData.beaconTrigger,
+            config?.monitoring?.deviationMultiplier,
+            config?.monitoring?.heartbeatMultiplier
+          ),
+        ]);
+        continue;
+      }
+
       // Verify all conditions for beacon update are met otherwise skip
-      const [log, result] = checkConditions(
+      const [log, { result }] = checkConditions(
         onChainDataValue,
         onChainDataTimestamp,
         parseInt(beaconUpdateData.newBeaconResponse.timestamp, 10),
@@ -296,6 +317,10 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
           beaconUpdateData.newBeaconResponse.signature,
         ]),
       ];
+    }
+
+    if (monitorOnly) {
+      continue;
     }
 
     let nonce = transactionCount;
@@ -343,6 +368,8 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
     provider,
   } = initialUpdateData;
   const { chainId } = provider;
+
+  const monitorOnly = config?.monitoring?.monitorOnly;
 
   type BeaconSetUpdateData = {
     logOptionsBeaconSetId: LogOptionsOverride;
@@ -495,27 +522,44 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
             break;
           }
 
-          // Verify all conditions for beacon update are met
-          // If condition check returns true then beacon update is required
-          const [log, result] = checkConditions(
-            onChainBeaconValue,
-            onChainBeaconTimestamp,
-            parseInt(apiBeaconResponse.timestamp, 10),
-            beaconSetUpdateData.beaconSetTrigger,
-            decodedValue
-          );
-          logger.logPending(log, logOptionsBeaconId);
-          const { airnode, templateId } = config.beacons[beaconId];
-          if (result) {
-            value = decodedValue;
-            timestamp = parseInt(apiBeaconResponse.timestamp, 10);
-            calldata = contract.interface.encodeFunctionData('updateBeaconWithSignedData', [
-              airnode,
-              templateId,
-              apiBeaconResponse.timestamp,
-              apiBeaconResponse.encodedValue,
-              apiBeaconResponse.signature,
+          if (monitorOnly) {
+            await Promise.allSettled([
+              checkAndReport(
+                'Beacon',
+                beaconId,
+                onChainBeaconValue,
+                onChainBeaconTimestamp,
+                decodedValue,
+                parseInt(apiBeaconResponse.timestamp, 10),
+                chainId,
+                beaconSetUpdateData.beaconSetTrigger,
+                config?.monitoring?.deviationMultiplier,
+                config?.monitoring?.heartbeatMultiplier
+              ),
             ]);
+          } else {
+            // Verify all conditions for beacon update are met
+            // If condition check returns true then beacon update is required
+            const [log, { result }] = checkConditions(
+              onChainBeaconValue,
+              onChainBeaconTimestamp,
+              parseInt(apiBeaconResponse.timestamp, 10),
+              beaconSetUpdateData.beaconSetTrigger,
+              decodedValue
+            );
+            logger.logPending(log, logOptionsBeaconId);
+            const { airnode, templateId } = config.beacons[beaconId];
+            if (result) {
+              value = decodedValue;
+              timestamp = parseInt(apiBeaconResponse.timestamp, 10);
+              calldata = contract.interface.encodeFunctionData('updateBeaconWithSignedData', [
+                airnode,
+                templateId,
+                apiBeaconResponse.timestamp,
+                apiBeaconResponse.encodedValue,
+                apiBeaconResponse.signature,
+              ]);
+            }
           }
         }
 
@@ -541,7 +585,7 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
       ).toNumber();
 
       // Verify all conditions for beacon set update are met otherwise skip
-      const [log, result] = checkConditions(
+      const [log, { result }] = checkConditions(
         onChainBeaconSetValue,
         onChainBeaconSetTimestamp,
         newBeaconSetTimestamp,
@@ -562,6 +606,10 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
           contract.interface.encodeFunctionData('updateBeaconSetWithBeacons', [beaconSetBeaconIds]),
         ],
       ];
+    }
+
+    if (monitorOnly) {
+      return;
     }
 
     let nonce = transactionCount;
