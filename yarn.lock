@@ -101,9 +101,9 @@
     ethers "^5.7.2"
 
 "@api3/airnode-validator@^0.11.0":
-  version "0.11.0"
-  resolved "https://registry.yarnpkg.com/@api3/airnode-validator/-/airnode-validator-0.11.0.tgz#179f47ef64918ad4e522a42a8f6a136353e4b93f"
-  integrity sha512-Qw33dQN3E8XD35geGz35ieHRlz76ZdzJ9B1B1IHBW1hcRgB045/dpKhjtAwhmX7cC2ecQ3iA8UjSZdUlyDEBng==
+  version "0.11.1"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-validator/-/airnode-validator-0.11.1.tgz#9b810818a835362367bc097a75b7897c9b3307fc"
+  integrity sha512-zwy1bxzIIkYWXeCUYcsbJdH5iI7Owoka+CFAGhBRSDqXCc6nCuuojFBkclX0S6XE2Ru48P0bPlhzB+WheAzAzg==
   dependencies:
     "@api3/ois" "2.0.0"
     "@api3/promise-utils" "^0.4.0"
