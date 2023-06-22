@@ -91,19 +91,19 @@
     ethers "^5.7.2"
 
 "@api3/airnode-utilities@^0.11.0":
-  version "0.11.0"
-  resolved "https://registry.yarnpkg.com/@api3/airnode-utilities/-/airnode-utilities-0.11.0.tgz#53c0878a836b4a18a087ba3fdd0456ac0e38aee0"
-  integrity sha512-A2pLQZN1ZNRV4xS6d34WYJrU64lYA0Ue5opxMWjewwV1xkvJ7eYi0dsQZ9pl3wgjT7LzUA7RPpsSMdTaF713wg==
+  version "0.11.1"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-utilities/-/airnode-utilities-0.11.1.tgz#56950407929db3a670c450ff0db47f684ea72c5d"
+  integrity sha512-PrnsDFXbdqrxnboUd6vlJJN5HB0Z3Eqpif2HRlj3OUlCeGmrSocmKy4Mq0bjh6n9jcxJHJkaC48uA1drXG4qCQ==
   dependencies:
-    "@api3/airnode-validator" "^0.11.0"
+    "@api3/airnode-validator" "^0.11.1"
     "@api3/promise-utils" "^0.4.0"
     date-fns "^2.29.3"
     ethers "^5.7.2"
 
-"@api3/airnode-validator@^0.11.0":
-  version "0.11.0"
-  resolved "https://registry.yarnpkg.com/@api3/airnode-validator/-/airnode-validator-0.11.0.tgz#179f47ef64918ad4e522a42a8f6a136353e4b93f"
-  integrity sha512-Qw33dQN3E8XD35geGz35ieHRlz76ZdzJ9B1B1IHBW1hcRgB045/dpKhjtAwhmX7cC2ecQ3iA8UjSZdUlyDEBng==
+"@api3/airnode-validator@^0.11.0", "@api3/airnode-validator@^0.11.1":
+  version "0.11.1"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-validator/-/airnode-validator-0.11.1.tgz#9b810818a835362367bc097a75b7897c9b3307fc"
+  integrity sha512-zwy1bxzIIkYWXeCUYcsbJdH5iI7Owoka+CFAGhBRSDqXCc6nCuuojFBkclX0S6XE2Ru48P0bPlhzB+WheAzAzg==
   dependencies:
     "@api3/ois" "2.0.0"
     "@api3/promise-utils" "^0.4.0"
