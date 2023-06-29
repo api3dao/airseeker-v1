@@ -1,4 +1,4 @@
-service: ${opt:service, 'airseeker'}
+service: airseeker
 
 package:
   patterns:
