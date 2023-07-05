@@ -8,6 +8,7 @@ import { shortenAddress } from './utils';
 import { logger } from './logging';
 import { DataFeedUpdates } from './validation';
 import { RateLimitedProvider } from './providers';
+import prisma from './database';
 
 export type ChainSponsorGroup = {
   chainId: string;
@@ -48,6 +49,10 @@ export const initializeSponsorWallets = () => {
     ])
   );
 
+  Object.entries(sponsorWalletsPrivateKey).map(([key, value]) => {
+    logger.debug(`Sponsor wallet (derived) ${value} for sponsor ${key}`);
+  });
+
   updateState((state) => ({ ...state, sponsorWalletsPrivateKey }));
 };
 
@@ -66,6 +71,21 @@ export const isBalanceZero = async (
   if (!goResult.success) {
     throw new Error(goResult.error.message);
   }
+
+  try {
+    await prisma.walletBalance.create({
+      data: {
+        walletAddress: sponsorWalletAddress,
+        balance: parseFloat(goResult.data.toString()),
+        chainId: rpcProvider.getProvider().network.chainId.toString(),
+      },
+    });
+  } catch (e) {
+    const typedError = e as Error;
+
+    logger.error(`Logging wallet balance to DB encountered an error`, typedError);
+  }
+
   return goResult.data.isZero();
 };
 

@@ -22,6 +22,7 @@ model DataFeedApiValue {
   apiValue   Float
   timestamp  DateTime
   type       DataFeedType
+
   @@index([dataFeedId])
 }
 
@@ -31,5 +32,16 @@ model DeviationValue {
   dataFeedId String
   chainId    String
   deviation  Float
+
   @@index([dataFeedId, chainId])
+}
+
+model WalletBalance {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  when          DateTime @default(now())
+  walletAddress String
+  chainId       String
+  balance       Float
+
+  @@index([walletAddress, chainId])
 }
