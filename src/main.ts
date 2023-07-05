@@ -43,9 +43,8 @@ export async function main() {
 
   initializeProviders();
   initializeWallets();
-  if (!config?.monitoring?.monitorOnly) {
-    await filterEmptySponsors();
-  }
+
+  await filterEmptySponsors();
 
   await Promise.all([initiateFetchingBeaconData(), initiateDataFeedUpdates()]);
 }
