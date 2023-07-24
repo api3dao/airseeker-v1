@@ -73,8 +73,7 @@ export const checkAndReport = async (
       data: {
         dataFeedId,
         deviation: new Bnj.BigNumber(calculateUpdateInPercentage(onChainValue, offChainValue).toString())
-          .div(HUNDRED_PERCENT)
-          .multipliedBy(100)
+          .div(new Bnj.BigNumber(HUNDRED_PERCENT))
           .toNumber(),
         chainId,
       },
@@ -97,8 +96,7 @@ export const checkAndReport = async (
   );
 
   const currentDeviation = new Bnj.BigNumber(calculateUpdateInPercentage(onChainValue, offChainValue).toString())
-    .div(HUNDRED_PERCENT)
-    .multipliedBy(100)
+    .div(new Bnj.BigNumber(HUNDRED_PERCENT))
     .toNumber();
   const alertDeviationThreshold = trigger.deviationThreshold * deviationAlertMultiplier;
 
