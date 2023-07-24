@@ -2,10 +2,10 @@ import { TextEncoder } from 'util';
 import { keccak256 } from 'ethers/lib/utils';
 import { BigNumber } from 'ethers';
 import * as utils from '@api3/operations-utilities';
+import * as Bnj from 'bignumber.js';
 import prisma from './database';
 import { BeaconSetTrigger, BeaconTrigger } from './validation';
 import { calculateUpdateInPercentage } from './calculations';
-import { HUNDRED_PERCENT } from './constants';
 import { UpdateStatus } from './check-condition';
 
 export const opsGenieConfig = { responders: [], apiKey: process.env.OPSGENIE_API_KEY ?? '' };
@@ -71,7 +71,9 @@ export const checkAndReport = async (
     prisma.deviationValue.create({
       data: {
         dataFeedId,
-        deviation: parseFloat(calculateUpdateInPercentage(onChainValue, offChainValue).toString()) / HUNDRED_PERCENT,
+        deviation: new Bnj.BigNumber(calculateUpdateInPercentage(onChainValue, offChainValue).toString())
+          .div(100)
+          .toNumber(),
         chainId,
       },
     }),
@@ -84,7 +86,7 @@ export const checkAndReport = async (
           {
             priority: 'P2',
             alias: generateOpsGenieAlias(`error-insert-record-airseeker-logger`),
-            message: `A Prisma error occured while inserting a record in the Airseeker logger`,
+            message: `A Prisma error occurred while inserting a record in the Airseeker logger`,
             description: JSON.stringify(failedPromise, null, 2),
           },
           opsGenieConfig
@@ -92,8 +94,11 @@ export const checkAndReport = async (
       )
   );
 
-  const currentDeviation =
-    (100 * parseFloat(calculateUpdateInPercentage(onChainValue, offChainValue).toString())) / HUNDRED_PERCENT;
+  const currentDeviation = new Bnj.BigNumber(onChainValue.toString())
+    .div(new Bnj.BigNumber(offChainValue.toString()))
+    .multipliedBy(new Bnj.BigNumber(100))
+    .minus(new Bnj.BigNumber(100))
+    .toNumber();
   const alertDeviationThreshold = trigger.deviationThreshold * deviationAlertMultiplier;
 
   const tsDeltaAbs = Math.abs(offChainTimestamp - onChainTimestamp);
