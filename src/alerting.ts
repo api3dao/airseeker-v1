@@ -7,6 +7,7 @@ import prisma from './database';
 import { BeaconSetTrigger, BeaconTrigger } from './validation';
 import { calculateUpdateInPercentage } from './calculations';
 import { UpdateStatus } from './check-condition';
+import { HUNDRED_PERCENT } from './constants';
 
 export const opsGenieConfig = { responders: [], apiKey: process.env.OPSGENIE_API_KEY ?? '' };
 let { limitedCloseOpsGenieAlertWithAlias, limitedSendToOpsGenieLowLevel } = utils.getOpsGenieLimiter();
@@ -72,7 +73,8 @@ export const checkAndReport = async (
       data: {
         dataFeedId,
         deviation: new Bnj.BigNumber(calculateUpdateInPercentage(onChainValue, offChainValue).toString())
-          .div(100)
+          .div(HUNDRED_PERCENT)
+          .multipliedBy(100)
           .toNumber(),
         chainId,
       },
@@ -94,10 +96,9 @@ export const checkAndReport = async (
       )
   );
 
-  const currentDeviation = new Bnj.BigNumber(onChainValue.toString())
-    .div(new Bnj.BigNumber(offChainValue.toString()))
-    .multipliedBy(new Bnj.BigNumber(100))
-    .minus(new Bnj.BigNumber(100))
+  const currentDeviation = new Bnj.BigNumber(calculateUpdateInPercentage(onChainValue, offChainValue).toString())
+    .div(HUNDRED_PERCENT)
+    .multipliedBy(100)
     .toNumber();
   const alertDeviationThreshold = trigger.deviationThreshold * deviationAlertMultiplier;
 
