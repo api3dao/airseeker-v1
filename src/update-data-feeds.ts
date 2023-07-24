@@ -584,17 +584,35 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
         beaconSetBeaconUpdateData.beaconSetBeaconValues.map((value) => ethers.BigNumber.from(value.timestamp))
       ).toNumber();
 
-      // Verify all conditions for beacon set update are met otherwise skip
-      const [log, { result }] = checkConditions(
-        onChainBeaconSetValue,
-        onChainBeaconSetTimestamp,
-        newBeaconSetTimestamp,
-        beaconSetUpdateData.beaconSetTrigger,
-        newBeaconSetValue
-      );
-      logger.logPending(log, beaconSetUpdateData.logOptionsBeaconSetId);
-      if (!result) {
+      if (monitorOnly) {
+        await Promise.allSettled([
+          checkAndReport(
+            'Beacon',
+            beaconSetUpdateData.beaconSetTrigger.beaconSetId,
+            onChainBeaconSetValue,
+            onChainBeaconSetTimestamp,
+            newBeaconSetValue,
+            newBeaconSetTimestamp,
+            chainId,
+            beaconSetUpdateData.beaconSetTrigger,
+            config?.monitoring?.deviationMultiplier,
+            config?.monitoring?.heartbeatMultiplier
+          ),
+        ]);
         continue;
+      } else {
+        // Verify all conditions for beacon set update are met otherwise skip
+        const [log, { result }] = checkConditions(
+          onChainBeaconSetValue,
+          onChainBeaconSetTimestamp,
+          newBeaconSetTimestamp,
+          beaconSetUpdateData.beaconSetTrigger,
+          newBeaconSetValue
+        );
+        logger.logPending(log, beaconSetUpdateData.logOptionsBeaconSetId);
+        if (!result) {
+          continue;
+        }
       }
 
       beaconSetUpdateCalldatas = [

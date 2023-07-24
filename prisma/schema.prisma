@@ -19,7 +19,7 @@ model DataFeedApiValue {
   id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   when       DateTime     @default(now())
   dataFeedId String
-  apiValue   Float
+  apiValue   String
   timestamp  DateTime
   type       DataFeedType
 
@@ -41,7 +41,13 @@ model WalletBalance {
   when          DateTime @default(now())
   walletAddress String
   chainId       String
-  balance       Float
+  balance       String
 
   @@index([walletAddress, chainId])
+}
+
+model DataFeedIdMapping {
+  dataFeedId   String @id
+  name String
+  metadata Json?
 }

@@ -76,7 +76,7 @@ export const isBalanceZero = async (
     await prisma.walletBalance.create({
       data: {
         walletAddress: sponsorWalletAddress,
-        balance: parseFloat(goResult.data.toString()),
+        balance: goResult.data.toString(),
         chainId: rpcProvider.getProvider().network.chainId.toString(),
       },
     });

@@ -63,7 +63,7 @@ export const checkAndReport = async (
     prisma.dataFeedApiValue.create({
       data: {
         dataFeedId,
-        apiValue: parseFloat(offChainValue.toString()),
+        apiValue: offChainValue.toString(),
         timestamp: new Date(offChainTimestamp * 1_000),
         type,
       },
