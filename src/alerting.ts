@@ -60,6 +60,10 @@ export const checkAndReport = async (
   deviationAlertMultiplier = 2,
   heartbeatMultiplier = 1.1
 ) => {
+  if (type === 'Beacon') {
+    return;
+  }
+
   const prismaPromises = await Promise.allSettled([
     prisma.dataFeedApiValue.create({
       data: {

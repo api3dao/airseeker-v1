@@ -587,7 +587,7 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
       if (monitorOnly) {
         await Promise.allSettled([
           checkAndReport(
-            'Beacon',
+            'BeaconSet',
             beaconSetUpdateData.beaconSetTrigger.beaconSetId,
             onChainBeaconSetValue,
             onChainBeaconSetTimestamp,
