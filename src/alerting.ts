@@ -68,7 +68,9 @@ export const checkAndReport = async (
     prisma.dataFeedApiValue.create({
       data: {
         dataFeedId,
-        apiValue: offChainValue.toString(),
+        apiValue: new Bnj.BigNumber(offChainValue.toString())
+          .dividedBy(new Bnj.BigNumber(10).pow(new Bnj.BigNumber(18)))
+          .toNumber(),
         timestamp: new Date(offChainTimestamp * 1_000),
         fromNodary: false,
       },
