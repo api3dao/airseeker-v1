@@ -10,18 +10,39 @@ datasource db {
   url      = env("DATABASE_URL") // eg = "postgresql://johndoe:mypassword@localhost:5432/mydb?schema=public"
 }
 
-enum DataFeedType {
-  Beacon
-  BeaconSet
+model BeaconMetadata {
+  dataFeedId   String @id
+  name         String
+  providerName String
+
+  @@index([dataFeedId])
+  @@index([name])
+  @@index([providerName])
+}
+
+model BeaconSetMetadata {
+  dataFeedId String   @id
+  name       String
+  beaconIds  String[]
+
+  @@index([dataFeedId])
+  @@index([name])
+}
+
+model BeaconSetChildren {
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  beaconSetId String
+  name        String
+  beaconId    String
 }
 
 model DataFeedApiValue {
-  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  when       DateTime     @default(now())
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  when       DateTime @default(now())
   dataFeedId String
   apiValue   String
   timestamp  DateTime
-  type       DataFeedType
+  fromNodary Boolean  @default(false)
 
   @@index([dataFeedId])
 }
@@ -44,10 +65,4 @@ model WalletBalance {
   balance       String
 
   @@index([walletAddress, chainId])
-}
-
-model DataFeedIdMapping {
-  dataFeedId   String @id
-  name String
-  metadata Json?
 }

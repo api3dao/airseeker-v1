@@ -66,7 +66,7 @@ export const checkAndReport = async (
         dataFeedId,
         apiValue: offChainValue.toString(),
         timestamp: new Date(offChainTimestamp * 1_000),
-        type,
+        fromNodary: false,
       },
     }),
     prisma.deviationValue.create({
