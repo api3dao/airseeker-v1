@@ -10,6 +10,42 @@ datasource db {
   url      = env("DATABASE_URL") // eg = "postgresql://johndoe:mypassword@localhost:5432/mydb?schema=public"
 }
 
+model NodaryApiValues {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  dataFeedId           String
+  name                 String
+  when                 DateTime
+  apiValue             Float
+  nodaryDeviation      Float
+  nodaryTimestampDelta Int
+  providerName         String
+  inBeaconSet          Boolean  @default(false)
+}
+
+model BeaconSetEvents {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  when            DateTime
+  dataFeedId      String
+  apiValue        Float
+  chain           String
+  name            String
+  nodaryDeviation Float
+  inBeaconSet     Boolean  @default(false)
+}
+
+model LastBeaconSetEventsTracking {
+  chainId   String   @id
+  chainName String
+  lastEvent DateTime
+}
+
+model DApiMetadata {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // an arbitary ID
+  name        String // The name of this DAPI (eg. "USD/EUR")
+  beaconSetId String?
+  beaconId    String? @db.Text
+}
+
 model BeaconMetadata {
   dataFeedId   String @id
   name         String
