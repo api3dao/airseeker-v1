@@ -63,6 +63,9 @@ export const checkAndReport = async (
   if (type === 'Beacon') {
     return;
   }
+  const reportedDeviation = new Bnj.BigNumber(calculateUpdateInPercentage(onChainValue, offChainValue).toString())
+    .div(new Bnj.BigNumber(HUNDRED_PERCENT))
+    .toNumber();
 
   const prismaPromises = await Promise.allSettled([
     prisma.dataFeedApiValue.create({
@@ -75,15 +78,15 @@ export const checkAndReport = async (
         fromNodary: false,
       },
     }),
-    prisma.deviationValue.create({
-      data: {
-        dataFeedId,
-        deviation: new Bnj.BigNumber(calculateUpdateInPercentage(onChainValue, offChainValue).toString())
-          .div(new Bnj.BigNumber(HUNDRED_PERCENT))
-          .toNumber(),
-        chainId,
-      },
-    }),
+    reportedDeviation !== 0
+      ? prisma.deviationValue.create({
+          data: {
+            dataFeedId,
+            deviation: reportedDeviation,
+            chainId,
+          },
+        })
+      : undefined,
   ]);
   await Promise.allSettled(
     prismaPromises

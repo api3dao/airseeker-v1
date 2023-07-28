@@ -10,6 +10,25 @@ datasource db {
   url      = env("DATABASE_URL") // eg = "postgresql://johndoe:mypassword@localhost:5432/mydb?schema=public"
 }
 
+model TrimmedDApi {
+  id                      String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // an arbitary ID
+  name                    String // The name of this DAPI (eg. "USD/EUR")
+  dataFeedId               String
+  isBeaconSet             Boolean
+  category                String // A human-readable category name, eg. "Cryptocurrency" or "Forex"
+  chainName               String
+  supplierCategory        String
+  fundingStatus           String
+  displayOnMarket         Boolean
+  isNewListing            Boolean
+  estimatedExpiry         DateTime? // The estimated expiry date of a managed datafeed
+  managedAvailable        Boolean
+  upgradeStatus           String
+
+  @@unique([name, chainName])
+}
+
+
 model NodaryApiValues {
   id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   dataFeedId           String
