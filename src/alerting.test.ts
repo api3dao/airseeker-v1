@@ -1,15 +1,15 @@
-import { DeepMockProxy, mockDeep } from 'jest-mock-extended';
+// import { DeepMockProxy, mockDeep } from 'jest-mock-extended';
 import { BigNumber } from 'ethers';
-import { PrismaClient } from '@prisma/client';
+// import { PrismaClient } from '@prisma/client';
 import { checkAndReport, setOpsGenieHandlers } from './alerting';
-import prisma from '../src/database';
+// import prisma from '../src/database';
 
-jest.mock('../src/database', () => ({
-  __esModule: true,
-  default: mockDeep<PrismaClient>(),
-}));
+// jest.mock('../src/database', () => ({
+//   __esModule: true,
+//   default: mockDeep<PrismaClient>(),
+// }));
 
-const prismaMock = prisma as unknown as DeepMockProxy<PrismaClient>;
+// const prismaMock = prisma as unknown as DeepMockProxy<PrismaClient>;
 
 jest.mock('@api3/operations-utilities', () => ({
   __esModule: true,

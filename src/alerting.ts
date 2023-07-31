@@ -1,5 +1,4 @@
 import { TextEncoder } from 'util';
-import fs from 'fs';
 import { keccak256 } from 'ethers/lib/utils';
 import { BigNumber } from 'ethers';
 import * as utils from '@api3/operations-utilities';
