@@ -1,4 +1,5 @@
 import { TextEncoder } from 'util';
+import fs from 'fs';
 import { keccak256 } from 'ethers/lib/utils';
 import { BigNumber } from 'ethers';
 import * as utils from '@api3/operations-utilities';
@@ -65,6 +66,7 @@ export const checkAndReport = async (
   }
   const reportedDeviation = new Bnj.BigNumber(calculateUpdateInPercentage(onChainValue, offChainValue).toString())
     .div(new Bnj.BigNumber(HUNDRED_PERCENT))
+    .multipliedBy(new Bnj.BigNumber(100))
     .toNumber();
 
   const prismaPromises = await Promise.allSettled([
@@ -106,6 +108,7 @@ export const checkAndReport = async (
 
   const currentDeviation = new Bnj.BigNumber(calculateUpdateInPercentage(onChainValue, offChainValue).toString())
     .div(new Bnj.BigNumber(HUNDRED_PERCENT))
+    .multipliedBy(new Bnj.BigNumber(100))
     .toNumber();
   const alertDeviationThreshold = trigger.deviationThreshold * deviationAlertMultiplier;
 
