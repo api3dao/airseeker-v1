@@ -139,7 +139,7 @@ export const buildAirseekerConfig = () => ({
   },
   ois: [
     {
-      oisFormat: '2.0.0',
+      oisFormat: '2.1.0',
       version: '1.2.3',
       title: 'Currency Converter API',
       apiSpecifications: {
