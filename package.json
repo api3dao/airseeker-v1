@@ -49,6 +49,7 @@
     "@api3/airnode-protocol": "^0.11.0",
     "@api3/airnode-protocol-v1": "1.2.4",
     "@api3/airnode-validator": "^0.11.0",
+    "@api3/chains": "^3.3.0",
     "@api3/operations-utilities": "^0.2.0",
     "@api3/promise-utils": "^0.4.0",
     "@prisma/client": "^4.14.1",

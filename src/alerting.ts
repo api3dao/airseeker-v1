@@ -3,11 +3,104 @@ import { keccak256 } from 'ethers/lib/utils';
 import { BigNumber } from 'ethers';
 import * as utils from '@api3/operations-utilities';
 import * as Bnj from 'bignumber.js';
+import axios from 'axios';
+import { go } from '@api3/promise-utils';
+import { TrimmedDApi } from '@prisma/client';
+import { CHAINS } from '@api3/chains';
 import prisma from './database';
 import { BeaconSetTrigger, BeaconTrigger } from './validation';
 import { calculateUpdateInPercentage } from './calculations';
 import { UpdateStatus } from './check-condition';
 import { HUNDRED_PERCENT } from './constants';
+import { sleep } from './utils';
+
+export type NodaryData = Record<string, { dataFeedId: string; value: number; timestamp: number; name: string }[]>;
+
+export type NodaryPayload = {
+  success: boolean;
+  result: NodaryData;
+};
+
+export type NodaryProviders = Record<string, string[]>;
+
+export type NodaryProvidersPayload = {
+  success: boolean;
+  result: NodaryProviders;
+};
+
+export const getNodaryData = async (): Promise<NodaryData> => {
+  const nodaryResponse = await go(
+    () =>
+      axios({
+        url: process.env.NODARY_DATA_URL,
+        method: 'GET',
+      }),
+    { retries: 0, attemptTimeoutMs: 14_900, totalTimeoutMs: 15_000 }
+  );
+  if (!nodaryResponse.success) {
+    // await sendToOpsGenieLowLevel(
+    //   {
+    //     message: 'Error retrieving Nodary off-chain values endpoint',
+    //     priority: 'P2',
+    //     alias: 'api3-nodaryloader-index-retrieval',
+    //     description: [`Error`, nodaryResponse.error.message, nodaryResponse.error.stack].join('\n'),
+    //   },
+    // );
+    throw new Error('Error retrieving Nodary off-chain values endpoint');
+  }
+  // await closeOpsGenieAlertWithAlias('api3-nodaryloader-index-retrieval', {});
+
+  if (nodaryResponse.data.status !== 200) {
+    // await sendToOpsGenieLowLevel(
+    //   {
+    //     message: 'Error retrieving Nodary Data',
+    //     priority: 'P2',
+    //     alias: 'api3-nodary-loader-index-retrieval-status',
+    //     description: `Error: status code not 200: ${nodaryResponse.data.statusText}`,
+    //   },
+    //   {},
+    // );
+    throw new Error('Error retrieving Nodary Data');
+  }
+  // await closeOpsGenieAlertWithAlias('api3-nodary-loader-index-retrieval-status', {});
+
+  const parsedResponse = nodaryResponse.data.data as NodaryPayload;
+
+  return parsedResponse.result;
+};
+
+let reporterRunning = false;
+let nodaryPricingData: NodaryData = {};
+let trimmedDapis: TrimmedDApi[] = [];
+
+export const runReporterLoop = async () => {
+  reporterRunning = true;
+  let lastRun = 0;
+
+  try {
+    trimmedDapis = await prisma.trimmedDApi.findMany();
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error(e);
+  }
+
+  while (reporterRunning) {
+    if (Date.now() - lastRun > 60_000) {
+      lastRun = Date.now();
+
+      try {
+        const nodaryData = await getNodaryData();
+        if (nodaryData) {
+          nodaryPricingData = nodaryData;
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error(e);
+      }
+    }
+    await sleep(1_000);
+  }
+};
 
 export const opsGenieConfig = { responders: [], apiKey: process.env.OPSGENIE_API_KEY ?? '' };
 let { limitedCloseOpsGenieAlertWithAlias, limitedSendToOpsGenieLowLevel } = utils.getOpsGenieLimiter();
@@ -60,6 +153,10 @@ export const checkAndReport = async (
   deviationAlertMultiplier = 2,
   heartbeatMultiplier = 1.1
 ) => {
+  if (!reporterRunning) {
+    runReporterLoop();
+  }
+
   if (type === 'Beacon') {
     return;
   }
@@ -67,6 +164,38 @@ export const checkAndReport = async (
     .div(new Bnj.BigNumber(HUNDRED_PERCENT))
     .multipliedBy(new Bnj.BigNumber(100))
     .toNumber();
+
+  const thisDapi = trimmedDapis.find((dapi) => dapi.dataFeedId === dataFeedId);
+  const chain = CHAINS.find((chain) => chain.id === chainId)?.name ?? 'None';
+
+  const normaliseChainToNumber = (input: BigNumber): number => {
+    const inputAsBn = new Bnj.BigNumber(input.toString());
+
+    return inputAsBn.dividedBy(new Bnj.BigNumber(10).pow(new Bnj.BigNumber(18))).toNumber();
+  };
+
+  // may not have been loaded yet or may not exist for some reason 🤷
+  if (thisDapi && nodaryPricingData['nodary']) {
+    const onChainValueNumber = normaliseChainToNumber(onChainValue);
+
+    const nodaryBaseline = nodaryPricingData['nodary'].find((feed) => feed.dataFeedId === dataFeedId);
+    const nodaryDeviation = nodaryBaseline ? Math.abs(nodaryBaseline.value / onChainValueNumber - 1) * 100.0 : -1;
+
+    await prisma.compoundValues.create({
+      data: {
+        dapiName: thisDapi.name,
+        dataFeedId,
+        chain,
+        onChainValue: onChainValueNumber,
+        offChainValue: normaliseChainToNumber(offChainValue),
+        onOffChainDeviation: reportedDeviation,
+        nodaryDeviation,
+        nodaryValue: nodaryBaseline?.value ?? 0,
+        onChainTimestamp: new Date(onChainTimestamp * 1_000),
+        timestampDelta: Date.now() - onChainTimestamp * 1_000,
+      },
+    });
+  }
 
   const prismaPromises = await Promise.allSettled([
     prisma.dataFeedApiValue.create({

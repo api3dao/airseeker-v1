@@ -3,6 +3,8 @@ import { uniq } from 'lodash';
 import { go, goSync } from '@api3/promise-utils';
 import * as node from '@api3/airnode-node';
 import * as protocol from '@api3/airnode-protocol';
+import { CHAINS } from '@api3/chains';
+import * as Bnj from 'bignumber.js';
 import { getState, updateState, SponsorWalletsPrivateKey, Provider } from './state';
 import { shortenAddress } from './utils';
 import { logger } from './logging';
@@ -72,12 +74,18 @@ export const isBalanceZero = async (
     throw new Error(goResult.error.message);
   }
 
+  const rawChainId = rpcProvider.getProvider().network.chainId.toString();
+
+  const chain = CHAINS.find((chain) => chain.id === rawChainId)?.name ?? 'None';
+
   try {
     await prisma.walletBalance.create({
       data: {
         walletAddress: sponsorWalletAddress,
-        balance: goResult.data.toString(),
-        chainId: rpcProvider.getProvider().network.chainId.toString(),
+        balance: new Bnj.BigNumber(goResult.data.toString())
+          .div(new Bnj.BigNumber(10).pow(new Bnj.BigNumber(18)))
+          .toNumber(),
+        chainId: chain,
       },
     });
   } catch (e) {

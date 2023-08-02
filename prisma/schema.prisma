@@ -11,23 +11,22 @@ datasource db {
 }
 
 model TrimmedDApi {
-  id                      String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // an arbitary ID
-  name                    String // The name of this DAPI (eg. "USD/EUR")
-  dataFeedId               String
-  isBeaconSet             Boolean
-  category                String // A human-readable category name, eg. "Cryptocurrency" or "Forex"
-  chainName               String
-  supplierCategory        String
-  fundingStatus           String
-  displayOnMarket         Boolean
-  isNewListing            Boolean
-  estimatedExpiry         DateTime? // The estimated expiry date of a managed datafeed
-  managedAvailable        Boolean
-  upgradeStatus           String
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // an arbitary ID
+  name             String // The name of this DAPI (eg. "USD/EUR")
+  dataFeedId       String
+  isBeaconSet      Boolean
+  category         String // A human-readable category name, eg. "Cryptocurrency" or "Forex"
+  chainName        String
+  supplierCategory String
+  fundingStatus    String
+  displayOnMarket  Boolean
+  isNewListing     Boolean
+  estimatedExpiry  DateTime? // The estimated expiry date of a managed datafeed
+  managedAvailable Boolean
+  upgradeStatus    String
 
   @@unique([name, chainName])
 }
-
 
 model NodaryApiValues {
   id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -39,6 +38,8 @@ model NodaryApiValues {
   nodaryTimestampDelta Int
   providerName         String
   inBeaconSet          Boolean  @default(false)
+
+  @@index([when, name])
 }
 
 model BeaconSetEvents {
@@ -50,6 +51,9 @@ model BeaconSetEvents {
   name            String
   nodaryDeviation Float
   inBeaconSet     Boolean  @default(false)
+  children        String[]
+
+  @@index([when, name])
 }
 
 model LastBeaconSetEventsTracking {
@@ -117,7 +121,34 @@ model WalletBalance {
   when          DateTime @default(now())
   walletAddress String
   chainId       String
-  balance       String
+  balance       Float
 
   @@index([walletAddress, chainId])
+}
+
+model NodaryProvidersFlat {
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  feedName String
+  provider String
+}
+
+model NodaryProvidersAsArrays {
+  id       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  feedName String
+  provider String[]
+}
+
+model CompoundValues {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  when                DateTime @default(now())
+  dapiName            String
+  chain               String
+  dataFeedId          String
+  onChainValue        Float
+  offChainValue       Float
+  onOffChainDeviation Float
+  nodaryDeviation     Float
+  nodaryValue         Float
+  onChainTimestamp    DateTime
+  timestampDelta      Int
 }
