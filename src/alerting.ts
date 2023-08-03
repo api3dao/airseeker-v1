@@ -6,7 +6,6 @@ import * as Bnj from 'bignumber.js';
 import axios from 'axios';
 import { go } from '@api3/promise-utils';
 import { TrimmedDApi } from '@prisma/client';
-import { CHAINS } from '@api3/chains';
 import prisma from './database';
 import { BeaconSetTrigger, BeaconTrigger } from './validation';
 import { calculateUpdateInPercentage } from './calculations';
@@ -141,6 +140,8 @@ export const prettyDuration = (sec_num: number) => {
   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 };
 
+export const getChainName = (chainId?: string) => DB_CHAINS.find((chain) => chain.id === chainId)?.name ?? 'None';
+
 export const checkAndReport = async (
   type: 'Beacon' | 'BeaconSet',
   dataFeedId: string,
@@ -166,7 +167,7 @@ export const checkAndReport = async (
     .toNumber();
 
   const thisDapi = trimmedDapis.find((dapi) => dapi.dataFeedId === dataFeedId);
-  const chain = CHAINS.find((chain) => chain.id === chainId)?.name ?? 'None';
+  const chain = getChainName(chainId);
 
   const normaliseChainToNumber = (input: BigNumber): number => {
     const inputAsBn = new Bnj.BigNumber(input.toString());
@@ -305,3 +306,154 @@ export const checkAndReport = async (
     ]);
   }
 };
+
+export const DB_CHAINS = [
+  {
+    id: '5001',
+    name: 'mantle-goerli-testnet',
+  },
+  {
+    id: '338',
+    name: 'cronos-testnet',
+  },
+  {
+    id: '2221',
+    name: 'kava-testnet',
+  },
+  {
+    id: '59140',
+    name: 'linea-goerli-testnet',
+  },
+  {
+    id: '1101',
+    name: 'polygon-zkevm',
+  },
+  {
+    id: '250',
+    name: 'fantom',
+  },
+  {
+    id: '534353',
+    name: 'scroll-goerli-testnet',
+  },
+  {
+    id: '84531',
+    name: 'base-goerli-testnet',
+  },
+  {
+    id: '43114',
+    name: 'avalanche',
+  },
+  {
+    id: '56',
+    name: 'bsc',
+  },
+  {
+    id: '42161',
+    name: 'arbitrum',
+  },
+  {
+    id: '10',
+    name: 'optimism',
+  },
+  {
+    id: '1284',
+    name: 'moonbeam',
+  },
+  {
+    id: '324',
+    name: 'zksync',
+  },
+  {
+    id: '137',
+    name: 'polygon',
+  },
+  {
+    id: '1',
+    name: 'mainnet',
+  },
+  {
+    id: '1285',
+    name: 'moonriver',
+  },
+  {
+    id: '100',
+    name: 'gnosis',
+  },
+  {
+    id: '1088',
+    name: 'metis',
+  },
+  {
+    id: '97',
+    name: 'bsc-testnet',
+  },
+  {
+    id: '280',
+    name: 'zksync-goerli-testnet',
+  },
+  {
+    id: '599',
+    name: 'metis-testnet',
+  },
+  {
+    id: '420',
+    name: 'optimism-testnet',
+  },
+  {
+    id: '1442',
+    name: 'polygon-zkevm-testnet',
+  },
+  {
+    id: '31',
+    name: 'rsk-testnet',
+  },
+  {
+    id: '1287',
+    name: 'moonbeam-testnet',
+  },
+  {
+    id: '30',
+    name: 'rsk',
+  },
+  {
+    id: '5',
+    name: 'goerli',
+  },
+  {
+    id: '42170',
+    name: 'arbitrum-nova',
+  },
+  {
+    id: '4002',
+    name: 'fantom-testnet',
+  },
+  {
+    id: '80001',
+    name: 'polygon-testnet',
+  },
+  {
+    id: '421613',
+    name: 'arbitrum-testnet',
+  },
+  {
+    id: '10200',
+    name: 'gnosis-testnet',
+  },
+  {
+    id: '43113',
+    name: 'avalanche-testnet',
+  },
+  {
+    id: '2001',
+    name: 'milkomeda',
+  },
+  {
+    id: '200101',
+    name: 'milkomeda-testnet',
+  },
+  {
+    id: '11155111',
+    name: 'sepolia',
+  },
+];
