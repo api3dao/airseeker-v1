@@ -178,7 +178,9 @@ export const checkAndReport = async (
   if (thisDapi && nodaryPricingData['nodary']) {
     const onChainValueNumber = normaliseChainToNumber(onChainValue);
 
-    const nodaryBaseline = nodaryPricingData['nodary'].find((feed) => feed.dataFeedId === dataFeedId);
+    const nodaryBaseline = nodaryPricingData['nodary'].find(
+      (feed) => feed.name.toLowerCase() === thisDapi.name.toLowerCase()
+    );
     const nodaryDeviation = nodaryBaseline ? Math.abs(nodaryBaseline.value / onChainValueNumber - 1) * 100.0 : -1;
 
     await prisma.compoundValues.create({
