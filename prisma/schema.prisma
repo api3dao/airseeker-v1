@@ -26,6 +26,7 @@ model TrimmedDApi {
   upgradeStatus    String
 
   @@unique([name, chainName])
+  @@index([chainName, supplierCategory])
 }
 
 model NodaryApiValues {
@@ -40,6 +41,7 @@ model NodaryApiValues {
   inBeaconSet          Boolean  @default(false)
 
   @@index([when, name])
+  @@index([dataFeedId])
 }
 
 model BeaconSetEvents {
