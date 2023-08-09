@@ -74,26 +74,6 @@ export const isBalanceZero = async (
     throw new Error(goResult.error.message);
   }
 
-  const rawChainId = rpcProvider.getProvider().network.chainId.toString();
-
-  const chain = getChainName(rawChainId);
-
-  try {
-    await prisma.walletBalance.create({
-      data: {
-        walletAddress: sponsorWalletAddress,
-        balance: new Bnj.BigNumber(goResult.data.toString())
-          .div(new Bnj.BigNumber(10).pow(new Bnj.BigNumber(18)))
-          .toNumber(),
-        chainId: chain,
-      },
-    });
-  } catch (e) {
-    const typedError = e as Error;
-
-    logger.error(`Logging wallet balance to DB encountered an error`, typedError);
-  }
-
   return goResult.data.isZero();
 };
 

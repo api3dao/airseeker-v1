@@ -58,12 +58,6 @@ model BeaconSetEvents {
   @@index([when, name])
 }
 
-model LastBeaconSetEventsTracking {
-  chainId   String   @id
-  chainName String
-  lastEvent DateTime
-}
-
 model DApiMetadata {
   id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // an arbitary ID
   name        String // The name of this DAPI (eg. "USD/EUR")
@@ -112,20 +106,21 @@ model DeviationValue {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   when       DateTime @default(now())
   dataFeedId String
-  chainId    String
+  chainName  String
   deviation  Float
 
-  @@index([dataFeedId, chainId])
+  @@index([dataFeedId, chainName])
 }
 
 model WalletBalance {
   id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   when          DateTime @default(now())
   walletAddress String
-  chainId       String
+  chainName     String
   balance       Float
+  name          String
 
-  @@index([walletAddress, chainId])
+  @@index([walletAddress, chainName])
 }
 
 model NodaryProvidersFlat {
@@ -144,7 +139,7 @@ model CompoundValues {
   id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   when                DateTime @default(now())
   dapiName            String
-  chain               String
+  chainName           String
   dataFeedId          String
   onChainValue        Float
   offChainValue       Float

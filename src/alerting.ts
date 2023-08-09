@@ -167,7 +167,7 @@ export const checkAndReport = async (
     .toNumber();
 
   const thisDapi = trimmedDapis.find((dapi) => dapi.dataFeedId === dataFeedId);
-  const chain = getChainName(chainId);
+  const chainName = getChainName(chainId);
 
   const normaliseChainToNumber = (input: BigNumber): number => {
     const inputAsBn = new Bnj.BigNumber(input.toString());
@@ -188,7 +188,7 @@ export const checkAndReport = async (
       data: {
         dapiName: thisDapi.name,
         dataFeedId,
-        chain,
+        chainName,
         onChainValue: onChainValueNumber,
         offChainValue: normaliseChainToNumber(offChainValue),
         onOffChainDeviation: reportedDeviation,
@@ -216,7 +216,7 @@ export const checkAndReport = async (
           data: {
             dataFeedId,
             deviation: reportedDeviation,
-            chainId,
+            chainName,
           },
         })
       : undefined,
