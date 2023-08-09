@@ -3,14 +3,11 @@ import { uniq } from 'lodash';
 import { go, goSync } from '@api3/promise-utils';
 import * as node from '@api3/airnode-node';
 import * as protocol from '@api3/airnode-protocol';
-import * as Bnj from 'bignumber.js';
 import { getState, updateState, SponsorWalletsPrivateKey, Provider } from './state';
 import { shortenAddress } from './utils';
 import { logger } from './logging';
 import { DataFeedUpdates } from './validation';
 import { RateLimitedProvider } from './providers';
-import prisma from './database';
-import { getChainName } from './alerting';
 
 export type ChainSponsorGroup = {
   chainId: string;
