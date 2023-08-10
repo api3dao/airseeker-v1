@@ -6,7 +6,6 @@ import { makeSignedDataGatewayRequests, makeApiRequest } from './make-request';
 import { sleep } from './utils';
 import { SignedData } from './validation';
 import { NO_FETCH_EXIT_CODE, RANDOM_BACKOFF_MAX_MS, RANDOM_BACKOFF_MIN_MS } from './constants';
-import { recordGatewayResponseSuccess } from './alerting';
 
 export const initiateFetchingBeaconData = async () => {
   logger.debug('Initiating fetching all beacon data');
