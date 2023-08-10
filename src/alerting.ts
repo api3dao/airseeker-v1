@@ -12,6 +12,7 @@ import { calculateUpdateInPercentage } from './calculations';
 import { UpdateStatus } from './check-condition';
 import { HUNDRED_PERCENT } from './constants';
 import { sleep } from './utils';
+import { getState } from './state';
 
 export type NodaryData = Record<string, { dataFeedId: string; value: number; timestamp: number; name: string }[]>;
 
@@ -72,9 +73,60 @@ export const getNodaryData = async (): Promise<NodaryData> => {
   return parsedResponse.result;
 };
 
+/* Mutable stuff */
 let reporterRunning = false;
 let nodaryPricingData: NodaryData = {};
 let trimmedDapis: TrimmedDApi[] = [];
+const gatewayResults: Record<string, { badTries: number }> = {};
+
+export const recordGatewayResponseSuccess = async (templateId: string, gatewayUrl: string, success: boolean) => {
+  const state = getState();
+  const affectedBeacons = Object.entries(state.config.beacons).filter(
+    ([_beaconId, beacon]) => beacon.templateId === templateId
+  );
+
+  const airnodeAddress = affectedBeacons[0][1].airnode;
+
+  const selector = `${airnodeAddress}-${gatewayUrl}`;
+
+  const existingGatewayResult = gatewayResults[selector] ?? { badTries: 0 };
+
+  // eslint-disable-next-line functional/immutable-data
+  const newGatewayResultStatus = (gatewayResults[selector] = {
+    ...existingGatewayResult,
+    badTries: success ? 0 : existingGatewayResult.badTries + 1,
+  });
+
+  if (newGatewayResultStatus.badTries > 3) {
+    await limitedSendToOpsGenieLowLevel(
+      {
+        message: `Dead gateway for Airnode Address ${airnodeAddress}`,
+        priority: 'P3',
+        alias: `dead-gateway-${airnodeAddress}${generateOpsGenieAlias(gatewayUrl)}`,
+        description: [
+          `A gateway has failed at least ${newGatewayResultStatus.badTries} times.`,
+          `If the provider doesn't have enough active gateways Airseeker won't be able to get values with which to update the beacon set.`,
+          `The beaconset can still be updated if a majority of feeds are available, but this isn't ideal.`,
+          `The URL is included below, it is sensitive data.`,
+          ``,
+          `Airnode Address: ${airnodeAddress}`,
+          `Gateway URL: ${gatewayUrl} (potentially sensitive)`,
+          `and it affects the following beacon(s):`,
+          ...affectedBeacons.map(([beaconId]) => beaconId),
+        ].join('\n'),
+      },
+      opsGenieConfig
+    );
+  } else {
+    await limitedCloseOpsGenieAlertWithAlias(
+      `dead-gateway-${airnodeAddress}${generateOpsGenieAlias(gatewayUrl)}`,
+      opsGenieConfig
+    );
+  }
+
+  // eslint-disable-next-line no-console
+  console.log(JSON.stringify(gatewayResults, null, 2));
+};
 
 export const runReporterLoop = async () => {
   let lastRun = 0;

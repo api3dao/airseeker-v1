@@ -148,4 +148,24 @@ model CompoundValues {
   nodaryValue         Float
   onChainTimestamp    DateTime
   timestampDelta      Int
+
+  @@index([dapiName])
+  @@index([when])
+}
+
+model GatewayFailures {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  when           DateTime @default(now())
+  airnodeAddress String
+  hashedUrl      String
+  count          Int
+}
+
+model RPCFailures {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  when         DateTime @default(now())
+  chainName    String
+  hashedUrl    String
+  providerName String
+  count        Int
 }
