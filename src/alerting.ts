@@ -79,6 +79,16 @@ let nodaryPricingData: NodaryData = {};
 let trimmedDapis: TrimmedDApi[] = [];
 const gatewayResults: Record<string, { badTries: number }> = {};
 
+/**
+ * This function is built to make it easy to record gateway response success/failures from the makeSignedDataGatewayRequests function.
+ *
+ * It keeps count of the number of failure for each gateway, resetting the number to zero for every success.
+ * If the count exceeds '3' (maybe this should be configurable in future), an OpsGenie alert is generated.
+ *
+ * @param templateId
+ * @param gatewayUrl
+ * @param success
+ */
 export const recordGatewayResponseSuccess = async (templateId: string, gatewayUrl: string, success: boolean) => {
   const state = getState();
   const affectedBeacons = Object.entries(state.config.beacons).filter(
@@ -123,9 +133,6 @@ export const recordGatewayResponseSuccess = async (templateId: string, gatewayUr
       opsGenieConfig
     );
   }
-
-  // eslint-disable-next-line no-console
-  console.log(JSON.stringify(gatewayResults, null, 2));
 };
 
 export const runReporterLoop = async () => {
