@@ -17,7 +17,7 @@ import { Provider, getState } from './state';
 import { getTransactionCount } from './transaction-count';
 import { prepareGoOptions, shortenAddress, sleep } from './utils';
 import { Beacon, BeaconSetTrigger, BeaconTrigger, SignedData } from './validation';
-import { checkAndReport } from './alerting';
+import { checkAndReport, recordRpcProviderResponseSuccess } from './alerting';
 
 type ProviderSponsorDataFeeds = {
   provider: Provider;
@@ -410,6 +410,7 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
           logger.warn(`Failed attempt to read beaconSet data using multicall. Error ${goError.error}`, logOptions),
       }
     );
+    recordRpcProviderResponseSuccess(contract, goDatafeedsTryMulticall.success);
     if (!goDatafeedsTryMulticall.success) {
       logger.warn(`Unable to read beaconSet data using multicall. Error: ${goDatafeedsTryMulticall.error}`, logOptions);
       continue;

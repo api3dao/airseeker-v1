@@ -6,6 +6,7 @@ import * as Bnj from 'bignumber.js';
 import axios from 'axios';
 import { go } from '@api3/promise-utils';
 import { TrimmedDApi } from '@prisma/client';
+import { Api3ServerV1 } from '@api3/airnode-protocol-v1';
 import prisma from './database';
 import { BeaconSetTrigger, BeaconTrigger } from './validation';
 import { calculateUpdateInPercentage } from './calculations';
@@ -13,6 +14,7 @@ import { UpdateStatus } from './check-condition';
 import { HUNDRED_PERCENT } from './constants';
 import { sleep } from './utils';
 import { getState } from './state';
+import { RateLimitedProvider } from './providers';
 
 export type NodaryData = Record<string, { dataFeedId: string; value: number; timestamp: number; name: string }[]>;
 
@@ -78,6 +80,71 @@ let reporterRunning = false;
 let nodaryPricingData: NodaryData = {};
 let trimmedDapis: TrimmedDApi[] = [];
 const gatewayResults: Record<string, { badTries: number }> = {};
+const rpcProviderResults: Record<string, { badTries: number }> = {};
+
+export const recordRpcProviderResponseSuccess = async (contract: Api3ServerV1, success: boolean) => {
+  try {
+    const state = getState();
+
+    const provider = contract.provider as RateLimitedProvider;
+    const selector = provider.connection.url;
+
+    const existingResult = rpcProviderResults[selector] ?? { badTries: 0 };
+
+    // eslint-disable-next-line functional/immutable-data
+    const newResultStatus = (rpcProviderResults[selector] = {
+      ...existingResult,
+      badTries: success ? 0 : existingResult.badTries + 1,
+    });
+
+    const chainName = (Object.entries(state.config.chains).find(([_chainName, value]) =>
+      Object.entries(value.providers).find(([_providerName, provider]) => provider.url === selector)
+    ) ?? [''])[0];
+
+    const chainConfig = state.config.chains[chainName];
+
+    const providerName = Object.entries(chainConfig.providers).find(
+      ([_providerName, provider]) => provider.url === selector
+    )![0];
+
+    if (newResultStatus.badTries > 3) {
+      const providerCount = Object.values(chainConfig.providers).length;
+
+      await limitedSendToOpsGenieLowLevel(
+        {
+          message: `Dead RPC URL detected for ${chainName}/'${providerName}'`,
+          priority: 'P3',
+          alias: `dead-rpc-url-${chainName}${generateOpsGenieAlias(selector)}`,
+          description: [
+            `An RPC URL has failed ${newResultStatus.badTries} times.`,
+            `Airseeker usually has more than one provider per chain, for this chain it has ${providerCount}.`,
+            `If Airseeker doesn't have enough providers for a chain, it won't be able to do its job.`,
+            `We usually include a premium provider and a public RPC provider in Airseeker. The Public provider is`,
+            `more likely to be rate limited and arbitrarily fail.`,
+          ].join('\n'),
+        },
+        opsGenieConfig
+      );
+    } else {
+      await limitedCloseOpsGenieAlertWithAlias(
+        `dead-rpc-url-${chainName}${generateOpsGenieAlias(selector)}`,
+        opsGenieConfig
+      );
+    }
+
+    await prisma.rPCFailures.create({
+      data: {
+        chainName,
+        hashedUrl: generateOpsGenieAlias(selector),
+        providerName,
+        count: newResultStatus.badTries,
+      },
+    });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error(JSON.stringify(e, null, 2));
+  }
+};
 
 /**
  * This function is built to make it easy to record gateway response success/failures from the makeSignedDataGatewayRequests function.
@@ -132,6 +199,19 @@ export const recordGatewayResponseSuccess = async (templateId: string, gatewayUr
       `dead-gateway-${airnodeAddress}${generateOpsGenieAlias(gatewayUrl)}`,
       opsGenieConfig
     );
+  }
+
+  try {
+    await prisma.gatewayFailures.create({
+      data: {
+        airnodeAddress: airnodeAddress,
+        hashedUrl: generateOpsGenieAlias(gatewayUrl),
+        count: newGatewayResultStatus.badTries,
+      },
+    });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error(JSON.stringify(e, null, 2));
   }
 };
 
