@@ -113,6 +113,16 @@
             "maxDeviationMultiplier": 2
           },
           {
+            "gasPriceStrategy": "sanitizedProviderRecommendedGasPrice",
+            "recommendedGasPriceMultiplier": 1.2,
+            "baseFeeMultiplierThreshold": 5,
+            "baseFeeMultiplier": 2,
+            "priorityFee": {
+              "value": 3.12,
+              "unit": "gwei"
+            }
+          },
+          {
             "gasPriceStrategy": "providerRecommendedGasPrice",
             "recommendedGasPriceMultiplier": 1.2
           },
@@ -198,7 +208,7 @@
   },
   "ois": [
     {
-      "oisFormat": "2.0.0",
+      "oisFormat": "2.1.0",
       "version": "1.2.3",
       "title": "Currency Converter API",
       "apiSpecifications": {
