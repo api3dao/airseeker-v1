@@ -369,6 +369,8 @@ export const checkAndReport = async (
     );
     const nodaryDeviation = nodaryBaseline ? Math.abs(nodaryBaseline.value / onChainValueNumber - 1) * 100.0 : -1;
 
+    const dapiName = trimmedDapis.find((dapi) => dapi.dataFeedId === dataFeedId)?.name ?? 'Unknown Name';
+
     await prisma.compoundValues.create({
       data: {
         dapiName: thisDapi.name,
@@ -384,9 +386,7 @@ export const checkAndReport = async (
       },
     });
 
-    // We have the nodary deviation, so we can now do a shadow alert check too
-    const alertDeviationThreshold = trigger.deviationThreshold * deviationAlertMultiplier;
-    if (nodaryDeviation > alertDeviationThreshold) {
+    if (nodaryDeviation === -1) {
       const description = prettyFormatObject({
         type,
         onChainValue: onChainValue.toString(),
@@ -397,6 +397,42 @@ export const checkAndReport = async (
         currentDeviation: `${nodaryDeviation} %`,
         heartbeatInterval: trigger.heartbeatInterval,
         dataFeedId,
+        dapiName,
+        chainId,
+      });
+
+      await limitedSendToOpsGenieLowLevel(
+        {
+          priority: 'P2',
+          alias: generateOpsGenieAlias(
+            `${UpdateStatus.DEVIATION_THRESHOLD_REACHED_MESSAGE}-nodary-${dataFeedId}${chainId}`
+          ),
+          message: `Missing Nodary Value | ${dataFeedId} on chain ${chainId}`, //`${UpdateStatus.DEVIATION_THRESHOLD_REACHED_MESSAGE} for ${type} with ${dataFeedId} on chain ${chainId}`,
+          description: [
+            `We are missing a value for this datafeed from Nodary's API.`,
+            `This is not critical, but not great either as we don't have a "shadow" reference.`,
+            '',
+            description,
+          ].join('\n'),
+        },
+        opsGenieConfig
+      );
+    }
+
+    // We have the nodary deviation, so we can now do a shadow alert check too
+    const alertDeviationThreshold = trigger.deviationThreshold * deviationAlertMultiplier;
+    if (nodaryDeviation > -1 && nodaryDeviation > alertDeviationThreshold) {
+      const description = prettyFormatObject({
+        type,
+        onChainValue: onChainValue.toString(),
+        offChainValue: offChainValue.toString(),
+        onChainTimestamp: new Date(onChainTimestamp * 1_000).toUTCString(),
+        offChainTimestamp: new Date(offChainTimestamp * 1_000).toUTCString(),
+        alertDeviationThreshold: `${trigger.deviationThreshold} %`,
+        currentDeviation: `${nodaryDeviation} %`,
+        heartbeatInterval: trigger.heartbeatInterval,
+        dataFeedId,
+        dapiName,
         chainId,
       });
 
@@ -480,6 +516,7 @@ export const checkAndReport = async (
     currentDeviation: `${currentDeviation} %`,
     heartbeatInterval: trigger.heartbeatInterval,
     dataFeedId,
+    dapiName,
     chainId,
   });
 

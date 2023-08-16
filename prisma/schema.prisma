@@ -45,15 +45,17 @@ model NodaryApiValues {
 }
 
 model BeaconSetEvents {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  when            DateTime
-  dataFeedId      String
-  apiValue        Float
-  chain           String
-  name            String
-  nodaryDeviation Float
-  inBeaconSet     Boolean  @default(false)
-  children        String[]
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  when              DateTime
+  dataFeedId        String
+  apiValue          Float
+  chain             String
+  name              String
+  nodaryDeviation   Float
+  inBeaconSet       Boolean  @default(false)
+  children          String[]
+  gasUsed           Float?
+  effectiveGasPrice Float?
 
   @@index([when, name])
 }

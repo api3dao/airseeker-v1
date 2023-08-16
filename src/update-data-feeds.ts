@@ -410,7 +410,10 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
           logger.warn(`Failed attempt to read beaconSet data using multicall. Error ${goError.error}`, logOptions),
       }
     );
+
+    // Purely reporting, we're therefore not too concerned about the promise
     recordRpcProviderResponseSuccess(contract, goDatafeedsTryMulticall.success);
+
     if (!goDatafeedsTryMulticall.success) {
       logger.warn(`Unable to read beaconSet data using multicall. Error: ${goDatafeedsTryMulticall.error}`, logOptions);
       continue;
