@@ -369,7 +369,9 @@ export const checkAndReport = async (
     const nodaryBaseline = nodaryPricingData['nodary'].find(
       (feed) => feed.name.toLowerCase() === thisDapi.name.toLowerCase()
     );
-    const nodaryDeviation = nodaryBaseline ? Math.abs(nodaryBaseline.value / onChainValueNumber - 1) * 100.0 : -1;
+    const nodaryDeviation = nodaryBaseline?.value
+      ? Math.abs(nodaryBaseline.value / onChainValueNumber - 1) * 100.0
+      : -1;
 
     await prisma.compoundValues.create({
       data: {
@@ -380,7 +382,7 @@ export const checkAndReport = async (
         offChainValue: normaliseChainToNumber(offChainValue),
         onOffChainDeviation: reportedDeviation,
         nodaryDeviation,
-        nodaryValue: nodaryBaseline?.value ?? 0,
+        nodaryValue: nodaryBaseline?.value ?? -1,
         onChainTimestamp: new Date(onChainTimestamp * 1_000),
         timestampDelta: Date.now() - onChainTimestamp * 1_000,
       },
@@ -434,7 +436,7 @@ export const checkAndReport = async (
         dataFeedId,
         dapiName,
         chainId,
-        nodaryBaseline: nodaryBaseline?.value,
+        nodaryBaseline: nodaryBaseline?.value ?? -1,
       });
 
       await limitedSendToOpsGenieLowLevel(
