@@ -360,6 +360,8 @@ export const checkAndReport = async (
     return inputAsBn.dividedBy(new Bnj.BigNumber(10).pow(new Bnj.BigNumber(18))).toNumber();
   };
 
+  const dapiName = trimmedDapis.find((dapi) => dapi.dataFeedId === dataFeedId)?.name ?? 'Unknown Name';
+
   // may not have been loaded yet or may not exist for some reason 🤷
   if (thisDapi && nodaryPricingData['nodary']) {
     const onChainValueNumber = normaliseChainToNumber(onChainValue);
@@ -368,8 +370,6 @@ export const checkAndReport = async (
       (feed) => feed.name.toLowerCase() === thisDapi.name.toLowerCase()
     );
     const nodaryDeviation = nodaryBaseline ? Math.abs(nodaryBaseline.value / onChainValueNumber - 1) * 100.0 : -1;
-
-    const dapiName = trimmedDapis.find((dapi) => dapi.dataFeedId === dataFeedId)?.name ?? 'Unknown Name';
 
     await prisma.compoundValues.create({
       data: {
