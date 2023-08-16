@@ -434,6 +434,7 @@ export const checkAndReport = async (
         dataFeedId,
         dapiName,
         chainId,
+        nodaryBaseline: nodaryBaseline?.value
       });
 
       await limitedSendToOpsGenieLowLevel(
