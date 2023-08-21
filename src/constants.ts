@@ -3,7 +3,7 @@ import { ethers } from 'ethers';
 export const GATEWAY_TIMEOUT_MS = 15_000;
 export const PROVIDER_TIMEOUT_MS = 15_000;
 export const RANDOM_BACKOFF_MIN_MS = 0;
-export const RANDOM_BACKOFF_MAX_MS = 15_000;
+export const RANDOM_BACKOFF_MAX_MS = 2_500;
 export const PRIORITY_FEE_IN_WEI = 3_120_000_000;
 // The Base Fee to Max Fee multiplier
 export const BASE_FEE_MULTIPLIER = 2;
