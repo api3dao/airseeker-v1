@@ -68,7 +68,7 @@ export const makeSignedDataGatewayRequests = async (
 
     const goRes = await (queue ? queue.schedule({ expiration: 60_000 }, goResFn) : goResFn());
 
-    recordGatewayResponseSuccess(templateId, fullUrl, goRes.success);
+    recordGatewayResponseSuccess(templateId, fullUrl, goRes?.success);
 
     if (!goRes.success) {
       const message = `Failed to make signed data gateway request for gateway: "${fullUrl}". Error: "${goRes.error}"`;

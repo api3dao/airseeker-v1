@@ -15,7 +15,20 @@ import { HUNDRED_PERCENT } from './constants';
 import { sleep } from './utils';
 import { getState } from './state';
 import { RateLimitedProvider } from './providers';
+import { logger } from './logging';
 
+/*
+A big problem with the predecessor of this app was maintenance; having a separate application for datafeeds is a lot of
+work.
+
+To keep things low maintenance this branch tries to keep everything related to alerting very obviously separate from the
+main Airseeker application. Only the entrypoint into the alerting code have been added to the non-alerting side of
+the application.
+
+The nature of the alerting code means immutability can't really apply, at least not like the rest of Airseeker.
+ */
+
+// A type representing data we retrieve from Nodary
 export type NodaryData = Record<string, { dataFeedId: string; value: number; timestamp: number; name: string }[]>;
 
 export type NodaryPayload = {
@@ -23,11 +36,16 @@ export type NodaryPayload = {
   result: NodaryData;
 };
 
+// Mocking the OpsGenie utils for tests can be a pain - this assists us
 let { limitedCloseOpsGenieAlertWithAlias, limitedSendToOpsGenieLowLevel } = utils.getOpsGenieLimiter();
 export { limitedCloseOpsGenieAlertWithAlias, limitedSendToOpsGenieLowLevel };
 
 export const opsGenieConfig = { apiKey: process.env.OPSGENIE_API_KEY ?? '', responders: [] };
 
+/**
+ * Retrieves Nodary data - this is data from various providers served by Nodary that allows us to have a baseline/reference
+ * deviation.
+ */
 export const getNodaryData = async (): Promise<NodaryData> => {
   const nodaryResponse = await go(
     () =>
@@ -82,6 +100,18 @@ let trimmedDapis: TrimmedDApi[] = [];
 const gatewayResults: Record<string, { badTries: number }> = {};
 const rpcProviderResults: Record<string, { badTries: number }> = {};
 
+/**
+ * Handles response statuses from RPC Provider calls.
+ *
+ * If a Provider call fails more than 3-times in a row, this code raises an alert.
+ *
+ * Again, we try to not modify the original Airseeker code as far as possible, so we take arguments here that don't
+ * entirely make sense... like the contract. The contract is what Airseeker uses to do its work, but really we're after
+ * the RPC Provider inside the contract object.
+ *
+ * @param contract
+ * @param success
+ */
 export const recordRpcProviderResponseSuccess = async (contract: Api3ServerV1, success: boolean) => {
   try {
     const state = getState();
@@ -141,8 +171,7 @@ export const recordRpcProviderResponseSuccess = async (contract: Api3ServerV1, s
       },
     });
   } catch (e) {
-    // eslint-disable-next-line no-console
-    console.error(JSON.stringify(e, null, 2));
+    logger.warn(`Error while processing provider response success: ${JSON.stringify(e, null, 2)}`);
   }
 };
 
@@ -158,9 +187,14 @@ export const recordRpcProviderResponseSuccess = async (contract: Api3ServerV1, s
  */
 export const recordGatewayResponseSuccess = async (templateId: string, gatewayUrl: string, success: boolean) => {
   const state = getState();
-  const affectedBeacons = Object.entries(state.config.beacons).filter(
+  const affectedBeacons = Object.entries(state?.config?.beacons ?? {}).filter(
     ([_beaconId, beacon]) => beacon.templateId === templateId
   );
+
+  if (affectedBeacons.length === 0) {
+    logger.error('Unable to record gateway response as no affected beacons found.');
+    return;
+  }
 
   const airnodeAddress = affectedBeacons[0][1].airnode;
 
@@ -210,8 +244,7 @@ export const recordGatewayResponseSuccess = async (templateId: string, gatewayUr
       },
     });
   } catch (e) {
-    // eslint-disable-next-line no-console
-    console.error(JSON.stringify(e, null, 2));
+    logger.warn(`Error while processing gateway response success: ${JSON.stringify(e, null, 2)}`);
   }
 };
 
@@ -226,8 +259,7 @@ export const runReporterLoop = async () => {
       opsGenieConfig
     );
   } catch (e) {
-    // eslint-disable-next-line no-console
-    console.error(e);
+    logger.warn(`Error while grabbing trimmed dAPIs: ${JSON.stringify(e, null, 2)}`);
 
     const errTyped = e as Error;
 
@@ -261,8 +293,7 @@ export const runReporterLoop = async () => {
         }
         await limitedCloseOpsGenieAlertWithAlias('nodary-data-retrieval-airseeker-monitoring', opsGenieConfig);
       } catch (e) {
-        // eslint-disable-next-line no-console
-        console.error(e);
+        logger.warn(`Error while retrieving data from Nodary: ${JSON.stringify(e, null, 2)}`);
 
         const errTyped = e as Error;
 
@@ -571,6 +602,7 @@ export const checkAndReport = async (
   }
 };
 
+// TODO this needs to come out of the DB or some other static resource
 export const DB_CHAINS = [
   {
     id: '5001',

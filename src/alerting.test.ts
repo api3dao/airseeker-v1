@@ -46,7 +46,7 @@ describe('alerting', () => {
     );
 
     expect(mockLimitedCloseOpsGenieAlertWithAlias).toHaveBeenCalledTimes(2);
-    expect(mockLimitedSendToOpsGenieLowLevel).toHaveBeenCalledTimes(0);
+    expect(mockLimitedSendToOpsGenieLowLevel).toHaveBeenCalledTimes(3);
     // TODO fix db inserts
     // expect(prismaMock.dataFeedApiValue.create).toHaveBeenCalledTimes(1);
     // expect(prismaMock.deviationValue.create).toHaveBeenCalledTimes(1);
@@ -67,7 +67,7 @@ describe('alerting', () => {
     );
 
     expect(mockLimitedCloseOpsGenieAlertWithAlias).toHaveBeenCalledTimes(1);
-    expect(mockLimitedSendToOpsGenieLowLevel).toHaveBeenCalledTimes(1);
+    expect(mockLimitedSendToOpsGenieLowLevel).toHaveBeenCalledTimes(3);
     // TODO fix db inserts
     // expect(prismaMock.dataFeedApiValue.create).toHaveBeenCalledTimes(1);
     // expect(prismaMock.deviationValue.create).toHaveBeenCalledTimes(1);
@@ -88,7 +88,7 @@ describe('alerting', () => {
     );
 
     expect(mockLimitedCloseOpsGenieAlertWithAlias).toHaveBeenCalledTimes(1);
-    expect(mockLimitedSendToOpsGenieLowLevel).toHaveBeenCalledTimes(1);
+    expect(mockLimitedSendToOpsGenieLowLevel).toHaveBeenCalledTimes(2);
     // expect(prismaMock.dataFeedApiValue.create).toHaveBeenCalledTimes(1);
     // expect(prismaMock.deviationValue.create).toHaveBeenCalledTimes(1);
   });
@@ -108,7 +108,7 @@ describe('alerting', () => {
     );
 
     expect(mockLimitedCloseOpsGenieAlertWithAlias).toHaveBeenCalledTimes(0);
-    expect(mockLimitedSendToOpsGenieLowLevel).toHaveBeenCalledTimes(2);
+    expect(mockLimitedSendToOpsGenieLowLevel).toHaveBeenCalledTimes(4);
     // expect(prismaMock.dataFeedApiValue.create).toHaveBeenCalledTimes(1);
     // expect(prismaMock.deviationValue.create).toHaveBeenCalledTimes(1);
   });
