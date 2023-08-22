@@ -122,7 +122,7 @@ export const filterEmptySponsors = async () => {
   const balanceGroups = balanceGroupsOrNull.filter((group): group is SponsorBalanceStatus => group !== null);
 
   // Update dataFeedUpdates with non-empty sponsor wallets
-  const fundedBalanceGroups = balanceGroups.filter(({ isEmpty }) => isEmpty === false);
+  const fundedBalanceGroups = balanceGroups.filter(({ isEmpty }) => !isEmpty);
   const fundedDataFeedUpdates = fundedBalanceGroups.reduce((acc: DataFeedUpdates, { chainId, sponsorAddress }) => {
     return {
       ...acc,

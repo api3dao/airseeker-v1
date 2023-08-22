@@ -17,6 +17,12 @@ import { getState } from './state';
 import { RateLimitedProvider } from './providers';
 import { logger } from './logging';
 
+export let prismaActive = prisma;
+
+export const setPrisma = (newPrisma: any) => {
+  prismaActive = newPrisma;
+};
+
 /*
 A big problem with the predecessor of this app was maintenance; having a separate application for datafeeds is a lot of
 work.
@@ -162,7 +168,7 @@ export const recordRpcProviderResponseSuccess = async (contract: Api3ServerV1, s
       );
     }
 
-    await prisma.rPCFailures.create({
+    await prismaActive.rPCFailures.create({
       data: {
         chainName,
         hashedUrl: generateOpsGenieAlias(selector),
@@ -171,7 +177,15 @@ export const recordRpcProviderResponseSuccess = async (contract: Api3ServerV1, s
       },
     });
   } catch (e) {
-    logger.warn(`Error while processing provider response success: ${JSON.stringify(e, null, 2)}`);
+    const typedErr = e as Error;
+
+    logger.warn(
+      `Error while processing provider response success: ${JSON.stringify(
+        { typedErr, stack: typedErr.stack },
+        null,
+        2
+      )}`
+    );
   }
 };
 
@@ -236,7 +250,7 @@ export const recordGatewayResponseSuccess = async (templateId: string, gatewayUr
   }
 
   try {
-    await prisma.gatewayFailures.create({
+    await prismaActive.gatewayFailures.create({
       data: {
         airnodeAddress: airnodeAddress,
         hashedUrl: generateOpsGenieAlias(gatewayUrl),
@@ -252,7 +266,7 @@ export const runReporterLoop = async () => {
   let lastRun = 0;
 
   try {
-    trimmedDapis = await prisma.trimmedDApi.findMany();
+    trimmedDapis = await prismaActive.trimmedDApi.findMany();
 
     await limitedCloseOpsGenieAlertWithAlias(
       'trimmed-dapis-retrieval-airseeker-monitoring-reporter-loop',
@@ -404,7 +418,7 @@ export const checkAndReport = async (
       ? Math.abs(nodaryBaseline.value / onChainValueNumber - 1) * 100.0
       : -1;
 
-    await prisma.compoundValues.create({
+    await prismaActive.compoundValues.create({
       data: {
         dapiName: thisDapi.name,
         dataFeedId,
@@ -495,7 +509,7 @@ export const checkAndReport = async (
   }
 
   const prismaPromises = await Promise.allSettled([
-    prisma.dataFeedApiValue.create({
+    prismaActive.dataFeedApiValue.create({
       data: {
         dataFeedId,
         apiValue: new Bnj.BigNumber(offChainValue.toString())
@@ -506,7 +520,7 @@ export const checkAndReport = async (
       },
     }),
     reportedDeviation !== 0
-      ? prisma.deviationValue.create({
+      ? prismaActive.deviationValue.create({
           data: {
             dataFeedId,
             deviation: reportedDeviation,

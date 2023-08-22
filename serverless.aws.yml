@@ -23,6 +23,6 @@ functions:
     maximumRetryAttempts: 0
     maximumEventAge: 60
     timeout: 900
-    memorySize: 1500
+    memorySize: 512
     events:
       - schedule: rate(14 minutes)
