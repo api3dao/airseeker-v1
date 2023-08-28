@@ -10,6 +10,14 @@ datasource db {
   url      = env("DATABASE_URL") // eg = "postgresql://johndoe:mypassword@localhost:5432/mydb?schema=public"
 }
 
+// Extras
+// I'm not sure how Prisma will handle these indexes, so I've placed them here for now.
+// If we have a migration issue we can drop these indexes and try and integrate them into the schema
+// although I doubt Prisma supports expression-based indexes.
+// create index IF NOT EXISTS date_trunc_minute on "NodaryApiValues" (DATE_TRUNC('minute', "when"));
+// create index IF NOT EXISTS nodary_api_values_name on "NodaryApiValues"("name");
+// create index IF NOT EXISTS nodary_providers_name on "NodaryProvidersFlat"("feedName");
+
 model TrimmedDApi {
   id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // an arbitary ID
   name             String // The name of this DAPI (eg. "USD/EUR")
