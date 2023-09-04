@@ -238,18 +238,18 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
   for (const readBatch of chunk(beaconUpdates, DATAFEED_READ_BATCH_SIZE)) {
     // Read beacon batch onchain values
     const goDatafeedsTryMulticall = await go(
-      () => {
-        const calldatas = readBatch.map((beaconUpdate) => beaconUpdate.dataFeedsCalldata);
-        return contract.connect(voidSigner).callStatic.tryMulticall(calldatas);
-      },
+      () =>
+        contract
+          .connect(voidSigner)
+          .callStatic.tryMulticall(readBatch.map((beaconUpdate) => beaconUpdate.dataFeedsCalldata)),
       {
         ...prepareGoOptions(startTime, totalTimeout),
         onAttemptError: (goError) =>
-          logger.warn(`Failed attempt to read beacon data using multicall. Error ${goError.error}`, logOptions),
+          logger.warn(`Attempt to read beacon data using tryMulticall has failed. Error ${goError.error}`, logOptions),
       }
     );
     if (!goDatafeedsTryMulticall.success) {
-      logger.warn(`Unable to read beacon data using multicall. Error: ${goDatafeedsTryMulticall.error}`, logOptions);
+      logger.warn(`Unable to read beacon data using tryMulticall. Error: ${goDatafeedsTryMulticall.error}`, logOptions);
       continue;
     }
 
@@ -337,7 +337,7 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
           ...prepareGoOptions(startTime, totalTimeout),
           onAttemptError: (goError) =>
             logger.warn(
-              `Attempt to send transaction to update ${updateBatch.length} beacon(s) failed. Error ${goError.error}`,
+              `Attempt to send transaction to update ${updateBatch.length} beacon(s) has failed. Error ${goError.error}`,
               logOptions
             ),
         }
