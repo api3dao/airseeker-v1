@@ -256,7 +256,7 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
     const { successes, returndata } = goDatafeedsTryMulticall.data;
 
     // Process beacon update calldatas
-    let beaconUpdateCalldatas: string[] = [];
+    let beaconUpdates: BeaconUpdate[] = [];
 
     for (let i = 0; i < readBatch.length; i++) {
       const beaconReturndata = returndata[i];
@@ -286,40 +286,75 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
         continue;
       }
 
-      beaconUpdateCalldatas = [
-        ...beaconUpdateCalldatas,
-        contract.interface.encodeFunctionData('updateBeaconWithSignedData', [
-          beaconUpdateData.beacon.airnode,
-          beaconUpdateData.beacon.templateId,
-          beaconUpdateData.newBeaconResponse.timestamp,
-          beaconUpdateData.newBeaconResponse.encodedValue,
-          beaconUpdateData.newBeaconResponse.signature,
-        ]),
-      ];
+      beaconUpdates = [...beaconUpdates, beaconUpdateData];
     }
 
     let nonce = transactionCount;
-    for (const updateBatch of chunk(beaconUpdateCalldatas, DATAFEED_UPDATE_BATCH_SIZE)) {
+    for (const updateBatch of chunk(beaconUpdates, DATAFEED_UPDATE_BATCH_SIZE)) {
       // Get the latest gas price
       const getGasFn = () => getGasPrice(provider.rpcProvider.getProvider(), config.chains[chainId].options);
       // We have to grab the limiter from the custom provider as the getGasPrice function contains its own timeouts
       const [logs, gasTarget] = await provider.rpcProvider.getLimiter().schedule({ expiration: 30_000 }, getGasFn);
       logger.logPending(logs, logOptions);
 
-      // Update beacon batch onchain values
-      const tx = await go(() => contract.connect(sponsorWallet).tryMulticall(updateBatch, { nonce, ...gasTarget }), {
-        ...prepareGoOptions(startTime, totalTimeout),
-        onAttemptError: (goError) =>
-          logger.warn(`Failed attempt to update beacon batch. Error ${goError.error}`, logOptions),
-      });
+      // Update beacon onchain values
+      const updateBatchBeaconIds = updateBatch.map((beaconUpdate) => beaconUpdate.beaconTrigger.beaconId);
+      logger.debug(
+        `About to update ${updateBatch.length} beacon(s) with nonce ${nonce}. Beacon id(s): ${updateBatchBeaconIds.join(
+          ', '
+        )}`,
+        logOptions
+      );
+
+      const tx = await go(
+        updateBatch.length === 1
+          ? () =>
+              contract
+                .connect(sponsorWallet)
+                .updateBeaconWithSignedData(
+                  beaconUpdates[0].beacon.airnode,
+                  beaconUpdates[0].beacon.templateId,
+                  beaconUpdates[0].newBeaconResponse.timestamp,
+                  beaconUpdates[0].newBeaconResponse.encodedValue,
+                  beaconUpdates[0].newBeaconResponse.signature,
+                  { nonce, ...gasTarget }
+                )
+          : () => {
+              return contract.connect(sponsorWallet).tryMulticall(
+                updateBatch.map((beaconUpdateData) =>
+                  contract.interface.encodeFunctionData('updateBeaconWithSignedData', [
+                    beaconUpdateData.beacon.airnode,
+                    beaconUpdateData.beacon.templateId,
+                    beaconUpdateData.newBeaconResponse.timestamp,
+                    beaconUpdateData.newBeaconResponse.encodedValue,
+                    beaconUpdateData.newBeaconResponse.signature,
+                  ])
+                ),
+                { nonce, ...gasTarget }
+              );
+            },
+        {
+          ...prepareGoOptions(startTime, totalTimeout),
+          onAttemptError: (goError) =>
+            logger.warn(
+              `Attempt to send transaction to update ${updateBatch.length} beacon(s) failed. Error ${goError.error}`,
+              logOptions
+            ),
+        }
+      );
       if (!tx.success) {
-        logger.warn(`Unable send beacon batch update transaction with nonce ${nonce}. Error: ${tx.error}`, logOptions);
+        logger.warn(
+          `Unable send transaction to update ${updateBatch.length} beacon(s) with nonce ${nonce}. Error: ${tx.error}`,
+          logOptions
+        );
+        logger.debug(`Beacon id(s) that failed to be updated: ${updateBatchBeaconIds.join(', ')}`, logOptions);
         return;
       }
       logger.info(
-        `Beacon batch update transaction was successfully sent with nonce ${nonce}. Tx hash ${tx.data.hash}.`,
+        `Transaction to update ${updateBatch.length} beacon(s) was successfully sent with nonce ${nonce}. Tx hash ${tx.data.hash}`,
         logOptions
       );
+
       nonce++;
     }
   }
