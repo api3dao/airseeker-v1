@@ -209,7 +209,72 @@ describe('hasEnoughBalance', () => {
     expect(result).toBeFalsy();
   });
 
-  // TODO: add more tests
+  it('should throw an error when failed to get the current block', async () => {
+    const sponsorWallet = {
+      provider: {
+        getBlock: jest.fn().mockRejectedValue(new Error('getBlock:Unexpected')),
+      },
+    };
+
+    await expect(
+      hasEnoughBalance(defaultChainOptions, sponsorWallet as any, {} as any, {} as any, logOptions)
+    ).rejects.toThrow('getBlock:Unexpected');
+  });
+
+  it('should throw an error when the last block is older than 5 minutes', async () => {
+    const sponsorWallet = {
+      provider: {
+        getBlock: jest.fn().mockResolvedValue({
+          timestamp: Math.floor(Date.now() / 1000) - 3600, // Set a timestamp older than 5 minutes
+        }),
+      },
+    };
+
+    await expect(
+      hasEnoughBalance(defaultChainOptions, sponsorWallet as any, {} as any, {} as any, logOptions)
+    ).rejects.toThrow('Chain has not produced a new block in the last 5 minutes');
+  });
+
+  it('should throw an error when failed to get sponsorWallet balance', async () => {
+    const sponsorWallet = {
+      provider: {
+        getBlock: jest.fn().mockResolvedValue({
+          timestamp: Math.floor(Date.now() / 1000),
+        }),
+      },
+      getBalance: jest.fn().mockRejectedValue(new Error('getBalance: Unexpected')),
+    };
+
+    await expect(
+      hasEnoughBalance(defaultChainOptions, sponsorWallet as any, {} as any, {} as any, logOptions)
+    ).rejects.toThrow('getBalance: Unexpected');
+  });
+
+  it('should throw an error when failed to estimate gas', async () => {
+    const sponsorWallet = {
+      provider: {
+        getBlock: jest.fn().mockResolvedValue({
+          timestamp: Math.floor(Date.now() / 1000),
+        }),
+      },
+      getBalance: jest.fn().mockResolvedValue(ethers.utils.parseEther('1')),
+    };
+    const airnode = {
+      signMessage: jest.fn().mockResolvedValue('mockedSignature'),
+    };
+    const api3ServerV1 = {
+      connect() {
+        return this;
+      },
+      estimateGas: {
+        updateBeaconWithSignedData: jest.fn().mockRejectedValue(new Error('estimateGas:Unexpected')),
+      },
+    };
+
+    await expect(
+      hasEnoughBalance(defaultChainOptions, sponsorWallet as any, airnode as any, api3ServerV1 as any, logOptions)
+    ).rejects.toThrow('estimateGas:Unexpected');
+  });
 });
 
 describe('getSponsorBalanceStatus', () => {
