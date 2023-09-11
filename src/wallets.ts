@@ -71,7 +71,7 @@ export const hasEnoughBalance = async (
   // Fetch current block number
   const goGetBlock = await go(() => sponsorWallet.provider.getBlock('latest'), { retries: 1 });
   if (!goGetBlock.success) {
-    logger.error('Failed to get the block', goGetBlock.error, logOptions);
+    logger.error('Failed to get the latest block', goGetBlock.error, logOptions);
     throw new Error(goGetBlock.error.message);
   }
   // Check if last block is not older than 5 min
