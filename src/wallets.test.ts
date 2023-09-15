@@ -321,7 +321,7 @@ describe('getSponsorBalanceStatus', () => {
       hasEnoughBalance: true,
     };
 
-    const sponsorBalanceStatus = await wallets.getSponsorBalanceStatus(airnode, chainSponsorGroup);
+    const sponsorBalanceStatus = await wallets.getSponsorBalanceStatus(chainSponsorGroup, airnode);
 
     expect(retrieveSponsorWalletMock).toHaveBeenCalledTimes(1);
     expect(retrieveSponsorWalletMock).toHaveBeenCalledWith('sponsorAddress1');
@@ -388,7 +388,7 @@ describe('getSponsorBalanceStatus', () => {
 
     const expectedSponsorBalanceStatus = null;
 
-    const sponsorBalanceStatus = await wallets.getSponsorBalanceStatus(airnode, chainSponsorGroup);
+    const sponsorBalanceStatus = await wallets.getSponsorBalanceStatus(chainSponsorGroup, airnode);
 
     expect(retrieveSponsorWalletMock).toHaveBeenCalledTimes(1);
     expect(retrieveSponsorWalletMock).toHaveBeenCalledWith('sponsorAddress1');
@@ -431,7 +431,7 @@ describe('getSponsorBalanceStatus', () => {
 
     const expectedSponsorBalanceStatus = null;
 
-    const sponsorBalanceStatus = await wallets.getSponsorBalanceStatus(airnode, chainSponsorGroup);
+    const sponsorBalanceStatus = await wallets.getSponsorBalanceStatus(chainSponsorGroup, airnode);
 
     expect(sponsorBalanceStatus).toEqual(expectedSponsorBalanceStatus);
     expect(logger.warn).toHaveBeenCalledWith(
@@ -539,7 +539,7 @@ describe('filterSponsorWallets', () => {
     jest.spyOn(state, 'updateState');
     jest.spyOn(state, 'getState');
 
-    await wallets.filterEmptySponsors();
+    await wallets.filterSponsorWallets();
 
     expect(getSponsorBalanceStatusMock).toHaveBeenCalledTimes(3);
 

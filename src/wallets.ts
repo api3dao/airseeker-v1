@@ -146,8 +146,8 @@ export const hasEnoughBalance = async (
 };
 
 export const getSponsorBalanceStatus = async (
-  airnode: ethers.Wallet,
-  chainSponsorGroup: ChainSponsorGroup
+  chainSponsorGroup: ChainSponsorGroup,
+  airnode: ethers.Wallet
 ): Promise<SponsorBalanceStatus | null> => {
   const { chainId, providers, chainOptions, sponsorAddress, api3ServerV1Address } = chainSponsorGroup;
 
@@ -178,10 +178,10 @@ export const getSponsorBalanceStatus = async (
     return null;
   }
 
-  return { sponsorAddress, chainId, hasEnoughBalance: goAnyResult.data };
+  return { chainId, sponsorAddress, hasEnoughBalance: goAnyResult.data };
 };
 
-export const filterEmptySponsors = async () => {
+export const filterSponsorWallets = async () => {
   const { config, providers: stateProviders, sponsorWalletsPrivateKey } = getState();
 
   const chainSponsorGroups = Object.entries(config.triggers.dataFeedUpdates).reduce(
@@ -208,7 +208,7 @@ export const filterEmptySponsors = async () => {
   const dummyAirnode = ethers.Wallet.createRandom();
 
   const balanceGroupsOrNull = await Promise.all(
-    chainSponsorGroups.map((csg) => getSponsorBalanceStatus(dummyAirnode, csg))
+    chainSponsorGroups.map((csg) => getSponsorBalanceStatus(csg, dummyAirnode))
   );
   const balanceGroups = balanceGroupsOrNull.filter((group): group is SponsorBalanceStatus => group !== null);
 
