@@ -68,20 +68,6 @@ export const hasEnoughBalance = async (
   api3ServerV1: ethers.Contract,
   logOptions: LogOptionsOverride
 ): Promise<boolean> => {
-  // Fetch current block number
-  const goGetBlock = await go(() => sponsorWallet.provider.getBlock('latest'), { retries: 1 });
-  if (!goGetBlock.success) {
-    logger.error('Failed to get the latest block', goGetBlock.error, logOptions);
-    throw new Error(goGetBlock.error.message);
-  }
-  // Check if last block is not older than 5 min
-  const lastBlock = goGetBlock.data;
-  const fiveMinutesAgo = Math.floor(Date.now() / 1000) - 60 * 5;
-  if (lastBlock.timestamp < fiveMinutesAgo) {
-    logger.warn('Last block is older than 5 minutes. SponsorWallets will be skipped for this chain', logOptions);
-    throw new Error(`Chain has not produced a new block in the last 5 minutes`);
-  }
-
   // Fetch current sponsorWallet balance
   const goGetBalance = await go(() => sponsorWallet.getBalance(), { retries: 1 });
   if (!goGetBalance.success) {
