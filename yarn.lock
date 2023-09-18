@@ -79,17 +79,10 @@
     yargs "^17.7.2"
     zod "^3.21.4"
 
-"@api3/airnode-protocol-v1@2.7.1":
-  version "2.7.1"
-  resolved "https://registry.yarnpkg.com/@api3/airnode-protocol-v1/-/airnode-protocol-v1-2.7.1.tgz#dc60c2470cec8f4e884c224f0208ddd530caf68c"
-  integrity sha512-hOuddd+GvypvkMGu8bHPidKiBeEU3NjopaX8GSODPdae9n6ReXIFWFUgQz3AJNpwyUnb7Ivx4nXdiYMSyc9adQ==
-  dependencies:
-    "@openzeppelin/contracts" "4.8.2"
-
-"@api3/airnode-protocol-v1@^2.7.1":
-  version "2.8.0"
-  resolved "https://registry.yarnpkg.com/@api3/airnode-protocol-v1/-/airnode-protocol-v1-2.8.0.tgz#19a755bf0dfb127edd362282b09b9ff51409e626"
-  integrity sha512-QmDaFvD8U3CYuYqpKP7au7htr1fIW5s6YzoAfduDqh6z6jqFWUHd4wd3m0BYu715SZpu5xSa0lsYpfnPhxHpIg==
+"@api3/airnode-protocol-v1@2.10.0", "@api3/airnode-protocol-v1@^2.7.1":
+  version "2.10.0"
+  resolved "https://registry.yarnpkg.com/@api3/airnode-protocol-v1/-/airnode-protocol-v1-2.10.0.tgz#b03cf02c7b65eed5b57cd37e24d91dbcbff62da6"
+  integrity sha512-5pXI9OUXeyM2IbVYrkW48Eymt7qGT5nfBU8GR2XZsRE8dCRZTIIfp+xdAMH+OFm62GGnUDz9e1uTiAHkRWrtKA==
   dependencies:
     "@openzeppelin/contracts" "4.8.2"
 
