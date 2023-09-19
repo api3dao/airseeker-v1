@@ -82,7 +82,7 @@ const getGasPrice = async (provider: RateLimitedProvider) => {
 
 export const hasEnoughBalance = async (
   sponsorWallet: ethers.Wallet,
-  airnode: ethers.Wallet,
+  dummyAirnode: ethers.Wallet,
   api3ServerV1: ethers.Contract,
   logOptions: LogOptionsOverride
 ): Promise<boolean> => {
@@ -113,7 +113,7 @@ export const hasEnoughBalance = async (
         // Any radom number that fits into an int224
         [ethers.BigNumber.from(randomBytes)]
       );
-      const dummyBeaconSignature = await airnode.signMessage(
+      const dummyBeaconSignature = await dummyAirnode.signMessage(
         ethers.utils.arrayify(
           ethers.utils.solidityKeccak256(
             ['bytes32', 'uint256', 'bytes'],
@@ -124,7 +124,7 @@ export const hasEnoughBalance = async (
       return api3ServerV1
         .connect(sponsorWallet)
         .estimateGas.updateBeaconWithSignedData(
-          airnode.address,
+          dummyAirnode.address,
           dummyBeaconTemplateId,
           dummyBeaconTimestamp,
           dummyBeaconData,
@@ -149,7 +149,7 @@ export const hasEnoughBalance = async (
 
 export const getSponsorBalanceStatus = async (
   chainSponsorGroup: ChainSponsorGroup,
-  airnode: ethers.Wallet
+  dummyAirnode: ethers.Wallet
 ): Promise<SponsorBalanceStatus | null> => {
   const { chainId, providers, sponsorAddress, api3ServerV1Address } = chainSponsorGroup;
 
@@ -168,7 +168,7 @@ export const getSponsorBalanceStatus = async (
   const api3ServerV1 = new Api3ServerV1__factory().attach(api3ServerV1Address);
 
   const hasEnoughBalancePromises = providers.map(async ({ rpcProvider, providerName }) =>
-    hasEnoughBalance(sponsorWallet.connect(rpcProvider), airnode, api3ServerV1, {
+    hasEnoughBalance(sponsorWallet.connect(rpcProvider), dummyAirnode, api3ServerV1, {
       meta: { ...logOptions.meta, 'Sponsor-Wallet': shortenAddress(sponsorWallet.address), Provider: providerName },
     })
   );

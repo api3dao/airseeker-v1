@@ -132,7 +132,7 @@ describe('hasEnoughBalance', () => {
       },
       getBalance: jest.fn().mockResolvedValue(ethers.utils.parseEther('1')),
     };
-    const airnode = {
+    const dummyAirnode = {
       signMessage: jest.fn().mockResolvedValue('mockedSignature'),
     };
     const api3ServerV1 = {
@@ -144,7 +144,7 @@ describe('hasEnoughBalance', () => {
       },
     };
 
-    const result = await hasEnoughBalance(sponsorWallet as any, airnode as any, api3ServerV1 as any, logOptions);
+    const result = await hasEnoughBalance(sponsorWallet as any, dummyAirnode as any, api3ServerV1 as any, logOptions);
 
     expect(result).toBeTruthy();
   });
@@ -163,7 +163,7 @@ describe('hasEnoughBalance', () => {
       },
       getBalance: jest.fn().mockResolvedValue(ethers.utils.parseUnits('1', 'wei')),
     };
-    const airnode = {
+    const dummyAirnode = {
       signMessage: jest.fn().mockResolvedValue('mockedSignature'),
     };
     const api3ServerV1 = {
@@ -175,7 +175,7 @@ describe('hasEnoughBalance', () => {
       },
     };
 
-    const result = await hasEnoughBalance(sponsorWallet as any, airnode as any, api3ServerV1 as any, logOptions);
+    const result = await hasEnoughBalance(sponsorWallet as any, dummyAirnode as any, api3ServerV1 as any, logOptions);
 
     expect(result).toBeFalsy();
   });
@@ -259,7 +259,7 @@ describe('hasEnoughBalance', () => {
       },
       getBalance: jest.fn().mockResolvedValue(ethers.utils.parseEther('1')),
     };
-    const airnode = {
+    const dummyAirnode = {
       signMessage: jest.fn().mockResolvedValue('mockedSignature'),
     };
     const api3ServerV1 = {
@@ -272,7 +272,7 @@ describe('hasEnoughBalance', () => {
     };
 
     await expect(
-      hasEnoughBalance(sponsorWallet as any, airnode as any, api3ServerV1 as any, logOptions)
+      hasEnoughBalance(sponsorWallet as any, dummyAirnode as any, api3ServerV1 as any, logOptions)
     ).rejects.toThrow('estimateGas:Unexpected');
   });
 });
@@ -312,7 +312,7 @@ describe('getSponsorBalanceStatus', () => {
       .mockResolvedValue(false)
       .mockResolvedValue(true);
 
-    const airnode = ethers.Wallet.createRandom();
+    const dummyAirnode = ethers.Wallet.createRandom();
 
     const expectedSponsorBalanceStatus = {
       sponsorAddress: 'sponsorAddress1',
@@ -320,7 +320,7 @@ describe('getSponsorBalanceStatus', () => {
       hasEnoughBalance: true,
     };
 
-    const sponsorBalanceStatus = await wallets.getSponsorBalanceStatus(chainSponsorGroup, airnode);
+    const sponsorBalanceStatus = await wallets.getSponsorBalanceStatus(chainSponsorGroup, dummyAirnode);
 
     expect(retrieveSponsorWalletMock).toHaveBeenCalledTimes(1);
     expect(retrieveSponsorWalletMock).toHaveBeenCalledWith('sponsorAddress1');
@@ -330,7 +330,7 @@ describe('getSponsorBalanceStatus', () => {
         address: 'sponsorWalletAddress1',
         provider: chainSponsorGroup.providers[0].rpcProvider,
       }),
-      airnode,
+      dummyAirnode,
       expect.any(ethers.Contract),
       expect.anything()
     );
@@ -339,7 +339,7 @@ describe('getSponsorBalanceStatus', () => {
         address: 'sponsorWalletAddress1',
         provider: chainSponsorGroup.providers[1].rpcProvider,
       }),
-      airnode,
+      dummyAirnode,
       expect.any(ethers.Contract),
       expect.anything()
     );
@@ -380,11 +380,11 @@ describe('getSponsorBalanceStatus', () => {
 
     jest.spyOn(logger, 'warn');
 
-    const airnode = ethers.Wallet.createRandom();
+    const dummyAirnode = ethers.Wallet.createRandom();
 
     const expectedSponsorBalanceStatus = null;
 
-    const sponsorBalanceStatus = await wallets.getSponsorBalanceStatus(chainSponsorGroup, airnode);
+    const sponsorBalanceStatus = await wallets.getSponsorBalanceStatus(chainSponsorGroup, dummyAirnode);
 
     expect(retrieveSponsorWalletMock).toHaveBeenCalledTimes(1);
     expect(retrieveSponsorWalletMock).toHaveBeenCalledWith('sponsorAddress1');
@@ -422,11 +422,11 @@ describe('getSponsorBalanceStatus', () => {
     });
     jest.spyOn(logger, 'warn');
 
-    const airnode = ethers.Wallet.createRandom();
+    const dummyAirnode = ethers.Wallet.createRandom();
 
     const expectedSponsorBalanceStatus = null;
 
-    const sponsorBalanceStatus = await wallets.getSponsorBalanceStatus(chainSponsorGroup, airnode);
+    const sponsorBalanceStatus = await wallets.getSponsorBalanceStatus(chainSponsorGroup, dummyAirnode);
 
     expect(sponsorBalanceStatus).toEqual(expectedSponsorBalanceStatus);
     expect(logger.warn).toHaveBeenCalledWith(
