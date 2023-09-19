@@ -1,11 +1,11 @@
 import * as node from '@api3/airnode-node';
 import * as protocol from '@api3/airnode-protocol';
 import { Api3ServerV1__factory } from '@api3/airnode-protocol-v1';
-import { getGasPrice } from '@api3/airnode-utilities';
 import { go, goSync } from '@api3/promise-utils';
 import { ethers } from 'ethers';
 import { uniq } from 'lodash';
 import { LogOptionsOverride, logger } from './logging';
+import { RateLimitedProvider } from './providers';
 import { Provider, SponsorWalletsPrivateKey, getState, updateState } from './state';
 import { shortenAddress } from './utils';
 import { DataFeedUpdates } from './validation';
@@ -13,7 +13,6 @@ import { DataFeedUpdates } from './validation';
 export type ChainSponsorGroup = {
   chainId: string;
   providers: Provider[];
-  chainOptions: node.ChainOptions;
   sponsorAddress: string;
   api3ServerV1Address: string;
 };
@@ -61,8 +60,27 @@ export const retrieveSponsorWallet = (sponsorAddress: string): ethers.Wallet => 
   return new ethers.Wallet(sponsorWalletsPrivateKey[sponsorAddress]);
 };
 
+const getMantleGasPrice = async (provider: RateLimitedProvider) => {
+  const goRes = await go(() => provider.send('rollup_gasPrices', []));
+  if (!goRes.success) throw goRes.error;
+
+  const l1GasPrice = ethers.BigNumber.from(goRes.data.l1GasPrice);
+  const l2GasPrice = ethers.BigNumber.from(goRes.data.l2GasPrice);
+
+  return l1GasPrice.add(l2GasPrice);
+};
+
+const getGasPrice = async (provider: RateLimitedProvider) => {
+  switch (provider.network.name) {
+    case 'mantle':
+    case 'mantle-goerli-testnet':
+      return getMantleGasPrice(provider);
+    default:
+      return provider.getGasPrice();
+  }
+};
+
 export const hasEnoughBalance = async (
-  chainOptions: node.ChainOptions,
   sponsorWallet: ethers.Wallet,
   airnode: ethers.Wallet,
   api3ServerV1: ethers.Contract,
@@ -76,15 +94,13 @@ export const hasEnoughBalance = async (
   }
   const balance = goGetBalance.data;
 
-  // Get the latest gas price using chain strategies from config
-  const [logs, gasTarget] = await getGasPrice(sponsorWallet.provider, chainOptions);
-  logs.forEach((log) =>
-    log.error ? logger.error(log.error.message, null, logOptions) : logger.debug(log.message, logOptions)
-  );
-  if (!gasTarget) {
-    throw new Error('Failed to get gas price');
+  // Get the gas price from provider
+  const goGasPrice = await go(() => getGasPrice(sponsorWallet.provider as RateLimitedProvider), { retries: 1 });
+  if (!goGasPrice.success) {
+    logger.error('Failed to get chain gas price', goGasPrice.error, logOptions);
+    throw new Error(goGasPrice.error.message);
   }
-  const gasPrice = gasTarget.type === 2 ? gasTarget.maxFeePerGas : gasTarget.gasPrice;
+  const gasPrice = goGasPrice.data;
 
   // Estimate the units of gas required for updating a single dummy beacon with signed data
   const goEstimateGas = await go(
@@ -135,7 +151,7 @@ export const getSponsorBalanceStatus = async (
   chainSponsorGroup: ChainSponsorGroup,
   airnode: ethers.Wallet
 ): Promise<SponsorBalanceStatus | null> => {
-  const { chainId, providers, chainOptions, sponsorAddress, api3ServerV1Address } = chainSponsorGroup;
+  const { chainId, providers, sponsorAddress, api3ServerV1Address } = chainSponsorGroup;
 
   const logOptions = {
     meta: { 'Chain-ID': chainId, Sponsor: shortenAddress(sponsorAddress) },
@@ -152,7 +168,7 @@ export const getSponsorBalanceStatus = async (
   const api3ServerV1 = new Api3ServerV1__factory().attach(api3ServerV1Address);
 
   const hasEnoughBalancePromises = providers.map(async ({ rpcProvider, providerName }) =>
-    hasEnoughBalance(chainOptions, sponsorWallet.connect(rpcProvider), airnode, api3ServerV1, {
+    hasEnoughBalance(sponsorWallet.connect(rpcProvider), airnode, api3ServerV1, {
       meta: { ...logOptions.meta, 'Sponsor-Wallet': shortenAddress(sponsorWallet.address), Provider: providerName },
     })
   );
@@ -173,13 +189,11 @@ export const filterSponsorWallets = async () => {
   const chainSponsorGroups = Object.entries(config.triggers.dataFeedUpdates).reduce(
     (acc: ChainSponsorGroup[], [chainId, dataFeedUpdatesPerSponsor]) => {
       const providers = stateProviders[chainId];
-      const chainOptions = config.chains[chainId].options;
       const api3ServerV1Address = config.chains[chainId].contracts['Api3ServerV1'];
       const providersSponsorGroups = Object.keys(dataFeedUpdatesPerSponsor).map((sponsorAddress) => {
         return {
           chainId,
           providers,
-          chainOptions,
           sponsorAddress,
           api3ServerV1Address,
         };

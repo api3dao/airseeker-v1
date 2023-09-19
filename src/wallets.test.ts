@@ -1,9 +1,3 @@
-import {
-  ChainOptions,
-  ConstantGasPriceStrategy,
-  GasPriceOracleConfig,
-  ProviderRecommendedGasPriceStrategy,
-} from '@api3/airnode-node';
 import { logger } from '@api3/airnode-utilities';
 import { ethers } from 'ethers';
 import { RateLimitedProvider } from './providers';
@@ -66,27 +60,6 @@ const config = {
     },
   },
 } as unknown as Config;
-
-const providerRecommendedGasPriceStrategy: ProviderRecommendedGasPriceStrategy = {
-  gasPriceStrategy: 'providerRecommendedGasPrice',
-  recommendedGasPriceMultiplier: 1.2,
-};
-const constantGasPriceStrategy: ConstantGasPriceStrategy = {
-  gasPriceStrategy: 'constantGasPrice',
-  gasPrice: {
-    value: 10,
-    unit: 'gwei',
-  },
-};
-const defaultGasPriceOracleOptions: GasPriceOracleConfig = [
-  providerRecommendedGasPriceStrategy,
-  constantGasPriceStrategy,
-];
-const fulfillmentGasLimit = 500_000;
-const defaultChainOptions: ChainOptions = {
-  gasPriceOracle: defaultGasPriceOracleOptions,
-  fulfillmentGasLimit,
-};
 
 beforeEach(() => {
   state.initializeState(config);
@@ -151,6 +124,11 @@ describe('hasEnoughBalance', () => {
         getBlock: jest.fn().mockResolvedValue({
           timestamp: Math.floor(Date.now() / 1000),
         }),
+        network: {
+          chainId: '1',
+          name: 'mainnet',
+        },
+        getGasPrice: jest.fn().mockResolvedValue(ethers.utils.parseUnits('10', 'gwei')),
       },
       getBalance: jest.fn().mockResolvedValue(ethers.utils.parseEther('1')),
     };
@@ -166,13 +144,7 @@ describe('hasEnoughBalance', () => {
       },
     };
 
-    const result = await hasEnoughBalance(
-      defaultChainOptions,
-      sponsorWallet as any,
-      airnode as any,
-      api3ServerV1 as any,
-      logOptions
-    );
+    const result = await hasEnoughBalance(sponsorWallet as any, airnode as any, api3ServerV1 as any, logOptions);
 
     expect(result).toBeTruthy();
   });
@@ -183,6 +155,11 @@ describe('hasEnoughBalance', () => {
         getBlock: jest.fn().mockResolvedValue({
           timestamp: Math.floor(Date.now() / 1000),
         }),
+        network: {
+          chainId: '1',
+          name: 'mainnet',
+        },
+        getGasPrice: jest.fn().mockResolvedValue(ethers.utils.parseUnits('10', 'gwei')),
       },
       getBalance: jest.fn().mockResolvedValue(ethers.utils.parseUnits('1', 'wei')),
     };
@@ -198,13 +175,7 @@ describe('hasEnoughBalance', () => {
       },
     };
 
-    const result = await hasEnoughBalance(
-      defaultChainOptions,
-      sponsorWallet as any,
-      airnode as any,
-      api3ServerV1 as any,
-      logOptions
-    );
+    const result = await hasEnoughBalance(sponsorWallet as any, airnode as any, api3ServerV1 as any, logOptions);
 
     expect(result).toBeFalsy();
   });
@@ -215,13 +186,63 @@ describe('hasEnoughBalance', () => {
         getBlock: jest.fn().mockResolvedValue({
           timestamp: Math.floor(Date.now() / 1000),
         }),
+        network: {
+          chainId: '1',
+          name: 'mainnet',
+        },
+        getGasPrice: jest.fn().mockResolvedValue(ethers.utils.parseUnits('10', 'gwei')),
       },
       getBalance: jest.fn().mockRejectedValue(new Error('getBalance: Unexpected')),
     };
 
-    await expect(
-      hasEnoughBalance(defaultChainOptions, sponsorWallet as any, {} as any, {} as any, logOptions)
-    ).rejects.toThrow('getBalance: Unexpected');
+    await expect(hasEnoughBalance(sponsorWallet as any, {} as any, {} as any, logOptions)).rejects.toThrow(
+      'getBalance: Unexpected'
+    );
+  });
+
+  it('should throw an error when failed to get gas price', async () => {
+    const sponsorWallet = {
+      provider: {
+        getBlock: jest.fn().mockResolvedValue({
+          timestamp: Math.floor(Date.now() / 1000),
+        }),
+        network: {
+          chainId: '1',
+          name: 'mainnet',
+        },
+        getGasPrice: jest.fn().mockRejectedValue(new Error('getGasPrice: Unexpected')),
+      },
+      getBalance: jest.fn().mockResolvedValue(ethers.utils.parseEther('1')),
+    };
+
+    await expect(hasEnoughBalance(sponsorWallet as any, {} as any, {} as any, logOptions)).rejects.toThrow(
+      'getGasPrice: Unexpected'
+    );
+  });
+
+  it('should throw an error when failed to get gas price (mantle)', async () => {
+    const sponsorWallet = {
+      provider: {
+        getBlock: jest.fn().mockResolvedValue({
+          timestamp: Math.floor(Date.now() / 1000),
+        }),
+        network: {
+          chainId: '5000',
+          name: 'mantle',
+        },
+        send: jest.fn().mockImplementation((method: string) => {
+          if (method === 'rollup_gasPrices') {
+            throw new Error('getGasPrice: Unexpected');
+          }
+        }),
+        getGasPrice: jest.fn().mockResolvedValue(ethers.utils.parseUnits('10', 'gwei')),
+      },
+      getBalance: jest.fn().mockResolvedValue(ethers.utils.parseEther('1')),
+    };
+
+    await expect(hasEnoughBalance(sponsorWallet as any, {} as any, {} as any, logOptions)).rejects.toThrow(
+      'getGasPrice: Unexpected'
+    );
   });
 
   it('should throw an error when failed to estimate gas', async () => {
@@ -230,6 +251,11 @@ describe('hasEnoughBalance', () => {
         getBlock: jest.fn().mockResolvedValue({
           timestamp: Math.floor(Date.now() / 1000),
         }),
+        network: {
+          chainId: '1',
+          name: 'mainnet',
+        },
+        getGasPrice: jest.fn().mockResolvedValue(ethers.utils.parseUnits('10', 'gwei')),
       },
       getBalance: jest.fn().mockResolvedValue(ethers.utils.parseEther('1')),
     };
@@ -246,7 +272,7 @@ describe('hasEnoughBalance', () => {
     };
 
     await expect(
-      hasEnoughBalance(defaultChainOptions, sponsorWallet as any, airnode as any, api3ServerV1 as any, logOptions)
+      hasEnoughBalance(sponsorWallet as any, airnode as any, api3ServerV1 as any, logOptions)
     ).rejects.toThrow('estimateGas:Unexpected');
   });
 });
@@ -269,7 +295,6 @@ describe('getSponsorBalanceStatus', () => {
           providerName: 'provider2',
         },
       ],
-      chainOptions: defaultChainOptions,
       api3ServerV1Address: '0x3dEC619dc529363767dEe9E71d8dD1A5bc270D76',
     };
 
@@ -301,7 +326,6 @@ describe('getSponsorBalanceStatus', () => {
     expect(retrieveSponsorWalletMock).toHaveBeenCalledWith('sponsorAddress1');
     expect(hasEnoughBalanceMock).toHaveBeenCalledTimes(2);
     expect(hasEnoughBalanceMock).toHaveBeenCalledWith(
-      defaultChainOptions,
       expect.objectContaining({
         address: 'sponsorWalletAddress1',
         provider: chainSponsorGroup.providers[0].rpcProvider,
@@ -311,7 +335,6 @@ describe('getSponsorBalanceStatus', () => {
       expect.anything()
     );
     expect(wallets.hasEnoughBalance).toHaveBeenCalledWith(
-      defaultChainOptions,
       expect.objectContaining({
         address: 'sponsorWalletAddress1',
         provider: chainSponsorGroup.providers[1].rpcProvider,
@@ -340,7 +363,6 @@ describe('getSponsorBalanceStatus', () => {
           providerName: 'provider2',
         },
       ],
-      chainOptions: defaultChainOptions,
       api3ServerV1Address: '0x3dEC619dc529363767dEe9E71d8dD1A5bc270D76',
     };
 
@@ -391,7 +413,6 @@ describe('getSponsorBalanceStatus', () => {
           providerName: 'provider1',
         },
       ],
-      chainOptions: defaultChainOptions,
       api3ServerV1Address: '0x3dEC619dc529363767dEe9E71d8dD1A5bc270D76',
     };
 
@@ -446,11 +467,9 @@ describe('filterSponsorWallets', () => {
         ...config,
         chains: {
           '1': {
-            options: defaultChainOptions,
             contracts: { Api3ServerV1: '0x3dEC619dc529363767dEe9E71d8dD1A5bc270D76' },
           } as any,
           '3': {
-            options: defaultChainOptions,
             contracts: { Api3ServerV1: '0x3dEC619dc529363767dEe9E71d8dD1A5bc270D76' },
           } as any,
         },
@@ -465,11 +484,9 @@ describe('filterSponsorWallets', () => {
       airseekerWalletMnemonic: 'achieve climb couple wait accident symbol spy blouse reduce foil echo label',
       chains: {
         '1': {
-          options: defaultChainOptions,
           contracts: { Api3ServerV1: '0x3dEC619dc529363767dEe9E71d8dD1A5bc270D76' },
         } as any,
         '3': {
-          options: defaultChainOptions,
           contracts: { Api3ServerV1: '0x3dEC619dc529363767dEe9E71d8dD1A5bc270D76' },
         } as any,
       },
