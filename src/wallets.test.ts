@@ -118,7 +118,47 @@ describe('retrieveSponsorWallet', () => {
 describe('hasEnoughBalance', () => {
   const logOptions = { format: 'plain', level: 'INFO', meta: {} };
 
-  it('should return true if balance is enough', async () => {
+  it('should return true if balance is enough (using fulfillmentGasLimit)', async () => {
+    const sponsorWallet = {
+      provider: {
+        getBlock: jest.fn().mockResolvedValue({
+          timestamp: Math.floor(Date.now() / 1000),
+        }),
+        network: {
+          chainId: '1',
+          name: 'mainnet',
+        },
+        getGasPrice: jest.fn().mockResolvedValue(ethers.utils.parseUnits('10', 'gwei')),
+      },
+      getBalance: jest.fn().mockResolvedValue(ethers.utils.parseEther('1')),
+    };
+    const dummyAirnode = {
+      signMessage: jest.fn().mockResolvedValue('mockedSignature'),
+    };
+    const updateBeaconWithSignedDataMock = jest.fn().mockResolvedValue(ethers.BigNumber.from(10000));
+    const api3ServerV1 = {
+      connect() {
+        return this;
+      },
+      estimateGas: {
+        updateBeaconWithSignedData: updateBeaconWithSignedDataMock,
+      },
+    };
+    const fulfillmentGasLimit = 500_000;
+
+    const result = await hasEnoughBalance(
+      sponsorWallet as any,
+      dummyAirnode as any,
+      api3ServerV1 as any,
+      fulfillmentGasLimit,
+      logOptions
+    );
+
+    expect(result).toBeTruthy();
+    expect(updateBeaconWithSignedDataMock).not.toHaveBeenCalled();
+  });
+
+  it('should return true if balance is enough (calling estimateGas)', async () => {
     const sponsorWallet = {
       provider: {
         getBlock: jest.fn().mockResolvedValue({
@@ -144,7 +184,13 @@ describe('hasEnoughBalance', () => {
       },
     };
 
-    const result = await hasEnoughBalance(sponsorWallet as any, dummyAirnode as any, api3ServerV1 as any, logOptions);
+    const result = await hasEnoughBalance(
+      sponsorWallet as any,
+      dummyAirnode as any,
+      api3ServerV1 as any,
+      undefined,
+      logOptions
+    );
 
     expect(result).toBeTruthy();
   });
@@ -175,7 +221,13 @@ describe('hasEnoughBalance', () => {
       },
     };
 
-    const result = await hasEnoughBalance(sponsorWallet as any, dummyAirnode as any, api3ServerV1 as any, logOptions);
+    const result = await hasEnoughBalance(
+      sponsorWallet as any,
+      dummyAirnode as any,
+      api3ServerV1 as any,
+      undefined,
+      logOptions
+    );
 
     expect(result).toBeFalsy();
   });
@@ -195,7 +247,7 @@ describe('hasEnoughBalance', () => {
       getBalance: jest.fn().mockRejectedValue(new Error('getBalance: Unexpected')),
     };
 
-    await expect(hasEnoughBalance(sponsorWallet as any, {} as any, {} as any, logOptions)).rejects.toThrow(
+    await expect(hasEnoughBalance(sponsorWallet as any, {} as any, {} as any, undefined, logOptions)).rejects.toThrow(
       'getBalance: Unexpected'
     );
   });
@@ -215,7 +267,7 @@ describe('hasEnoughBalance', () => {
       getBalance: jest.fn().mockResolvedValue(ethers.utils.parseEther('1')),
     };
 
-    await expect(hasEnoughBalance(sponsorWallet as any, {} as any, {} as any, logOptions)).rejects.toThrow(
+    await expect(hasEnoughBalance(sponsorWallet as any, {} as any, {} as any, undefined, logOptions)).rejects.toThrow(
       'getGasPrice: Unexpected'
     );
   });
@@ -240,7 +292,7 @@ describe('hasEnoughBalance', () => {
       getBalance: jest.fn().mockResolvedValue(ethers.utils.parseEther('1')),
     };
 
-    await expect(hasEnoughBalance(sponsorWallet as any, {} as any, {} as any, logOptions)).rejects.toThrow(
+    await expect(hasEnoughBalance(sponsorWallet as any, {} as any, {} as any, undefined, logOptions)).rejects.toThrow(
       'getGasPrice: Unexpected'
     );
   });
@@ -272,7 +324,7 @@ describe('hasEnoughBalance', () => {
     };
 
     await expect(
-      hasEnoughBalance(sponsorWallet as any, dummyAirnode as any, api3ServerV1 as any, logOptions)
+      hasEnoughBalance(sponsorWallet as any, dummyAirnode as any, api3ServerV1 as any, undefined, logOptions)
     ).rejects.toThrow('estimateGas:Unexpected');
   });
 });
@@ -332,6 +384,7 @@ describe('getSponsorBalanceStatus', () => {
       }),
       dummyAirnode,
       expect.any(ethers.Contract),
+      undefined,
       expect.anything()
     );
     expect(wallets.hasEnoughBalance).toHaveBeenCalledWith(
@@ -341,6 +394,7 @@ describe('getSponsorBalanceStatus', () => {
       }),
       dummyAirnode,
       expect.any(ethers.Contract),
+      undefined,
       expect.anything()
     );
     expect(sponsorBalanceStatus).toEqual(expectedSponsorBalanceStatus);
@@ -468,9 +522,11 @@ describe('filterSponsorWallets', () => {
         chains: {
           '1': {
             contracts: { Api3ServerV1: '0x3dEC619dc529363767dEe9E71d8dD1A5bc270D76' },
+            options: {},
           } as any,
           '3': {
             contracts: { Api3ServerV1: '0x3dEC619dc529363767dEe9E71d8dD1A5bc270D76' },
+            options: {},
           } as any,
         },
       },
@@ -485,9 +541,11 @@ describe('filterSponsorWallets', () => {
       chains: {
         '1': {
           contracts: { Api3ServerV1: '0x3dEC619dc529363767dEe9E71d8dD1A5bc270D76' },
+          options: {},
         } as any,
         '3': {
           contracts: { Api3ServerV1: '0x3dEC619dc529363767dEe9E71d8dD1A5bc270D76' },
+          options: {},
         } as any,
       },
       triggers: {

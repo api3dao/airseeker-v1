@@ -15,6 +15,7 @@ export type ChainSponsorGroup = {
   providers: Provider[];
   sponsorAddress: string;
   api3ServerV1Address: string;
+  fulfillmentGasLimit?: number;
 };
 
 export type SponsorBalanceStatus = {
@@ -84,6 +85,7 @@ export const hasEnoughBalance = async (
   sponsorWallet: ethers.Wallet,
   dummyAirnode: ethers.Wallet,
   api3ServerV1: ethers.Contract,
+  fulfillmentGasLimit: number | undefined,
   logOptions: LogOptionsOverride
 ): Promise<boolean> => {
   // Fetch current sponsorWallet balance
@@ -102,42 +104,47 @@ export const hasEnoughBalance = async (
   }
   const gasPrice = goGasPrice.data;
 
-  // Estimate the units of gas required for updating a single dummy beacon with signed data
-  const goEstimateGas = await go(
-    async () => {
-      const dummyBeaconTemplateId = ethers.utils.hexlify(ethers.utils.randomBytes(32));
-      const dummyBeaconTimestamp = Math.floor(Date.now() / 1000);
-      const randomBytes = ethers.utils.randomBytes(Math.floor(Math.random() * 27) + 1);
-      const dummyBeaconData = ethers.utils.defaultAbiCoder.encode(
-        ['int224'],
-        // Any radom number that fits into an int224
-        [ethers.BigNumber.from(randomBytes)]
-      );
-      const dummyBeaconSignature = await dummyAirnode.signMessage(
-        ethers.utils.arrayify(
-          ethers.utils.solidityKeccak256(
-            ['bytes32', 'uint256', 'bytes'],
-            [dummyBeaconTemplateId, dummyBeaconTimestamp, dummyBeaconData]
-          )
-        )
-      );
-      return api3ServerV1
-        .connect(sponsorWallet)
-        .estimateGas.updateBeaconWithSignedData(
-          dummyAirnode.address,
-          dummyBeaconTemplateId,
-          dummyBeaconTimestamp,
-          dummyBeaconData,
-          dummyBeaconSignature
+  let estimatedGas: ethers.BigNumber;
+  if (fulfillmentGasLimit) {
+    estimatedGas = ethers.BigNumber.from(fulfillmentGasLimit);
+  } else {
+    // Estimate the units of gas required for updating a single dummy beacon with signed data
+    const goEstimateGas = await go(
+      async () => {
+        const dummyBeaconTemplateId = ethers.utils.hexlify(ethers.utils.randomBytes(32));
+        const dummyBeaconTimestamp = Math.floor(Date.now() / 1000);
+        const randomBytes = ethers.utils.randomBytes(Math.floor(Math.random() * 27) + 1);
+        const dummyBeaconData = ethers.utils.defaultAbiCoder.encode(
+          ['int224'],
+          // Any radom number that fits into an int224
+          [ethers.BigNumber.from(randomBytes)]
         );
-    },
-    { retries: 1 }
-  );
-  if (!goEstimateGas.success) {
-    logger.error('Failed to get gas estimate', goEstimateGas.error, logOptions);
-    throw new Error(goEstimateGas.error.message);
+        const dummyBeaconSignature = await dummyAirnode.signMessage(
+          ethers.utils.arrayify(
+            ethers.utils.solidityKeccak256(
+              ['bytes32', 'uint256', 'bytes'],
+              [dummyBeaconTemplateId, dummyBeaconTimestamp, dummyBeaconData]
+            )
+          )
+        );
+        return api3ServerV1
+          .connect(sponsorWallet)
+          .estimateGas.updateBeaconWithSignedData(
+            dummyAirnode.address,
+            dummyBeaconTemplateId,
+            dummyBeaconTimestamp,
+            dummyBeaconData,
+            dummyBeaconSignature
+          );
+      },
+      { retries: 1 }
+    );
+    if (!goEstimateGas.success) {
+      logger.error('Failed to get gas estimate', goEstimateGas.error, logOptions);
+      throw new Error(goEstimateGas.error.message);
+    }
+    estimatedGas = goEstimateGas.data;
   }
-  const estimatedGas = goEstimateGas.data;
 
   logger.info(`Current balance: ${ethers.utils.formatEther(balance)} ether`, logOptions);
   logger.info(`Current gas price: ${ethers.utils.formatUnits(gasPrice, 'gwei')} gwei`, logOptions);
@@ -151,7 +158,7 @@ export const getSponsorBalanceStatus = async (
   chainSponsorGroup: ChainSponsorGroup,
   dummyAirnode: ethers.Wallet
 ): Promise<SponsorBalanceStatus | null> => {
-  const { chainId, providers, sponsorAddress, api3ServerV1Address } = chainSponsorGroup;
+  const { chainId, providers, sponsorAddress, api3ServerV1Address, fulfillmentGasLimit } = chainSponsorGroup;
 
   const logOptions = {
     meta: { 'Chain-ID': chainId, Sponsor: shortenAddress(sponsorAddress) },
@@ -168,7 +175,7 @@ export const getSponsorBalanceStatus = async (
   const api3ServerV1 = new Api3ServerV1__factory().attach(api3ServerV1Address);
 
   const hasEnoughBalancePromises = providers.map(async ({ rpcProvider, providerName }) =>
-    hasEnoughBalance(sponsorWallet.connect(rpcProvider), dummyAirnode, api3ServerV1, {
+    hasEnoughBalance(sponsorWallet.connect(rpcProvider), dummyAirnode, api3ServerV1, fulfillmentGasLimit, {
       meta: { ...logOptions.meta, 'Sponsor-Wallet': shortenAddress(sponsorWallet.address), Provider: providerName },
     })
   );
@@ -189,6 +196,7 @@ export const filterSponsorWallets = async () => {
   const chainSponsorGroups = Object.entries(config.triggers.dataFeedUpdates).reduce(
     (acc: ChainSponsorGroup[], [chainId, dataFeedUpdatesPerSponsor]) => {
       const providers = stateProviders[chainId];
+      const fulfillmentGasLimit = config.chains[chainId].options.fulfillmentGasLimit;
       const api3ServerV1Address = config.chains[chainId].contracts['Api3ServerV1'];
       const providersSponsorGroups = Object.keys(dataFeedUpdatesPerSponsor).map((sponsorAddress) => {
         return {
@@ -196,6 +204,7 @@ export const filterSponsorWallets = async () => {
           providers,
           sponsorAddress,
           api3ServerV1Address,
+          fulfillmentGasLimit,
         };
       });
       return [...acc, ...providersSponsorGroups];
