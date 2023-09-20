@@ -227,7 +227,7 @@ describe('hasEnoughBalance', () => {
           timestamp: Math.floor(Date.now() / 1000),
         }),
         network: {
-          chainId: '5000',
+          chainId: 5000,
           name: 'mantle',
         },
         send: jest.fn().mockImplementation((method: string) => {

@@ -71,9 +71,9 @@ const getMantleGasPrice = async (provider: RateLimitedProvider) => {
 };
 
 const getGasPrice = async (provider: RateLimitedProvider) => {
-  switch (provider.network.name) {
-    case 'mantle':
-    case 'mantle-goerli-testnet':
+  switch (provider.network.chainId) {
+    case 5000:
+    case 5001:
       return getMantleGasPrice(provider);
     default:
       return provider.getGasPrice();
