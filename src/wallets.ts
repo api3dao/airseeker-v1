@@ -7,7 +7,7 @@ import { uniq } from 'lodash';
 import { LogOptionsOverride, logger } from './logging';
 import { RateLimitedProvider } from './providers';
 import { Provider, SponsorWalletsPrivateKey, getState, updateState } from './state';
-import { shortenAddress } from './utils';
+import { createDummyBeaconUpdateData, shortenAddress } from './utils';
 import { DataFeedUpdates } from './validation';
 
 export type ChainSponsorGroup = {
@@ -111,22 +111,8 @@ export const hasEnoughBalance = async (
     // Estimate the units of gas required for updating a single dummy beacon with signed data
     const goEstimateGas = await go(
       async () => {
-        const dummyBeaconTemplateId = ethers.utils.hexlify(ethers.utils.randomBytes(32));
-        const dummyBeaconTimestamp = Math.floor(Date.now() / 1000);
-        const randomBytes = ethers.utils.randomBytes(Math.floor(Math.random() * 27) + 1);
-        const dummyBeaconData = ethers.utils.defaultAbiCoder.encode(
-          ['int224'],
-          // Any radom number that fits into an int224
-          [ethers.BigNumber.from(randomBytes)]
-        );
-        const dummyBeaconSignature = await dummyAirnode.signMessage(
-          ethers.utils.arrayify(
-            ethers.utils.solidityKeccak256(
-              ['bytes32', 'uint256', 'bytes'],
-              [dummyBeaconTemplateId, dummyBeaconTimestamp, dummyBeaconData]
-            )
-          )
-        );
+        const { dummyBeaconTemplateId, dummyBeaconTimestamp, dummyBeaconData, dummyBeaconSignature } =
+          await createDummyBeaconUpdateData(dummyAirnode);
         return api3ServerV1
           .connect(sponsorWallet)
           .estimateGas.updateBeaconWithSignedData(
