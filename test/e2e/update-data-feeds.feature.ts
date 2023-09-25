@@ -47,15 +47,10 @@ describe('updateDataFeeds', () => {
   });
 
   it('updates data feeds based on the configuration', async () => {
-    initiateDataFeedUpdates();
-    await utils.sleep(8_000);
-    state.updateState((oldState) => ({ ...oldState, stopSignalReceived: true }));
-    await utils.sleep(8_000);
-
     const beaconDataETH = await api3ServerV1
       .connect(voidSigner)
       .dataFeeds('0x924b5d4cb3ec6366ae4302a1ca6aec035594ea3ea48a102d160b50b0c43ebfb5');
-    expect(beaconDataETH.value.toString()).toEqual('738149047');
+    expect(beaconDataETH.value.toString()).toEqual('723392020');
     const beaconDataBTC = await api3ServerV1
       .connect(voidSigner)
       .dataFeeds('0xbf7ce55d109fd196de2a8bf1515d166c56c9decbe9cb473656bbca30d5743990');
@@ -63,11 +58,33 @@ describe('updateDataFeeds', () => {
     const beaconDataLTC = await api3ServerV1
       .connect(voidSigner)
       .dataFeeds('0x9b5825decf1232f79d3408fb6f7eeb7050fd88037f6517a94914e7d01ccd0cef');
-    expect(beaconDataLTC.value.toString()).toEqual('51420000');
+    expect(beaconDataLTC.value.toString()).toEqual('0');
     const beaconSetData = await api3ServerV1
       .connect(voidSigner)
       .dataFeeds('0xf7f1620b7f422eb9a69c8e21b317ba1555d3d87e1d804f0b024f03b107e411e8');
-    expect(beaconSetData.value.toString()).toEqual('20914636248');
+    expect(beaconSetData.value.toString()).toEqual('20907257735');
+
+    initiateDataFeedUpdates();
+    await utils.sleep(8_000);
+    state.updateState((oldState) => ({ ...oldState, stopSignalReceived: true }));
+    await utils.sleep(8_000);
+
+    const beaconDataETHNew = await api3ServerV1
+      .connect(voidSigner)
+      .dataFeeds('0x924b5d4cb3ec6366ae4302a1ca6aec035594ea3ea48a102d160b50b0c43ebfb5');
+    expect(beaconDataETHNew.value.toString()).toEqual('738149047');
+    const beaconDataBTCNew = await api3ServerV1
+      .connect(voidSigner)
+      .dataFeeds('0xbf7ce55d109fd196de2a8bf1515d166c56c9decbe9cb473656bbca30d5743990');
+    expect(beaconDataBTCNew.value.toString()).toEqual('41091123450');
+    const beaconDataLTCNew = await api3ServerV1
+      .connect(voidSigner)
+      .dataFeeds('0x9b5825decf1232f79d3408fb6f7eeb7050fd88037f6517a94914e7d01ccd0cef');
+    expect(beaconDataLTCNew.value.toString()).toEqual('51420000');
+    const beaconSetDataNew = await api3ServerV1
+      .connect(voidSigner)
+      .dataFeeds('0xf7f1620b7f422eb9a69c8e21b317ba1555d3d87e1d804f0b024f03b107e411e8');
+    expect(beaconSetDataNew.value.toString()).toEqual('20914636248');
   });
 
   // TODO: Add more tests

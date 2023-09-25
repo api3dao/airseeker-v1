@@ -344,50 +344,51 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
         logOptions
       );
 
-      const tx = await go(
-        updateBatch.length === 1
-          ? () =>
-              contract
-                .connect(sponsorWallet)
-                .updateBeaconWithSignedData(
-                  beaconUpdates[0].beacon.airnode,
-                  beaconUpdates[0].beacon.templateId,
-                  beaconUpdates[0].newBeaconResponse.timestamp,
-                  beaconUpdates[0].newBeaconResponse.encodedValue,
-                  beaconUpdates[0].newBeaconResponse.signature,
-                  { nonce, ...gasTarget }
-                )
-          : async () => {
-              const calldatas = updateBatch.map((beaconUpdateData) =>
-                contract.interface.encodeFunctionData('updateBeaconWithSignedData', [
-                  beaconUpdateData.beacon.airnode,
-                  beaconUpdateData.beacon.templateId,
-                  beaconUpdateData.newBeaconResponse.timestamp,
-                  beaconUpdateData.newBeaconResponse.encodedValue,
-                  beaconUpdateData.newBeaconResponse.signature,
-                ])
-              );
+      let updateFn;
+      if (updateBatch.length === 1) {
+        updateFn = () =>
+          contract
+            .connect(sponsorWallet)
+            .updateBeaconWithSignedData(
+              beaconUpdates[0].beacon.airnode,
+              beaconUpdates[0].beacon.templateId,
+              beaconUpdates[0].newBeaconResponse.timestamp,
+              beaconUpdates[0].newBeaconResponse.encodedValue,
+              beaconUpdates[0].newBeaconResponse.signature,
+              { nonce, ...gasTarget }
+            );
+      } else {
+        const calldatas = updateBatch.map((beaconUpdateData) =>
+          contract.interface.encodeFunctionData('updateBeaconWithSignedData', [
+            beaconUpdateData.beacon.airnode,
+            beaconUpdateData.beacon.templateId,
+            beaconUpdateData.newBeaconResponse.timestamp,
+            beaconUpdateData.newBeaconResponse.encodedValue,
+            beaconUpdateData.newBeaconResponse.signature,
+          ])
+        );
 
-              const gasLimit =
-                gasTarget.gasLimit ??
-                (await estimateBeaconMulticallGasLimit(contract.connect(sponsorWallet), calldatas, logOptions));
-              logger.debug(`Gas limit: ${gasLimit.toString()}`, logOptions);
+        const gasLimit =
+          gasTarget.gasLimit ??
+          (await estimateBeaconMulticallGasLimit(contract.connect(sponsorWallet), calldatas, logOptions));
+        logger.debug(`Gas limit: ${gasLimit.toString()}`, logOptions);
 
-              return contract.connect(sponsorWallet).tryMulticall(calldatas, {
-                nonce,
-                ...gasTarget,
-                gasLimit,
-              });
-            },
-        {
-          ...prepareGoOptions(startTime, totalTimeout),
-          onAttemptError: (goError) =>
-            logger.warn(
-              `Attempt to send transaction to update ${updateBatch.length} beacon(s) has failed. Error ${goError.error}`,
-              logOptions
-            ),
-        }
-      );
+        updateFn = () =>
+          contract.connect(sponsorWallet).tryMulticall(calldatas, {
+            nonce,
+            ...gasTarget,
+            gasLimit,
+          });
+      }
+
+      const tx = await go(updateFn, {
+        ...prepareGoOptions(startTime, totalTimeout),
+        onAttemptError: (goError) =>
+          logger.warn(
+            `Attempt to send transaction to update ${updateBatch.length} beacon(s) has failed. Error ${goError.error}`,
+            logOptions
+          ),
+      });
       if (!tx.success) {
         logger.warn(
           `Unable send transaction to update ${updateBatch.length} beacon(s) with nonce ${nonce}. Error: ${tx.error}`,
@@ -513,13 +514,11 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
     }
     const { successes, returndata } = goDatafeedsTryMulticall.data;
 
-    type BeaconSetBeaconUpdate = {
-      beaconId: string;
-    } & Pick<Beacon, 'airnode' | 'templateId'> &
-      SignedData;
+    type BeaconSetBeaconUpdate = Pick<Beacon, 'airnode' | 'templateId'> & SignedData;
+    type BeaconSetUpdate = { beaconIds: string[]; beaconSetBeaconUpdates: BeaconSetBeaconUpdate[] };
 
     // Process beacon set update
-    let beaconSetsBeaconUpdates: BeaconSetBeaconUpdate[][] = [];
+    let beaconSetUpdates: BeaconSetUpdate[] = [];
 
     for (let i = 0; i < readBatch.length; i++) {
       const beaconSetReturndata = returndata[i];
@@ -629,7 +628,6 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
           value = decodedValue;
           timestamp = parseInt(apiBeaconResponse.timestamp, 10);
           beaconUpdate = {
-            beaconId,
             airnode,
             templateId,
             ...apiBeaconResponse,
@@ -665,20 +663,22 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
         continue;
       }
 
-      beaconSetsBeaconUpdates = [...beaconSetsBeaconUpdates, beaconSetBeaconUpdateData.beaconUpdates];
+      beaconSetUpdates = [
+        ...beaconSetUpdates,
+        { beaconIds: beaconSetBeaconIds, beaconSetBeaconUpdates: beaconSetBeaconUpdateData.beaconUpdates },
+      ];
     }
 
     let nonce = transactionCount;
     // For beacon sets, we send a single transaction per beacon set by multicalling the update of each beacon plus the beacon set update
-    for (const beaconSetBeaconUpdates of beaconSetsBeaconUpdates) {
+    for (const beaconSetUpdate of beaconSetUpdates) {
       const getGasFn = () => getGasPrice(provider.rpcProvider.getProvider(), config.chains[chainId].options);
       // We have to grab the limiter from the custom provider as the getGasPrice function contains its own timeouts
       const [logs, gasTarget] = await provider.rpcProvider.getLimiter().schedule({ expiration: 30_000 }, getGasFn);
       logger.logPending(logs, logOptions);
 
-      const beaconIds = beaconSetBeaconUpdates.map((beaconSetBeaconUpdate) => beaconSetBeaconUpdate.beaconId);
       const beaconSetUpdateCalldatas = [
-        ...beaconSetBeaconUpdates.map((beaconSetBeaconUpdate) =>
+        ...beaconSetUpdate.beaconSetBeaconUpdates.map((beaconSetBeaconUpdate) =>
           contract.interface.encodeFunctionData('updateBeaconWithSignedData', [
             beaconSetBeaconUpdate.airnode,
             beaconSetBeaconUpdate.templateId,
@@ -687,26 +687,22 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
             beaconSetBeaconUpdate.signature,
           ])
         ),
-        contract.interface.encodeFunctionData('updateBeaconSetWithBeacons', [beaconIds]),
+        contract.interface.encodeFunctionData('updateBeaconSetWithBeacons', [beaconSetUpdate.beaconIds]),
       ];
+
+      const gasLimit =
+        gasTarget.gasLimit ??
+        (await estimateBeaconSetMulticallGasLimit(
+          contract.connect(sponsorWallet),
+          beaconSetUpdateCalldatas,
+          beaconSetUpdate.beaconIds,
+          logOptions
+        ));
+      logger.debug(`Gas limit: ${gasLimit.toString()}`, logOptions);
 
       // Update beacon set batch onchain values
       const tx = await go(
-        async () => {
-          const gasLimit =
-            gasTarget.gasLimit ??
-            (await estimateBeaconSetMulticallGasLimit(
-              contract.connect(sponsorWallet),
-              beaconSetUpdateCalldatas,
-              beaconIds,
-              logOptions
-            ));
-          logger.debug(`Gas limit: ${gasLimit.toString()}`, logOptions);
-
-          return contract
-            .connect(sponsorWallet)
-            .tryMulticall(beaconSetUpdateCalldatas, { nonce, ...gasTarget, gasLimit });
-        },
+        () => contract.connect(sponsorWallet).tryMulticall(beaconSetUpdateCalldatas, { nonce, ...gasTarget, gasLimit }),
         {
           ...prepareGoOptions(startTime, totalTimeout),
           onAttemptError: (goError) =>
