@@ -235,7 +235,7 @@ export const recordGatewayResponseSuccess = async (templateId: string, gatewayUr
           `The URL is included below, it is sensitive data.`,
           ``,
           `Airnode Address: ${airnodeAddress}`,
-          `Gateway URL: ${gatewayUrl} (potentially sensitive)`,
+          `Gateway URL: ${generateOpsGenieAlias(gatewayUrl)} (potentially sensitive)`,
           `and it affects the following beacon(s):`,
           ...affectedBeacons.map(([beaconId]) => beaconId),
         ].join('\n'),
