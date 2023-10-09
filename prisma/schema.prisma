@@ -10,18 +10,106 @@ datasource db {
   url      = env("DATABASE_URL") // eg = "postgresql://johndoe:mypassword@localhost:5432/mydb?schema=public"
 }
 
-enum DataFeedType {
-  Beacon
-  BeaconSet
+// Extras
+// I'm not sure how Prisma will handle these indexes, so I've placed them here for now.
+// If we have a migration issue we can drop these indexes and try and integrate them into the schema
+// although I doubt Prisma supports expression-based indexes.
+// create index IF NOT EXISTS date_trunc_minute on "NodaryApiValues" (DATE_TRUNC('minute', "when"));
+// create index IF NOT EXISTS nodary_api_values_name on "NodaryApiValues"("name");
+// create index IF NOT EXISTS nodary_providers_name on "NodaryProvidersFlat"("feedName");
+
+model TrimmedDApi {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // an arbitary ID
+  name             String // The name of this DAPI (eg. "USD/EUR")
+  dataFeedId       String
+  isBeaconSet      Boolean
+  category         String // A human-readable category name, eg. "Cryptocurrency" or "Forex"
+  chainName        String
+  supplierCategory String
+  fundingStatus    String
+  displayOnMarket  Boolean
+  isNewListing     Boolean
+  estimatedExpiry  DateTime? // The estimated expiry date of a managed datafeed
+  managedAvailable Boolean
+  upgradeStatus    String
+
+  @@unique([name, chainName])
+  @@index([chainName, supplierCategory])
+}
+
+model NodaryApiValues {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  dataFeedId           String
+  name                 String
+  when                 DateTime
+  apiValue             Float
+  nodaryDeviation      Float
+  nodaryTimestampDelta Int
+  providerName         String
+  inBeaconSet          Boolean  @default(false)
+
+  @@index([when, name])
+  @@index([dataFeedId])
+}
+
+model BeaconSetEvents {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  when              DateTime
+  dataFeedId        String
+  apiValue          Float
+  chain             String
+  name              String
+  nodaryDeviation   Float
+  inBeaconSet       Boolean  @default(false)
+  children          String[]
+  gasUsed           Float?
+  effectiveGasPrice Float?
+  cumulativeGasUsed Float? // This is gasUsed * cumulativeGasUsed and then summed up with the last field value of the same column
+
+  @@index([when, name])
+}
+
+model DApiMetadata {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // an arbitary ID
+  name        String // The name of this DAPI (eg. "USD/EUR")
+  beaconSetId String?
+  beaconId    String? @db.Text
+}
+
+model BeaconMetadata {
+  dataFeedId   String @id
+  name         String
+  providerName String
+
+  @@index([dataFeedId])
+  @@index([name])
+  @@index([providerName])
+}
+
+model BeaconSetMetadata {
+  dataFeedId String   @id
+  name       String
+  beaconIds  String[]
+
+  @@index([dataFeedId])
+  @@index([name])
+}
+
+model BeaconSetChildren {
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  beaconSetId String
+  name        String
+  beaconId    String
 }
 
 model DataFeedApiValue {
-  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  when       DateTime     @default(now())
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  when       DateTime @default(now())
   dataFeedId String
   apiValue   Float
   timestamp  DateTime
-  type       DataFeedType
+  fromNodary Boolean  @default(false)
+
   @@index([dataFeedId])
 }
 
@@ -29,7 +117,66 @@ model DeviationValue {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   when       DateTime @default(now())
   dataFeedId String
-  chainId    String
+  chainName  String
   deviation  Float
-  @@index([dataFeedId, chainId])
+
+  @@index([dataFeedId, chainName])
+}
+
+model WalletBalance {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  when          DateTime @default(now())
+  walletAddress String
+  chainName     String
+  balance       Float
+  name          String
+
+  @@index([walletAddress, chainName])
+}
+
+model NodaryProvidersFlat {
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  feedName String
+  provider String
+}
+
+model NodaryProvidersAsArrays {
+  id       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  feedName String
+  provider String[]
+}
+
+model CompoundValues {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  when                DateTime @default(now())
+  dapiName            String
+  chainName           String
+  dataFeedId          String
+  onChainValue        Float
+  offChainValue       Float
+  onOffChainDeviation Float
+  nodaryDeviation     Float
+  nodaryValue         Float
+  onChainTimestamp    DateTime
+  timestampDelta      Int
+
+  @@index([dapiName])
+  @@index([when])
+}
+
+model GatewayFailures {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  when           DateTime @default(now())
+  airnodeAddress String
+  hashedUrl      String
+  count          Int
+}
+
+model RPCFailures {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  when         DateTime @default(now())
+  chainName    String
+  hashedUrl    String
+  providerName String
+  count        Int
 }

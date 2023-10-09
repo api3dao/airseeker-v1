@@ -9,6 +9,7 @@ import { logger } from './logging';
 import { Gateway, SignedData, signedDataSchema, signedDataSchemaLegacy, Template } from './validation';
 import { GATEWAY_TIMEOUT_MS, TOTAL_TIMEOUT_HEADROOM_DEFAULT_MS } from './constants';
 import { Id, getState } from './state';
+import { recordGatewayResponseSuccess } from './alerting';
 
 export const urlJoin = (baseUrl: string, endpointId: string) => {
   if (baseUrl.endsWith('/')) {
@@ -66,6 +67,8 @@ export const makeSignedDataGatewayRequests = async (
       );
 
     const goRes = await (queue ? queue.schedule({ expiration: 60_000 }, goResFn) : goResFn());
+
+    recordGatewayResponseSuccess(templateId, fullUrl, goRes?.success);
 
     if (!goRes.success) {
       const message = `Failed to make signed data gateway request for gateway: "${fullUrl}". Error: "${goRes.error}"`;

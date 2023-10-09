@@ -10,7 +10,7 @@ package:
 provider:
   name: aws
   region: us-east-1
-  stage: '2209221310'
+  stage: ${opt:stage, 'c'}
   runtime: nodejs18.x
   architecture: arm64
   logRetentionInDays: 14

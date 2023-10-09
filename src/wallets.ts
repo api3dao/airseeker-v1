@@ -48,6 +48,10 @@ export const initializeSponsorWallets = () => {
     ])
   );
 
+  Object.entries(sponsorWalletsPrivateKey).map(([key, value]) => {
+    logger.debug(`Sponsor wallet (derived) ${value} for sponsor ${key}`);
+  });
+
   updateState((state) => ({ ...state, sponsorWalletsPrivateKey }));
 };
 
@@ -66,6 +70,7 @@ export const isBalanceZero = async (
   if (!goResult.success) {
     throw new Error(goResult.error.message);
   }
+
   return goResult.data.isZero();
 };
 
@@ -117,7 +122,7 @@ export const filterEmptySponsors = async () => {
   const balanceGroups = balanceGroupsOrNull.filter((group): group is SponsorBalanceStatus => group !== null);
 
   // Update dataFeedUpdates with non-empty sponsor wallets
-  const fundedBalanceGroups = balanceGroups.filter(({ isEmpty }) => isEmpty === false);
+  const fundedBalanceGroups = balanceGroups.filter(({ isEmpty }) => !isEmpty);
   const fundedDataFeedUpdates = fundedBalanceGroups.reduce((acc: DataFeedUpdates, { chainId, sponsorAddress }) => {
     return {
       ...acc,

@@ -17,7 +17,7 @@ import { Provider, getState } from './state';
 import { getTransactionCount } from './transaction-count';
 import { prepareGoOptions, shortenAddress, sleep } from './utils';
 import { Beacon, BeaconSetTrigger, BeaconTrigger, SignedData } from './validation';
-import { checkAndReport } from './alerting';
+import { checkAndReport, recordRpcProviderResponseSuccess } from './alerting';
 
 type ProviderSponsorDataFeeds = {
   provider: Provider;
@@ -410,6 +410,10 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
           logger.warn(`Failed attempt to read beaconSet data using multicall. Error ${goError.error}`, logOptions),
       }
     );
+
+    // Purely reporting, we're therefore not too concerned about the promise
+    recordRpcProviderResponseSuccess(contract, goDatafeedsTryMulticall.success);
+
     if (!goDatafeedsTryMulticall.success) {
       logger.warn(`Unable to read beaconSet data using multicall. Error: ${goDatafeedsTryMulticall.error}`, logOptions);
       continue;
@@ -584,17 +588,35 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
         beaconSetBeaconUpdateData.beaconSetBeaconValues.map((value) => ethers.BigNumber.from(value.timestamp))
       ).toNumber();
 
-      // Verify all conditions for beacon set update are met otherwise skip
-      const [log, { result }] = checkConditions(
-        onChainBeaconSetValue,
-        onChainBeaconSetTimestamp,
-        newBeaconSetTimestamp,
-        beaconSetUpdateData.beaconSetTrigger,
-        newBeaconSetValue
-      );
-      logger.logPending(log, beaconSetUpdateData.logOptionsBeaconSetId);
-      if (!result) {
+      if (monitorOnly) {
+        await Promise.allSettled([
+          checkAndReport(
+            'BeaconSet',
+            beaconSetUpdateData.beaconSetTrigger.beaconSetId,
+            onChainBeaconSetValue,
+            onChainBeaconSetTimestamp,
+            newBeaconSetValue,
+            newBeaconSetTimestamp,
+            chainId,
+            beaconSetUpdateData.beaconSetTrigger,
+            config?.monitoring?.deviationMultiplier,
+            config?.monitoring?.heartbeatMultiplier
+          ),
+        ]);
         continue;
+      } else {
+        // Verify all conditions for beacon set update are met otherwise skip
+        const [log, { result }] = checkConditions(
+          onChainBeaconSetValue,
+          onChainBeaconSetTimestamp,
+          newBeaconSetTimestamp,
+          beaconSetUpdateData.beaconSetTrigger,
+          newBeaconSetValue
+        );
+        logger.logPending(log, beaconSetUpdateData.logOptionsBeaconSetId);
+        if (!result) {
+          continue;
+        }
       }
 
       beaconSetUpdateCalldatas = [

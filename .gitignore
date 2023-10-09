@@ -40,3 +40,6 @@ logs
 ncc
 
 .DS_Store
+
+# Don't commit the actual serverless.yml file
+serverless.yml
