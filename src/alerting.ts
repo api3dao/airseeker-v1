@@ -42,9 +42,13 @@ export { limitedCloseOpsGenieAlertWithAlias, limitedSendToOpsGenieLowLevel };
 
 export const opsGenieConfig = { apiKey: process.env.OPSGENIE_API_KEY ?? '', responders: [] };
 
-type DbRecord = { model: string; record: any };
-const recordsToInsert: DbRecord[] = [];
-const lastDbInsert = 0;
+type DbRecord = {
+  model: 'deviationValue' | 'rPCFailures' | 'compoundValues' | 'dataFeedApiValue' | 'gatewayFailures';
+  record: any;
+};
+let recordsToInsert: DbRecord[] = [];
+let dbMutex = false;
+let dbWriterInterval: undefined | NodeJS.Timeout;
 
 const addRecord = (record: DbRecord) => {
   // eslint-disable-next-line functional/immutable-data
@@ -52,16 +56,49 @@ const addRecord = (record: DbRecord) => {
 };
 
 const writeRecords = async () => {
+  if (dbMutex) {
+    return;
+  }
+
+  dbMutex = true;
+
   const bufferedRecords = groupBy([...recordsToInsert], 'model');
+  recordsToInsert = [];
 
   const results = await Promise.allSettled(
-    Object.entries(bufferedRecords).map(([model, data]) => prisma[model].createMany({ data }))
+    // @ts-ignore
+    Object.entries(bufferedRecords).map(([model, data]) =>
+      prisma[model].createMany({ data: data.map((item) => item.record) })
+    )
   );
 
   // eslint-disable-next-line no-console
   console.error(results.filter((result) => result.status === 'rejected'));
 
-  lastDbInsert = Date.now();
+  dbMutex = false;
+
+  if (!getState().stopSignalReceived) {
+    // eslint-disable-next-line no-console
+    console.log('Clearing DB writer interval due to stop signal received...');
+    clearInterval(dbWriterInterval);
+  }
+};
+
+let dbWriterInitialised = false;
+
+const dbWriterLoop = async () => {
+  if (dbWriterInitialised) {
+    return;
+  }
+
+  dbWriterInitialised = true;
+
+  dbWriterInterval = setInterval(writeRecords, 1_000);
+
+  // setInterval(() => {
+  //   // eslint-disable-next-line no-console
+  //   console.log(`DB writer queue size: ${recordsToInsert.length} | ${(Date.now()-lastDbInsert)/1_000}`);
+  // }, 2_000);
 };
 
 /**
@@ -184,8 +221,9 @@ export const recordRpcProviderResponseSuccess = async (contract: Api3ServerV1, s
       );
     }
 
-    await prisma.rPCFailures.create({
-      data: {
+    addRecord({
+      model: 'rPCFailures',
+      record: {
         chainName,
         hashedUrl: generateOpsGenieAlias(selector),
         providerName,
@@ -253,18 +291,14 @@ export const recordGatewayResponseSuccess = async (templateId: string, gatewayUr
     );
   }
 
-  try {
-    await prisma.gatewayFailures.create({
-      data: {
-        airnodeAddress: airnodeAddress,
-        hashedUrl: generateOpsGenieAlias(gatewayUrl),
-        count: newGatewayResultStatus.badTries,
-      },
-    });
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.error(JSON.stringify(e, null, 2));
-  }
+  addRecord({
+    model: 'gatewayFailures',
+    record: {
+      airnodeAddress: airnodeAddress,
+      hashedUrl: generateOpsGenieAlias(gatewayUrl),
+      count: newGatewayResultStatus.badTries,
+    },
+  });
 };
 
 export const runReporterLoop = async () => {
@@ -302,7 +336,7 @@ export const runReporterLoop = async () => {
     );
   }
 
-  while (reporterRunning) {
+  while (reporterRunning && !getState().stopSignalReceived) {
     if (Date.now() - lastRun > 60_000) {
       lastRun = Date.now();
 
@@ -395,6 +429,8 @@ export const checkAndReport = async (
     runReporterLoop();
   }
 
+  dbWriterLoop();
+
   if (type === 'Beacon') {
     return;
   }
@@ -425,8 +461,9 @@ export const checkAndReport = async (
       ? Math.abs(nodaryBaseline.value / onChainValueNumber - 1) * 100.0
       : -1;
 
-    await prisma.compoundValues.create({
-      data: {
+    addRecord({
+      model: 'compoundValues',
+      record: {
         dapiName: thisDapi.name,
         dataFeedId,
         chainName,
@@ -515,42 +552,28 @@ export const checkAndReport = async (
     }
   }
 
-  const prismaPromises = await Promise.allSettled([
-    prisma.dataFeedApiValue.create({
-      data: {
+  addRecord({
+    model: 'dataFeedApiValue',
+    record: {
+      dataFeedId,
+      apiValue: new Bnj.BigNumber(offChainValue.toString())
+        .dividedBy(new Bnj.BigNumber(10).pow(new Bnj.BigNumber(18)))
+        .toNumber(),
+      timestamp: new Date(offChainTimestamp * 1_000),
+      fromNodary: false,
+    },
+  });
+
+  if (reportedDeviation !== 0) {
+    addRecord({
+      model: 'deviationValue',
+      record: {
         dataFeedId,
-        apiValue: new Bnj.BigNumber(offChainValue.toString())
-          .dividedBy(new Bnj.BigNumber(10).pow(new Bnj.BigNumber(18)))
-          .toNumber(),
-        timestamp: new Date(offChainTimestamp * 1_000),
-        fromNodary: false,
+        deviation: reportedDeviation,
+        chainName,
       },
-    }),
-    reportedDeviation !== 0
-      ? prisma.deviationValue.create({
-          data: {
-            dataFeedId,
-            deviation: reportedDeviation,
-            chainName,
-          },
-        })
-      : undefined,
-  ]);
-  await Promise.allSettled(
-    prismaPromises
-      .filter((result) => result.status === 'rejected')
-      .map((failedPromise) =>
-        limitedSendToOpsGenieLowLevel(
-          {
-            priority: 'P2',
-            alias: generateOpsGenieAlias(`error-insert-record-airseeker-logger`),
-            message: `A Prisma error occurred while inserting a record in the Airseeker logger`,
-            description: JSON.stringify(failedPromise, null, 2),
-          },
-          opsGenieConfig
-        )
-      )
-  );
+    });
+  }
 
   const currentDeviation = new Bnj.BigNumber(calculateUpdateInPercentage(onChainValue, offChainValue).toString())
     .div(new Bnj.BigNumber(HUNDRED_PERCENT))
