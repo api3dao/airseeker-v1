@@ -66,8 +66,8 @@ const writeRecords = async () => {
   recordsToInsert = [];
 
   const results = await Promise.allSettled(
-    // @ts-ignore
     Object.entries(bufferedRecords).map(([model, data]) =>
+      // @ts-ignore
       prisma[model].createMany({ data: data.map((item) => item.record) })
     )
   );
