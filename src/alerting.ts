@@ -77,7 +77,7 @@ const writeRecords = async () => {
 
   dbMutex = false;
 
-  if (!getState().stopSignalReceived) {
+  if (getState().stopSignalReceived) {
     // eslint-disable-next-line no-console
     console.log('Clearing DB writer interval due to stop signal received...');
     clearInterval(dbWriterInterval);
