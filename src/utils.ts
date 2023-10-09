@@ -18,7 +18,7 @@ export const createDummyBeaconUpdateData = async (dummyAirnode: ethers.Wallet = 
   const randomBytes = ethers.utils.randomBytes(Math.floor(Math.random() * 27) + 1);
   const dummyBeaconData = ethers.utils.defaultAbiCoder.encode(
     ['int224'],
-    // Any radom number that fits into an int224
+    // Any random number that fits into an int224
     [ethers.BigNumber.from(randomBytes)]
   );
   const dummyBeaconSignature = await dummyAirnode.signMessage(
