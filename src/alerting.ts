@@ -7,6 +7,7 @@ import axios from 'axios';
 import { go } from '@api3/promise-utils';
 import { TrimmedDApi } from '@prisma/client';
 import { Api3ServerV1 } from '@api3/airnode-protocol-v1';
+import { groupBy } from 'lodash';
 import prisma from './database';
 import { BeaconSetTrigger, BeaconTrigger } from './validation';
 import { calculateUpdateInPercentage } from './calculations';
@@ -16,6 +17,18 @@ import { sleep } from './utils';
 import { getState } from './state';
 import { RateLimitedProvider } from './providers';
 
+/*
+A big problem with the predecessor of this app was maintenance; having a separate application for datafeeds is a lot of
+work.
+
+To keep things low maintenance this branch tries to keep everything related to alerting very obviously separate from the
+main Airseeker application. Only the entrypoint into the alerting code have been added to the non-alerting side of
+the application.
+
+The nature of the alerting code means immutability can't really apply, at least not like the rest of Airseeker.
+ */
+
+// A type representing data we retrieve from Nodary
 export type NodaryData = Record<string, { dataFeedId: string; value: number; timestamp: number; name: string }[]>;
 
 export type NodaryPayload = {
@@ -23,11 +36,38 @@ export type NodaryPayload = {
   result: NodaryData;
 };
 
+// Mocking the OpsGenie utils for tests can be a pain - this assists us
 let { limitedCloseOpsGenieAlertWithAlias, limitedSendToOpsGenieLowLevel } = utils.getOpsGenieLimiter();
 export { limitedCloseOpsGenieAlertWithAlias, limitedSendToOpsGenieLowLevel };
 
 export const opsGenieConfig = { apiKey: process.env.OPSGENIE_API_KEY ?? '', responders: [] };
 
+type DbRecord = { model: string; record: any };
+const recordsToInsert: DbRecord[] = [];
+const lastDbInsert = 0;
+
+const addRecord = (record: DbRecord) => {
+  // eslint-disable-next-line functional/immutable-data
+  recordsToInsert.push(record);
+};
+
+const writeRecords = async () => {
+  const bufferedRecords = groupBy([...recordsToInsert], 'model');
+
+  const results = await Promise.allSettled(
+    Object.entries(bufferedRecords).map(([model, data]) => prisma[model].createMany({ data }))
+  );
+
+  // eslint-disable-next-line no-console
+  console.error(results.filter((result) => result.status === 'rejected'));
+
+  lastDbInsert = Date.now();
+};
+
+/**
+ * Retrieves Nodary data - this is data from various providers served by Nodary that allows us to have a baseline/reference
+ * deviation.
+ */
 export const getNodaryData = async (): Promise<NodaryData> => {
   const nodaryResponse = await go(
     () =>
@@ -82,6 +122,18 @@ let trimmedDapis: TrimmedDApi[] = [];
 const gatewayResults: Record<string, { badTries: number }> = {};
 const rpcProviderResults: Record<string, { badTries: number }> = {};
 
+/**
+ * Handles response statuses from RPC Provider calls.
+ *
+ * If a Provider call fails more than 3-times in a row, this code raises an alert.
+ *
+ * Again, we try to not modify the original Airseeker code as far as possible, so we take arguments here that don't
+ * entirely make sense... like the contract. The contract is what Airseeker uses to do its work, but really we're after
+ * the RPC Provider inside the contract object.
+ *
+ * @param contract
+ * @param success
+ */
 export const recordRpcProviderResponseSuccess = async (contract: Api3ServerV1, success: boolean) => {
   try {
     const state = getState();
