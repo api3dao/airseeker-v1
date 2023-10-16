@@ -230,7 +230,7 @@ export const recordGatewayResponseSuccess = async (templateId: string, gatewayUr
       {
         message: `Dead gateway for Airnode Address ${airnodeAddress}`,
         priority: 'P3',
-        alias: `dead-gateway-${airnodeAddress}${generateOpsGenieAlias(gatewayUrl)}`,
+        alias: `dead-gateway-${airnodeAddress}${generateOpsGenieAlias(baseUrl)}`,
         description: [
           `A gateway has failed at least ${newGatewayResultStatus.badTries} times.`,
           `If the provider doesn't have enough active gateways Airseeker won't be able to get values with which to update the beacon set.`,
@@ -247,7 +247,7 @@ export const recordGatewayResponseSuccess = async (templateId: string, gatewayUr
     );
   } else {
     await limitedCloseOpsGenieAlertWithAlias(
-      `dead-gateway-${airnodeAddress}${generateOpsGenieAlias(gatewayUrl)}`,
+      `dead-gateway-${airnodeAddress}${generateOpsGenieAlias(baseUrl)}`,
       opsGenieConfig
     );
   }
