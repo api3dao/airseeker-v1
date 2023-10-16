@@ -222,6 +222,9 @@ export const recordGatewayResponseSuccess = async (templateId: string, gatewayUr
     badTries: success ? 0 : existingGatewayResult.badTries + 1,
   });
 
+  const parsedUrl = new URL(gatewayUrl);
+  const baseUrl = `${parsedUrl.protocol}//${parsedUrl.host}`;
+
   if (newGatewayResultStatus.badTries > 3) {
     await limitedSendToOpsGenieLowLevel(
       {
@@ -235,7 +238,7 @@ export const recordGatewayResponseSuccess = async (templateId: string, gatewayUr
           `The URL is included below, it is sensitive data.`,
           ``,
           `Airnode Address: ${airnodeAddress}`,
-          `Gateway URL: ${generateOpsGenieAlias(gatewayUrl)} (potentially sensitive)`,
+          `Hashed Gateway URL: ${generateOpsGenieAlias(baseUrl)} (potentially sensitive)`,
           `and it affects the following beacon(s):`,
           ...affectedBeacons.map(([beaconId]) => beaconId),
         ].join('\n'),
