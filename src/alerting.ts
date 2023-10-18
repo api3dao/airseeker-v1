@@ -7,6 +7,7 @@ import axios from 'axios';
 import { go } from '@api3/promise-utils';
 import { TrimmedDApi } from '@prisma/client';
 import { Api3ServerV1 } from '@api3/airnode-protocol-v1';
+import { groupBy } from 'lodash';
 import prisma from './database';
 import { BeaconSetTrigger, BeaconTrigger } from './validation';
 import { calculateUpdateInPercentage } from './calculations';
@@ -24,6 +25,70 @@ export let prismaActive = prisma;
 
 export const setPrisma = (newPrisma: any) => {
   prismaActive = newPrisma;
+};
+
+type DbRecord = {
+  model: 'deviationValue' | 'rPCFailures' | 'compoundValues' | 'dataFeedApiValue' | 'gatewayFailures';
+  record: any;
+};
+let recordsToInsert: DbRecord[] = [];
+let dbMutex = false;
+let lastDbInsert = Date.now();
+let dbWriterInterval: undefined | NodeJS.Timeout;
+
+const addRecord = (record: DbRecord) => {
+  // eslint-disable-next-line functional/immutable-data
+  recordsToInsert.push(record);
+};
+
+const writeRecords = async () => {
+  if (dbMutex) {
+    return;
+  }
+
+  dbMutex = true;
+
+  lastDbInsert = Date.now();
+
+  const bufferedRecords = groupBy([...recordsToInsert], 'model');
+  recordsToInsert = [];
+
+  const results = await Promise.allSettled(
+    Object.entries(bufferedRecords).map(([model, data]) =>
+      // @ts-ignore
+      prismaActive[model].createMany({ data: data.map((item) => item.record) })
+    )
+  );
+
+  // eslint-disable-next-line no-console
+  console.error(results.filter((result) => result.status === 'rejected'));
+
+  dbMutex = false;
+
+  if (getState().stopSignalReceived) {
+    // eslint-disable-next-line no-console
+    console.log('Clearing DB writer interval due to stop signal received...');
+    clearInterval(dbWriterInterval);
+  }
+};
+
+let dbWriterInitialised = false;
+
+const dbWriterLoop = async () => {
+  if (dbWriterInitialised) {
+    return;
+  }
+
+  dbWriterInitialised = true;
+
+  dbWriterInterval = setInterval(writeRecords, 5_000);
+
+  if (process.env.DEBUG_DB_WRITER) {
+    setInterval(() => {
+      // eslint-disable-next-line no-console
+      console.log(`DB writer queue size: ${recordsToInsert.length} | ${(Date.now() - lastDbInsert) / 1_000}`);
+    }, 2_000);
+  }
 };
 
 /*
@@ -177,8 +242,9 @@ export const recordRpcProviderResponseSuccess = async (contract: Api3ServerV1, s
       );
     }
 
-    await prismaActive.rPCFailures.create({
-      data: {
+    addRecord({
+      model: 'rPCFailures',
+      record: {
         chainName,
         hashedUrl: generateOpsGenieAlias(selector),
         providerName,
@@ -283,17 +349,14 @@ export const recordGatewayResponseSuccess = async (templateId: string, gatewayUr
     );
   }
 
-  try {
-    await prismaActive.gatewayFailures.create({
-      data: {
-        airnodeAddress: airnodeAddress,
-        hashedUrl: generateOpsGenieAlias(gatewayUrl),
-        count: newGatewayResultStatus.badTries,
-      },
-    });
-  } catch (e) {
-    logger.warn(`Error while processing gateway response success: ${JSON.stringify(e, null, 2)}`);
-  }
+  addRecord({
+    model: 'gatewayFailures',
+    record: {
+      airnodeAddress: airnodeAddress,
+      hashedUrl: generateOpsGenieAlias(gatewayUrl),
+      count: newGatewayResultStatus.badTries,
+    },
+  });
 };
 
 export const runReporterLoop = async () => {
@@ -331,6 +394,8 @@ export const runReporterLoop = async () => {
   }
 
   while (reporterRunning) {
+    dbWriterLoop();
+
     if (Date.now() - lastRun > 60_000) {
       lastRun = Date.now();
 
@@ -452,8 +517,9 @@ export const checkAndReport = async (
       ? Math.abs(nodaryBaseline.value / onChainValueNumber - 1) * 100.0
       : -1;
 
-    await prismaActive.compoundValues.create({
-      data: {
+    addRecord({
+      model: 'compoundValues',
+      record: {
         dapiName: thisDapi.name,
         dataFeedId,
         chainName,
@@ -542,42 +608,28 @@ export const checkAndReport = async (
     }
   }
 
-  const prismaPromises = await Promise.allSettled([
-    prismaActive.dataFeedApiValue.create({
-      data: {
+  addRecord({
+    model: 'dataFeedApiValue',
+    record: {
+      dataFeedId,
+      apiValue: new Bnj.BigNumber(offChainValue.toString())
+        .dividedBy(new Bnj.BigNumber(10).pow(new Bnj.BigNumber(18)))
+        .toNumber(),
+      timestamp: new Date(offChainTimestamp * 1_000),
+      fromNodary: false,
+    },
+  });
+
+  if (reportedDeviation !== 0) {
+    addRecord({
+      model: 'deviationValue',
+      record: {
         dataFeedId,
-        apiValue: new Bnj.BigNumber(offChainValue.toString())
-          .dividedBy(new Bnj.BigNumber(10).pow(new Bnj.BigNumber(18)))
-          .toNumber(),
-        timestamp: new Date(offChainTimestamp * 1_000),
-        fromNodary: false,
+        deviation: reportedDeviation,
+        chainName,
       },
-    }),
-    reportedDeviation !== 0
-      ? prismaActive.deviationValue.create({
-          data: {
-            dataFeedId,
-            deviation: reportedDeviation,
-            chainName,
-          },
-        })
-      : undefined,
-  ]);
-  await Promise.allSettled(
-    prismaPromises
-      .filter((result) => result.status === 'rejected')
-      .map((failedPromise) =>
-        limitedSendToOpsGenieLowLevel(
-          {
-            priority: 'P2',
-            alias: generateOpsGenieAlias(`error-insert-record-airseeker-logger`),
-            message: `A Prisma error occurred while inserting a record in the Airseeker logger`,
-            description: JSON.stringify(failedPromise, null, 2),
-          },
-          opsGenieConfig
-        )
-      )
-  );
+    });
+  }
 
   const currentDeviation = new Bnj.BigNumber(calculateUpdateInPercentage(onChainValue, offChainValue).toString())
     .div(new Bnj.BigNumber(HUNDRED_PERCENT))
