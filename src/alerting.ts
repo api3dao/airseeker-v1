@@ -17,6 +17,9 @@ import { getState } from './state';
 import { RateLimitedProvider } from './providers';
 import { logger } from './logging';
 
+const RPC_PROVIDER_BAD_TRIES_AFTER_WHICH_CONSIDERED_DEAD = 3;
+const GATEWAYS_BAD_TRIES_AFTER_WHICH_CONSIDERED_DEAD = 3;
+
 export let prismaActive = prisma;
 
 export const setPrisma = (newPrisma: any) => {
@@ -143,8 +146,13 @@ export const recordRpcProviderResponseSuccess = async (contract: Api3ServerV1, s
       ([_providerName, provider]) => provider.url === selector
     )![0];
 
-    if (newResultStatus.badTries > 3) {
+    if (newResultStatus.badTries > RPC_PROVIDER_BAD_TRIES_AFTER_WHICH_CONSIDERED_DEAD) {
       const providerCount = Object.values(chainConfig.providers).length;
+
+      const deadProvidersForThisChain = Object.values(chainConfig.providers)
+        .map((provider) => provider.url)
+        .map((url) => rpcProviderResults[url]?.badTries ?? 0)
+        .filter((badTries) => badTries > RPC_PROVIDER_BAD_TRIES_AFTER_WHICH_CONSIDERED_DEAD).length;
 
       await limitedSendToOpsGenieLowLevel(
         {
@@ -154,6 +162,7 @@ export const recordRpcProviderResponseSuccess = async (contract: Api3ServerV1, s
           description: [
             `An RPC URL has failed ${newResultStatus.badTries} times.`,
             `Airseeker usually has more than one provider per chain, for this chain it has ${providerCount}.`,
+            `Currently this chain has ${deadProvidersForThisChain} dead RPC URL Providers.`,
             `If Airseeker doesn't have enough providers for a chain, it won't be able to do its job.`,
             `We usually include a premium provider and a public RPC provider in Airseeker. The Public provider is`,
             `more likely to be rate limited and arbitrarily fail.`,
@@ -187,6 +196,14 @@ export const recordRpcProviderResponseSuccess = async (contract: Api3ServerV1, s
       )}`
     );
   }
+};
+
+const findGateway = (airnodeAddress: string, shortUrl: string) => {
+  const url = new URL(shortUrl);
+  const baseUrl = `${url.protocol}//${url.host}`;
+  const selector = `${airnodeAddress}-${baseUrl}`;
+
+  return (Object.entries(gatewayResults).find(([key]) => key.includes(selector)) ?? [undefined, undefined])[1];
 };
 
 /**
@@ -225,7 +242,14 @@ export const recordGatewayResponseSuccess = async (templateId: string, gatewayUr
   const parsedUrl = new URL(gatewayUrl);
   const baseUrl = `${parsedUrl.protocol}//${parsedUrl.host}`;
 
-  if (newGatewayResultStatus.badTries > 3) {
+  const allGateways = state.config.gateways[airnodeAddress];
+  const allGatewaysCount = allGateways.length;
+
+  const deadGateways = allGateways
+    .map((gateway) => findGateway(airnodeAddress, gateway.url)?.badTries ?? 0)
+    .filter((badTries) => badTries > GATEWAYS_BAD_TRIES_AFTER_WHICH_CONSIDERED_DEAD).length;
+
+  if (newGatewayResultStatus.badTries > GATEWAYS_BAD_TRIES_AFTER_WHICH_CONSIDERED_DEAD) {
     await limitedSendToOpsGenieLowLevel(
       {
         message: `Dead gateway for Airnode Address ${airnodeAddress}`,
@@ -235,10 +259,17 @@ export const recordGatewayResponseSuccess = async (templateId: string, gatewayUr
           `A gateway has failed at least ${newGatewayResultStatus.badTries} times.`,
           `If the provider doesn't have enough active gateways Airseeker won't be able to get values with which to update the beacon set.`,
           `The beaconset can still be updated if a majority of feeds are available, but this isn't ideal.`,
-          `The URL is included below, it is sensitive data.`,
+          `The hashed URL is included below.`,
+          `The Airseeker has ${allGatewaysCount} gateways for this API provider, of which ${deadGateways} are currently dead.`,
           ``,
           `Airnode Address: ${airnodeAddress}`,
-          `Hashed Gateway URL: ${generateOpsGenieAlias(baseUrl)} (potentially sensitive)`,
+          `Hashed Gateway URL: ${generateOpsGenieAlias(baseUrl)}`,
+          `Generated as follows: keccak256(new TextEncoder().encode('https://gateway-url.com'));`,
+          baseUrl.includes('amazonaws')
+            ? 'The URL is an AWS URL.'
+            : baseUrl.includes('gateway.dev')
+            ? 'The URL is a GCP URL.'
+            : '',
           `and it affects the following beacon(s):`,
           ...affectedBeacons.map(([beaconId]) => beaconId),
         ].join('\n'),
