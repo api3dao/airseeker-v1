@@ -31,10 +31,16 @@ type DbRecord = {
   model: 'deviationValue' | 'rPCFailures' | 'compoundValues' | 'dataFeedApiValue' | 'gatewayFailures';
   record: any;
 };
-let recordsToInsert: DbRecord[] = [];
+export let recordsToInsert: DbRecord[] = [];
 let dbMutex = false;
 let lastDbInsert = Date.now();
 let dbWriterInterval: undefined | NodeJS.Timeout;
+
+export const clearRecordsToInsert = () => {
+  recordsToInsert = [];
+};
+
+export const getRecordsToInsert = () => recordsToInsert;
 
 const addRecord = (record: DbRecord) => {
   // eslint-disable-next-line functional/immutable-data

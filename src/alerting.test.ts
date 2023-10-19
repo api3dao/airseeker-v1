@@ -3,6 +3,8 @@ import { TrimmedDApi } from '@prisma/client';
 import { Api3ServerV1 } from '@api3/airnode-protocol-v1';
 import {
   checkAndReport,
+  clearRecordsToInsert,
+  getRecordsToInsert,
   recordGatewayResponseSuccess,
   recordRpcProviderResponseSuccess,
   setOpsGenieHandlers,
@@ -63,6 +65,10 @@ describe('alerting', () => {
   let prismaMock = getMockedDb();
 
   beforeEach(() => {
+    clearRecordsToInsert();
+  });
+
+  beforeEach(() => {
     jest.resetAllMocks();
     mockLimitedCloseOpsGenieAlertWithAlias.mockReset();
     // eslint-disable-next-line no-console
@@ -92,8 +98,7 @@ describe('alerting', () => {
 
     expect(mockLimitedCloseOpsGenieAlertWithAlias).toHaveBeenCalledTimes(3);
     expect(mockLimitedSendToOpsGenieLowLevel).toHaveBeenCalledTimes(0);
-    expect(prismaMock.dataFeedApiValue.create).toHaveBeenCalledTimes(1);
-    expect(prismaMock.deviationValue.create).toHaveBeenCalledTimes(1);
+    expect(getRecordsToInsert().length).toBe(2);
   });
 
   it('checks, reports and does alert due to exceeded deviation threshold', async () => {
@@ -112,8 +117,7 @@ describe('alerting', () => {
 
     expect(mockLimitedCloseOpsGenieAlertWithAlias).toHaveBeenCalledTimes(1);
     expect(mockLimitedSendToOpsGenieLowLevel).toHaveBeenCalledTimes(1);
-    expect(prismaMock.dataFeedApiValue.create).toHaveBeenCalledTimes(1);
-    expect(prismaMock.deviationValue.create).toHaveBeenCalledTimes(1);
+    expect(getRecordsToInsert().length).toBe(2);
   });
 
   it('checks, reports and does alert due to exceeded heartbeat staleness', async () => {
@@ -132,10 +136,7 @@ describe('alerting', () => {
 
     expect(mockLimitedCloseOpsGenieAlertWithAlias).toHaveBeenCalledTimes(1);
     expect(mockLimitedSendToOpsGenieLowLevel).toHaveBeenCalledTimes(1);
-    expect(prismaMock.dataFeedApiValue.create).toHaveBeenCalledTimes(1);
-
-    // TODO why is deviationValue not created in this scenario
-    expect(prismaMock.deviationValue.create).toHaveBeenCalledTimes(0);
+    expect(getRecordsToInsert().length).toBe(1);
   });
 
   it('handles big numbers', async () => {
@@ -154,8 +155,7 @@ describe('alerting', () => {
 
     expect(mockLimitedCloseOpsGenieAlertWithAlias).toHaveBeenCalledTimes(0);
     expect(mockLimitedSendToOpsGenieLowLevel).toHaveBeenCalledTimes(2);
-    expect(prismaMock.dataFeedApiValue.create).toHaveBeenCalledTimes(1);
-    expect(prismaMock.deviationValue.create).toHaveBeenCalledTimes(1);
+    expect(getRecordsToInsert().length).toBe(2);
   });
 
   it('alerts on a dead gateway', async () => {
@@ -166,6 +166,7 @@ describe('alerting', () => {
         beacons: {
           '0x000': { templateId: '0x001', airnode: '0xairnode' },
         },
+        gateways: { '0xairnode': [{ url: 'https://test.url/something/something.else' }] },
       },
     } as any);
 
