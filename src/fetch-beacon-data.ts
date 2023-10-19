@@ -3,7 +3,6 @@ import { go, GoResultError } from '@api3/promise-utils';
 import { logger } from './logging';
 import { getState, updateState } from './state';
 import { makeSignedDataGatewayRequests, makeApiRequest } from './make-request';
-import { sleep } from './utils';
 import { SignedData } from './validation';
 import { NO_FETCH_EXIT_CODE, RANDOM_BACKOFF_MAX_MS, RANDOM_BACKOFF_MIN_MS } from './constants';
 
@@ -42,24 +41,9 @@ export const initiateFetchingBeaconData = async () => {
  */
 export const fetchBeaconDataInLoop = async (beaconId: string) => {
   const { config } = getState();
+  const { fetchInterval } = config.beacons[beaconId];
 
-  let lastExecute = 0;
-  let waitTime = 0;
-
-  while (!getState().stopSignalReceived) {
-    if (Date.now() - lastExecute > waitTime) {
-      lastExecute = Date.now();
-      const startTimestamp = Date.now();
-      const { fetchInterval } = config.beacons[beaconId];
-
-      await fetchBeaconData(beaconId);
-
-      const duration = Date.now() - startTimestamp;
-      waitTime = Math.max(0, fetchInterval * 1_000 - duration);
-    }
-
-    await sleep(1_000); // regularly re-assess the stop interval
-  }
+  setInterval(() => fetchBeaconData(beaconId), fetchInterval * 1_000);
 };
 
 export const fetchBeaconData = async (beaconId: string) => {
