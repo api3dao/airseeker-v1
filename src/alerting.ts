@@ -268,9 +268,14 @@ export const recordRpcProviderResponseSuccess = async (contract: Api3ServerV1, s
   }
 };
 
+export const getBaseUrl = (fullUrl: string) => {
+  const url = new URL(fullUrl);
+
+  return `${url.protocol}//${url.host}`;
+};
+
 const findGateway = (airnodeAddress: string, shortUrl: string) => {
-  const url = new URL(shortUrl);
-  const baseUrl = `${url.protocol}//${url.host}`;
+  const baseUrl = getBaseUrl(shortUrl);
   const selector = `${airnodeAddress}-${baseUrl}`;
 
   return (Object.entries(gatewayResults).find(([key]) => key.includes(selector)) ?? [undefined, undefined])[1];
@@ -309,8 +314,7 @@ export const recordGatewayResponseSuccess = async (templateId: string, gatewayUr
     badTries: success ? 0 : existingGatewayResult.badTries + 1,
   });
 
-  const parsedUrl = new URL(gatewayUrl);
-  const baseUrl = `${parsedUrl.protocol}//${parsedUrl.host}`;
+  const baseUrl = getBaseUrl(gatewayUrl);
 
   const allGateways = state.config.gateways[airnodeAddress];
   const allGatewaysCount = allGateways.length;
