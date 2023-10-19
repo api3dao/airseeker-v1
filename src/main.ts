@@ -16,6 +16,10 @@ export const handleStopSignal = (signal: string) => {
   expireLimiterJobs();
   updateState((state) => ({ ...state, stopSignalReceived: true }));
   heartbeatReporter(getState().config);
+
+  setInterval(() => {
+    process.exit(0);
+  }, 5_000);
 };
 
 const heartbeatReporter = async (config: Config) => {

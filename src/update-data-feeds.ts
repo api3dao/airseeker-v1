@@ -15,7 +15,7 @@ import {
 import { LogOptionsOverride, logger } from './logging';
 import { Provider, getState } from './state';
 import { getTransactionCount } from './transaction-count';
-import { prepareGoOptions, shortenAddress, sleep } from './utils';
+import { prepareGoOptions, shortenAddress } from './utils';
 import { Beacon, BeaconSetTrigger, BeaconTrigger, SignedData } from './validation';
 import { checkAndReport, recordRpcProviderResponseSuccess } from './alerting';
 
@@ -84,31 +84,19 @@ export const initiateDataFeedUpdates = () => {
 };
 
 export const updateDataFeedsInLoop = async (providerSponsorDataFeeds: ProviderSponsorDataFeeds) => {
-  let lastExecute = 0;
-  let waitTime = 0;
+  const { updateInterval } = providerSponsorDataFeeds;
 
-  while (!getState().stopSignalReceived) {
-    if (Date.now() - lastExecute > waitTime) {
-      lastExecute = Date.now();
-      const startTimestamp = Date.now();
-      const { updateInterval } = providerSponsorDataFeeds;
-
-      await updateBeacons(providerSponsorDataFeeds, startTimestamp);
-      await updateBeaconSets(providerSponsorDataFeeds, startTimestamp);
-
-      const duration = Date.now() - startTimestamp;
-      waitTime = Math.max(0, updateInterval * 1_000 - duration);
-    }
-    await sleep(500);
-  }
+  setInterval(
+    () => Promise.allSettled([updateBeacons(providerSponsorDataFeeds), updateBeaconSets(providerSponsorDataFeeds)]),
+    updateInterval * 1_000
+  );
 };
 
 // We pass return value from `prepareGoOptions` (with calculated timeout) to every `go` call in the function to enforce the update cycle.
 // This solution is not precise but since chain operations are the only ones that actually take some time this should be a good enough solution.
 export const initializeUpdateCycle = async (
   providerSponsorDataFeeds: ProviderSponsorDataFeeds,
-  dataFeedType: DataFeedType,
-  startTime: number
+  dataFeedType: DataFeedType
 ) => {
   const { provider, updateInterval, sponsorAddress, beaconTriggers, beaconSetTriggers } = providerSponsorDataFeeds;
   const { rpcProvider, chainId, providerName } = provider;
@@ -142,11 +130,7 @@ export const initializeUpdateCycle = async (
   const sponsorWallet = new ethers.Wallet(sponsorWalletsPrivateKey[sponsorAddress]).connect(rpcProvider);
 
   // Get transaction count
-  const transactionCount = await getTransactionCount(
-    provider,
-    sponsorWallet.address,
-    prepareGoOptions(startTime, totalTimeout)
-  );
+  const transactionCount = await getTransactionCount(provider, sponsorWallet.address, prepareGoOptions());
   if (isNil(transactionCount)) {
     logger.warn(`Unable to fetch transaction count`, logOptions);
     return null;
@@ -171,15 +155,14 @@ export const initializeUpdateCycle = async (
 
 // We pass return value from `prepareGoOptions` (with calculated timeout) to every `go` call in the function to enforce the update cycle.
 // This solution is not precise but since chain operations are the only ones that actually take some time this should be a good enough solution.
-export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDataFeeds, startTime: number) => {
-  const initialUpdateData = await initializeUpdateCycle(providerSponsorDataFeeds, DataFeedType.Beacon, startTime);
+export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDataFeeds) => {
+  const initialUpdateData = await initializeUpdateCycle(providerSponsorDataFeeds, DataFeedType.Beacon);
   if (!initialUpdateData) return;
   const {
     contract,
     sponsorWallet,
     transactionCount,
     voidSigner,
-    totalTimeout,
     logOptions,
     beaconValues,
     beaconTriggers,
@@ -246,7 +229,7 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
         return contract.connect(voidSigner).callStatic.tryMulticall(calldatas);
       },
       {
-        ...prepareGoOptions(startTime, totalTimeout),
+        ...prepareGoOptions(),
         onAttemptError: (goError) =>
           logger.warn(`Failed attempt to read beacon data using multicall. Error ${goError.error}`, logOptions),
       }
@@ -333,7 +316,7 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
 
       // Update beacon batch onchain values
       const tx = await go(() => contract.connect(sponsorWallet).tryMulticall(updateBatch, { nonce, ...gasTarget }), {
-        ...prepareGoOptions(startTime, totalTimeout),
+        ...prepareGoOptions(),
         onAttemptError: (goError) =>
           logger.warn(`Failed attempt to update beacon batch. Error ${goError.error}`, logOptions),
       });
@@ -352,15 +335,14 @@ export const updateBeacons = async (providerSponsorDataFeeds: ProviderSponsorDat
 
 // We pass return value from `prepareGoOptions` (with calculated timeout) to every `go` call in the function to enforce the update cycle.
 // This solution is not precise but since chain operations are the only ones that actually take some time this should be a good enough solution.
-export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsorDataFeeds, startTime: number) => {
-  const initialUpdateData = await initializeUpdateCycle(providerSponsorDataFeeds, DataFeedType.BeaconSet, startTime);
+export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsorDataFeeds) => {
+  const initialUpdateData = await initializeUpdateCycle(providerSponsorDataFeeds, DataFeedType.BeaconSet);
   if (!initialUpdateData) return;
   const {
     contract,
     sponsorWallet,
     transactionCount,
     voidSigner,
-    totalTimeout,
     logOptions,
     beaconValues,
     beaconSetTriggers,
@@ -405,7 +387,7 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
         return contract.connect(voidSigner).callStatic.tryMulticall(calldatas);
       },
       {
-        ...prepareGoOptions(startTime, totalTimeout),
+        ...prepareGoOptions(),
         onAttemptError: (goError) =>
           logger.warn(`Failed attempt to read beaconSet data using multicall. Error ${goError.error}`, logOptions),
       }
@@ -450,7 +432,7 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
       const goReadDataFeedWithIdTryMulticall = await go(
         () => contract.connect(voidSigner).callStatic.tryMulticall(Object.values(readDataFeedWithIdCalldatas)),
         {
-          ...prepareGoOptions(startTime, totalTimeout),
+          ...prepareGoOptions(),
           onAttemptError: (goError) =>
             logger.warn(
               `Failed attempt to read beacon data using multicall. Error ${goError.error}`,
@@ -646,7 +628,7 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
       const tx = await go(
         () => contract.connect(sponsorWallet).tryMulticall(beaconSetUpdateCalldata, { nonce, ...gasTarget }),
         {
-          ...prepareGoOptions(startTime, totalTimeout),
+          ...prepareGoOptions(),
           onAttemptError: (goError) =>
             logger.warn(`Failed attempt to update beacon set batch. Error ${goError.error}`, logOptions),
         }
