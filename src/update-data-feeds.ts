@@ -84,17 +84,20 @@ export const initiateDataFeedUpdates = () => {
 };
 
 export const updateDataFeedsInLoop = async (providerSponsorDataFeeds: ProviderSponsorDataFeeds) => {
-  const { updateInterval } = providerSponsorDataFeeds;
-
   let lastExecute = 0;
+  let waitTime = 0;
 
   while (!getState().stopSignalReceived) {
-    if (Date.now() - lastExecute > updateInterval * 1_000) {
+    if (Date.now() - lastExecute > waitTime) {
       lastExecute = Date.now();
       const startTimestamp = Date.now();
+      const { updateInterval } = providerSponsorDataFeeds;
 
-      updateBeacons(providerSponsorDataFeeds, startTimestamp);
-      updateBeaconSets(providerSponsorDataFeeds, startTimestamp);
+      await updateBeacons(providerSponsorDataFeeds, startTimestamp);
+      await updateBeaconSets(providerSponsorDataFeeds, startTimestamp);
+
+      const duration = Date.now() - startTimestamp;
+      waitTime = Math.max(0, updateInterval * 1_000 - duration);
     }
     await sleep(500);
   }

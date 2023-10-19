@@ -60,11 +60,8 @@ const writeRecords = async () => {
     )
   );
 
-  const dbInsertErrors = results.filter((result) => result.status === 'rejected');
-  if (dbInsertErrors.length > 0) {
-    // eslint-disable-next-line no-console
-    console.error(dbInsertErrors);
-  }
+  // eslint-disable-next-line no-console
+  console.error(results.filter((result) => result.status === 'rejected'));
 
   dbMutex = false;
 
