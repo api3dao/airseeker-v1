@@ -53,15 +53,19 @@ const writeRecords = async () => {
   const bufferedRecords = groupBy([...recordsToInsert], 'model');
   recordsToInsert = [];
 
-  const results = await Promise.allSettled(
-    Object.entries(bufferedRecords).map(([model, data]) =>
-      // @ts-ignore
-      prismaActive[model].createMany({ data: data.map((item) => item.record) })
+  const results = (
+    await Promise.allSettled(
+      Object.entries(bufferedRecords).map(([model, data]) =>
+        // @ts-ignore
+        prismaActive[model].createMany({ data: data.map((item) => item.record) })
+      )
     )
-  );
+  ).filter((result) => result.status === 'rejected');
 
-  // eslint-disable-next-line no-console
-  console.error(results.filter((result) => result.status === 'rejected'));
+  if (results.length > 0) {
+    // eslint-disable-next-line no-console
+    console.error(results);
+  }
 
   dbMutex = false;
 
