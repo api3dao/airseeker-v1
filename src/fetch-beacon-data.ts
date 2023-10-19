@@ -42,23 +42,18 @@ export const initiateFetchingBeaconData = async () => {
  */
 export const fetchBeaconDataInLoop = async (beaconId: string) => {
   const { config } = getState();
+  const { fetchInterval } = config.beacons[beaconId];
 
   let lastExecute = 0;
-  let waitTime = 0;
 
   while (!getState().stopSignalReceived) {
-    if (Date.now() - lastExecute > waitTime) {
+    if (Date.now() - lastExecute > fetchInterval * 1_000) {
       lastExecute = Date.now();
-      const startTimestamp = Date.now();
-      const { fetchInterval } = config.beacons[beaconId];
 
       await fetchBeaconData(beaconId);
-
-      const duration = Date.now() - startTimestamp;
-      waitTime = Math.max(0, fetchInterval * 1_000 - duration);
     }
 
-    await sleep(1_000); // regularly re-assess the stop interval
+    await sleep(500); // regularly re-assess the stop interval
   }
 };
 
