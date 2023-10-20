@@ -86,10 +86,11 @@ export const initiateDataFeedUpdates = () => {
 export const updateDataFeedsInLoop = async (providerSponsorDataFeeds: ProviderSponsorDataFeeds) => {
   const { updateInterval } = providerSponsorDataFeeds;
 
-  setInterval(
-    () => Promise.allSettled([updateBeacons(providerSponsorDataFeeds), updateBeaconSets(providerSponsorDataFeeds)]),
-    updateInterval * 1_000
-  );
+  const intervalCallback = () =>
+    Promise.allSettled([updateBeacons(providerSponsorDataFeeds), updateBeaconSets(providerSponsorDataFeeds)]);
+
+  setInterval(intervalCallback, updateInterval * 1_000);
+  intervalCallback();
 };
 
 // We pass return value from `prepareGoOptions` (with calculated timeout) to every `go` call in the function to enforce the update cycle.

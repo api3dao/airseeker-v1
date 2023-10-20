@@ -91,7 +91,7 @@ const dbWriterLoop = async () => {
 
   dbWriterInitialised = true;
 
-  dbWriterInterval = setInterval(writeRecords, 5_000);
+  dbWriterInterval = setInterval(writeRecords, 10_000);
 
   if (process.env.DEBUG_DB_WRITER) {
     setInterval(() => {

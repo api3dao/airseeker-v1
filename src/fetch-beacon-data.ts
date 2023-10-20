@@ -43,7 +43,9 @@ export const fetchBeaconDataInLoop = async (beaconId: string) => {
   const { config } = getState();
   const { fetchInterval } = config.beacons[beaconId];
 
-  setInterval(() => fetchBeaconData(beaconId), fetchInterval * 1_000);
+  const fetchBeaconDataCallback = () => fetchBeaconData(beaconId);
+  setInterval(fetchBeaconDataCallback, fetchInterval * 1_000);
+  fetchBeaconDataCallback();
 };
 
 export const fetchBeaconData = async (beaconId: string) => {
@@ -76,7 +78,7 @@ export const fetchBeaconData = async (beaconId: string) => {
   }
 
   const goRes = await go(fetchFn, {
-    retries: 2,
+    retries: 0,
     delay: { type: 'random', minDelayMs: RANDOM_BACKOFF_MIN_MS, maxDelayMs: RANDOM_BACKOFF_MAX_MS },
     onAttemptError,
   });
