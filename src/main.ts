@@ -36,8 +36,6 @@ export async function main() {
   const config = loadConfig(path.join(__dirname, '..', 'config', 'airseeker.json'), process.env);
   initializeState(config);
 
-  // TODO Remove
-  // We do it after initializeState because logger facilities aren't available before initializeState
   process.on('SIGINT', handleStopSignal); // CTRL+C
   process.on('SIGTERM', handleStopSignal);
 
@@ -51,4 +49,8 @@ export async function main() {
   await filterEmptySponsors();
 
   await Promise.all([initiateFetchingBeaconData(), initiateDataFeedUpdates()]);
+}
+
+if (require.main === module) {
+  main();
 }

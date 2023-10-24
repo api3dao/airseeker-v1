@@ -13,7 +13,6 @@ import { BeaconSetTrigger, BeaconTrigger } from './validation';
 import { calculateUpdateInPercentage } from './calculations';
 import { UpdateStatus } from './check-condition';
 import { HUNDRED_PERCENT } from './constants';
-import { sleep } from './utils';
 import { getState } from './state';
 import { RateLimitedProvider } from './providers';
 import { logger } from './logging';
@@ -69,35 +68,14 @@ const writeRecords = async () => {
   ).filter((result) => result.status === 'rejected');
 
   if (results.length > 0) {
-    // eslint-disable-next-line no-console
-    console.error(results);
+    logger.error(`DB Writer error: ${results}`);
   }
 
   dbMutex = false;
 
   if (getState().stopSignalReceived) {
-    // eslint-disable-next-line no-console
-    console.log('Clearing DB writer interval due to stop signal received...');
+    logger.info('Clearing DB writer interval due to stop signal received...');
     clearInterval(dbWriterInterval);
-  }
-};
-
-let dbWriterInitialised = false;
-
-const dbWriterLoop = async () => {
-  if (dbWriterInitialised) {
-    return;
-  }
-
-  dbWriterInitialised = true;
-
-  dbWriterInterval = setInterval(writeRecords, 10_000);
-
-  if (process.env.DEBUG_DB_WRITER) {
-    setInterval(() => {
-      // eslint-disable-next-line no-console
-      console.log(`DB writer queue size: ${recordsToInsert.length} | ${(Date.now() - lastDbInsert) / 1_000}`);
-    }, 2_000);
   }
 };
 
@@ -136,11 +114,13 @@ export const getNodaryData = async (): Promise<NodaryData> => {
       axios({
         url: process.env.NODARY_DATA_URL,
         method: 'GET',
+        timeout: 10_000,
       }),
-    { retries: 3, attemptTimeoutMs: 14_900, totalTimeoutMs: 15_000 }
+    { retries: 0, attemptTimeoutMs: 14_900, totalTimeoutMs: 15_000 }
   );
+
   if (!nodaryResponse.success) {
-    await limitedSendToOpsGenieLowLevel(
+    limitedSendToOpsGenieLowLevel(
       {
         message: 'Error retrieving Nodary off-chain values in Airseeker Monitoring',
         priority: 'P4',
@@ -151,26 +131,7 @@ export const getNodaryData = async (): Promise<NodaryData> => {
     );
     throw new Error('Error retrieving Nodary off-chain values endpoint');
   }
-  await limitedCloseOpsGenieAlertWithAlias('api3-nodaryloader-index-retrieval-airseeker-monitoring', opsGenieConfig);
-
-  if (nodaryResponse.data.status !== 200) {
-    await limitedSendToOpsGenieLowLevel(
-      {
-        message: 'Error retrieving Nodary data in Airseeker Monitoring - bad status code',
-        priority: 'P4',
-        alias: 'api3-nodaryloader-index-retrieval-airseeker-monitoring-http-bad-status-code',
-        description: [`Error`, `${nodaryResponse.data.status}`, JSON.stringify(nodaryResponse.data, null, 2)].join(
-          '\n'
-        ),
-      },
-      opsGenieConfig
-    );
-    throw new Error('Error retrieving Nodary Data');
-  }
-  await limitedCloseOpsGenieAlertWithAlias(
-    'api3-nodaryloader-index-retrieval-airseeker-monitoring-http-bad-status-code',
-    opsGenieConfig
-  );
+  limitedCloseOpsGenieAlertWithAlias('api3-nodaryloader-index-retrieval-airseeker-monitoring', opsGenieConfig);
 
   const parsedResponse = nodaryResponse.data.data as NodaryPayload;
 
@@ -178,7 +139,6 @@ export const getNodaryData = async (): Promise<NodaryData> => {
 };
 
 /* Mutable stuff */
-let reporterRunning = false;
 let nodaryPricingData: NodaryData = {};
 let trimmedDapis: TrimmedDApi[] = [];
 const gatewayResults: Record<string, { badTries: number }> = {};
@@ -229,7 +189,7 @@ export const recordRpcProviderResponseSuccess = async (contract: Api3ServerV1, s
         .map((url) => rpcProviderResults[url]?.badTries ?? 0)
         .filter((badTries) => badTries > RPC_PROVIDER_BAD_TRIES_AFTER_WHICH_CONSIDERED_DEAD).length;
 
-      await limitedSendToOpsGenieLowLevel(
+      limitedSendToOpsGenieLowLevel(
         {
           message: `Dead RPC URL detected for ${chainName}/'${providerName}'`,
           priority: 'P3',
@@ -246,10 +206,7 @@ export const recordRpcProviderResponseSuccess = async (contract: Api3ServerV1, s
         opsGenieConfig
       );
     } else {
-      await limitedCloseOpsGenieAlertWithAlias(
-        `dead-rpc-url-${chainName}${generateOpsGenieAlias(selector)}`,
-        opsGenieConfig
-      );
+      limitedCloseOpsGenieAlertWithAlias(`dead-rpc-url-${chainName}${generateOpsGenieAlias(selector)}`, opsGenieConfig);
     }
 
     addRecord({
@@ -330,7 +287,7 @@ export const recordGatewayResponseSuccess = async (templateId: string, gatewayUr
     .filter((badTries) => badTries > GATEWAYS_BAD_TRIES_AFTER_WHICH_CONSIDERED_DEAD).length;
 
   if (newGatewayResultStatus.badTries > GATEWAYS_BAD_TRIES_AFTER_WHICH_CONSIDERED_DEAD) {
-    await limitedSendToOpsGenieLowLevel(
+    limitedSendToOpsGenieLowLevel(
       {
         message: `Dead gateway for Airnode Address ${airnodeAddress}`,
         priority: 'P3',
@@ -357,7 +314,7 @@ export const recordGatewayResponseSuccess = async (templateId: string, gatewayUr
       opsGenieConfig
     );
   } else {
-    await limitedCloseOpsGenieAlertWithAlias(
+    limitedCloseOpsGenieAlertWithAlias(
       `dead-gateway-${airnodeAddress}${generateOpsGenieAlias(baseUrl)}`,
       opsGenieConfig
     );
@@ -373,22 +330,17 @@ export const recordGatewayResponseSuccess = async (templateId: string, gatewayUr
   });
 };
 
-export const runReporterLoop = async () => {
-  let lastRun = 0;
-
+const dbTrimmedDapisUpdater = async () => {
   try {
     trimmedDapis = await prismaActive.trimmedDApi.findMany();
 
-    await limitedCloseOpsGenieAlertWithAlias(
-      'trimmed-dapis-retrieval-airseeker-monitoring-reporter-loop',
-      opsGenieConfig
-    );
+    limitedCloseOpsGenieAlertWithAlias('trimmed-dapis-retrieval-airseeker-monitoring-reporter-loop', opsGenieConfig);
   } catch (e) {
     logger.warn(`Error while grabbing trimmed dAPIs: ${JSON.stringify(e, null, 2)}`);
 
     const errTyped = e as Error;
 
-    await limitedSendToOpsGenieLowLevel(
+    limitedSendToOpsGenieLowLevel(
       {
         message: 'Error retrieving Trimmed dAPIs in Airseeker Monitoring',
         priority: 'P3',
@@ -406,44 +358,60 @@ export const runReporterLoop = async () => {
       opsGenieConfig
     );
   }
+};
 
-  while (reporterRunning) {
-    dbWriterLoop();
-
-    if (Date.now() - lastRun > 60_000) {
-      lastRun = Date.now();
-
-      try {
-        const nodaryData = await getNodaryData();
-        if (nodaryData) {
-          nodaryPricingData = nodaryData;
-        }
-        await limitedCloseOpsGenieAlertWithAlias('nodary-data-retrieval-airseeker-monitoring', opsGenieConfig);
-      } catch (e) {
-        logger.warn(`Error while retrieving data from Nodary: ${JSON.stringify(e, null, 2)}`);
-
-        const errTyped = e as Error;
-
-        await limitedSendToOpsGenieLowLevel(
-          {
-            message: 'Error retrieving Nodary data in Airseeker Monitoring',
-            priority: 'P3',
-            alias: 'nodary-data-retrieval-airseeker-monitoring',
-            description: [
-              `This failure will impact Airseeker's ability to assign names to records and also it's ability to check`,
-              `Nodary values against beaconSet values.`,
-              `Monitoring will therefore be impacted while this alert is open.`,
-              ``,
-              `Error`,
-              errTyped.message,
-              errTyped.stack,
-            ].join('\n'),
-          },
-          opsGenieConfig
-        );
-      }
+const nodaryUpdater = async () => {
+  try {
+    const nodaryData = await getNodaryData();
+    if (nodaryData) {
+      nodaryPricingData = nodaryData;
     }
-    await sleep(1_000);
+    limitedCloseOpsGenieAlertWithAlias('nodary-data-retrieval-airseeker-monitoring', opsGenieConfig);
+  } catch (e) {
+    logger.warn(`Error while retrieving data from Nodary: ${JSON.stringify(e, null, 2)}`);
+
+    const errTyped = e as Error;
+
+    limitedSendToOpsGenieLowLevel(
+      {
+        message: 'Error retrieving Nodary data in Airseeker Monitoring',
+        priority: 'P3',
+        alias: 'nodary-data-retrieval-airseeker-monitoring',
+        description: [
+          `This failure will impact Airseeker's ability to assign names to records and also it's ability to check`,
+          `Nodary values against beaconSet values.`,
+          `Monitoring will therefore be impacted while this alert is open.`,
+          ``,
+          `Error`,
+          errTyped.message,
+          errTyped.stack,
+        ].join('\n'),
+      },
+      opsGenieConfig
+    );
+  }
+};
+
+let intervalsConfigured = false;
+
+export const configureIntervals = async () => {
+  if (intervalsConfigured) {
+    return;
+  }
+
+  intervalsConfigured = true;
+
+  dbTrimmedDapisUpdater();
+  nodaryUpdater();
+
+  setInterval(nodaryUpdater, 30_000);
+  setInterval(writeRecords, 10_000);
+  setInterval(dbTrimmedDapisUpdater, 120_000);
+
+  if (process.env.DEBUG_DB_WRITER) {
+    setInterval(() => {
+      logger.log(`DB writer queue size: ${recordsToInsert.length} | ${(Date.now() - lastDbInsert) / 1_000}`);
+    }, 2_000);
   }
 };
 
@@ -496,10 +464,7 @@ export const checkAndReport = async (
   deviationAlertMultiplier = 2,
   heartbeatMultiplier = 1.1
 ) => {
-  if (!reporterRunning) {
-    reporterRunning = true;
-    runReporterLoop();
-  }
+  configureIntervals();
 
   if (type === 'Beacon') {
     return;
@@ -562,7 +527,7 @@ export const checkAndReport = async (
         chainId,
       });
 
-      await limitedSendToOpsGenieLowLevel(
+      limitedSendToOpsGenieLowLevel(
         {
           priority: 'P2',
           alias: `nodary-missing-api-reference-${dataFeedId}${chainId}`,
@@ -577,7 +542,7 @@ export const checkAndReport = async (
         opsGenieConfig
       );
     } else {
-      await limitedCloseOpsGenieAlertWithAlias(`nodary-missing-api-reference-${dataFeedId}${chainId}`, opsGenieConfig);
+      limitedCloseOpsGenieAlertWithAlias(`nodary-missing-api-reference-${dataFeedId}${chainId}`, opsGenieConfig);
     }
 
     // We have the nodary deviation, so we can now do a shadow alert check too
@@ -598,7 +563,7 @@ export const checkAndReport = async (
         nodaryBaseline: nodaryBaseline?.value ?? -1,
       });
 
-      await limitedSendToOpsGenieLowLevel(
+      limitedSendToOpsGenieLowLevel(
         {
           priority: 'P2',
           alias: generateOpsGenieAlias(
@@ -615,7 +580,7 @@ export const checkAndReport = async (
         opsGenieConfig
       );
     } else {
-      await limitedCloseOpsGenieAlertWithAlias(
+      limitedCloseOpsGenieAlertWithAlias(
         generateOpsGenieAlias(`${UpdateStatus.DEVIATION_THRESHOLD_REACHED_MESSAGE}-nodary-${dataFeedId}${chainId}`),
         opsGenieConfig
       );
