@@ -46,5 +46,5 @@ export const DIRECT_GATEWAY_MIN_TIME_DEFAULT_MS = 20;
 export const DIRECT_GATEWAY_MAX_CONCURRENCY_DEFAULT = 10;
 
 // TODO: load these 2 from env var instead
-export const DATAFEED_READ_BATCH_SIZE = 50;
-export const DATAFEED_UPDATE_BATCH_SIZE = 10;
+export const DATAFEED_READ_BATCH_SIZE = 1;
+export const DATAFEED_UPDATE_BATCH_SIZE = 1;

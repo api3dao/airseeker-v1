@@ -629,9 +629,7 @@ export const updateBeaconSets = async (providerSponsorDataFeeds: ProviderSponsor
     )
   )
     .filter((promise) => promise.status === 'fulfilled')
-    .map((promisedData) => {
-      return promisedData as unknown as string[][];
-    });
+    .map((promisedData) => promisedData as unknown as string[][]);
 
   let nonce = transactionCount;
   for (const beaconSetUpdateCalldatas of beaconSetUpdateCalldatasSet) {
