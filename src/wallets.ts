@@ -5,7 +5,6 @@ import { go, goSync } from '@api3/promise-utils';
 import { ethers } from 'ethers';
 import { uniq } from 'lodash';
 import { LogOptionsOverride, logger } from './logging';
-import { RateLimitedProvider } from './providers';
 import { Provider, SponsorWalletsPrivateKey, getState, updateState } from './state';
 import { createDummyBeaconUpdateData, shortenAddress } from './utils';
 import { DataFeedUpdates } from './validation';
@@ -61,26 +60,6 @@ export const retrieveSponsorWallet = (sponsorAddress: string): ethers.Wallet => 
   return new ethers.Wallet(sponsorWalletsPrivateKey[sponsorAddress]);
 };
 
-const getMantleGasPrice = async (provider: RateLimitedProvider) => {
-  const goRes = await go(() => provider.send('rollup_gasPrices', []));
-  if (!goRes.success) throw goRes.error;
-
-  const l1GasPrice = ethers.BigNumber.from(goRes.data.l1GasPrice);
-  const l2GasPrice = ethers.BigNumber.from(goRes.data.l2GasPrice);
-
-  return l1GasPrice.add(l2GasPrice);
-};
-
-const getGasPrice = async (provider: RateLimitedProvider) => {
-  switch (provider.network.chainId) {
-    case 5000:
-    case 5001:
-      return getMantleGasPrice(provider);
-    default:
-      return provider.getGasPrice();
-  }
-};
-
 export const hasEnoughBalance = async (
   sponsorWallet: ethers.Wallet,
   dummyAirnode: ethers.Wallet,
@@ -97,7 +76,7 @@ export const hasEnoughBalance = async (
   const balance = goGetBalance.data;
 
   // Get the gas price from provider
-  const goGasPrice = await go(() => getGasPrice(sponsorWallet.provider as RateLimitedProvider), { retries: 1 });
+  const goGasPrice = await go(() => sponsorWallet.provider.getGasPrice(), { retries: 1 });
   if (!goGasPrice.success) {
     logger.error('Failed to get chain gas price', goGasPrice.error, logOptions);
     throw new Error(goGasPrice.error.message);
