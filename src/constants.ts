@@ -1,7 +1,7 @@
 import { ethers } from 'ethers';
 
-export const GATEWAY_TIMEOUT_MS = 5_000;
-export const PROVIDER_TIMEOUT_MS = 5_000;
+export const GATEWAY_TIMEOUT_MS = 15_000;
+export const PROVIDER_TIMEOUT_MS = 15_000;
 export const RANDOM_BACKOFF_MIN_MS = 0;
 export const RANDOM_BACKOFF_MAX_MS = 2_500;
 export const PRIORITY_FEE_IN_WEI = 3_120_000_000;
@@ -46,5 +46,5 @@ export const DIRECT_GATEWAY_MIN_TIME_DEFAULT_MS = 20;
 export const DIRECT_GATEWAY_MAX_CONCURRENCY_DEFAULT = 10;
 
 // TODO: load these 2 from env var instead
-export const DATAFEED_READ_BATCH_SIZE = 100;
-export const DATAFEED_UPDATE_BATCH_SIZE = 10;
+export const DATAFEED_READ_BATCH_SIZE = 1;
+export const DATAFEED_UPDATE_BATCH_SIZE = 1;

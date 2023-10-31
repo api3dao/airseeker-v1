@@ -7,20 +7,76 @@ import axios from 'axios';
 import { go } from '@api3/promise-utils';
 import { TrimmedDApi } from '@prisma/client';
 import { Api3ServerV1 } from '@api3/airnode-protocol-v1';
+import { groupBy } from 'lodash';
 import prisma from './database';
 import { BeaconSetTrigger, BeaconTrigger } from './validation';
 import { calculateUpdateInPercentage } from './calculations';
 import { UpdateStatus } from './check-condition';
 import { HUNDRED_PERCENT } from './constants';
-import { sleep } from './utils';
 import { getState } from './state';
 import { RateLimitedProvider } from './providers';
 import { logger } from './logging';
+
+const RPC_PROVIDER_BAD_TRIES_AFTER_WHICH_CONSIDERED_DEAD = 3;
+const GATEWAYS_BAD_TRIES_AFTER_WHICH_CONSIDERED_DEAD = 3;
 
 export let prismaActive = prisma;
 
 export const setPrisma = (newPrisma: any) => {
   prismaActive = newPrisma;
+};
+
+type DbRecord = {
+  model: 'deviationValue' | 'rPCFailures' | 'compoundValues' | 'dataFeedApiValue' | 'gatewayFailures';
+  record: any;
+};
+export let recordsToInsert: DbRecord[] = [];
+let dbMutex = false;
+let lastDbInsert = Date.now();
+let dbWriterInterval: undefined | NodeJS.Timeout;
+
+export const clearRecordsToInsert = () => {
+  recordsToInsert = [];
+};
+
+export const getRecordsToInsert = () => recordsToInsert;
+
+const addRecord = (record: DbRecord) => {
+  // eslint-disable-next-line functional/immutable-data
+  recordsToInsert.push(record);
+};
+
+const writeRecords = async () => {
+  if (dbMutex) {
+    return;
+  }
+
+  dbMutex = true;
+
+  lastDbInsert = Date.now();
+
+  const bufferedRecords = groupBy([...recordsToInsert], 'model');
+  recordsToInsert = [];
+
+  const results = (
+    await Promise.allSettled(
+      Object.entries(bufferedRecords).map(([model, data]) =>
+        // @ts-ignore
+        prismaActive[model].createMany({ data: data.map((item) => item.record) })
+      )
+    )
+  ).filter((result) => result.status === 'rejected');
+
+  if (results.length > 0) {
+    logger.error(`DB Writer error: ${results}`);
+  }
+
+  dbMutex = false;
+
+  if (getState().stopSignalReceived) {
+    logger.info('Clearing DB writer interval due to stop signal received...');
+    clearInterval(dbWriterInterval);
+  }
 };
 
 /*
@@ -58,11 +114,13 @@ export const getNodaryData = async (): Promise<NodaryData> => {
       axios({
         url: process.env.NODARY_DATA_URL,
         method: 'GET',
+        timeout: 10_000,
       }),
-    { retries: 3, attemptTimeoutMs: 14_900, totalTimeoutMs: 15_000 }
+    { retries: 0, attemptTimeoutMs: 14_900, totalTimeoutMs: 15_000 }
   );
+
   if (!nodaryResponse.success) {
-    await limitedSendToOpsGenieLowLevel(
+    limitedSendToOpsGenieLowLevel(
       {
         message: 'Error retrieving Nodary off-chain values in Airseeker Monitoring',
         priority: 'P4',
@@ -73,26 +131,7 @@ export const getNodaryData = async (): Promise<NodaryData> => {
     );
     throw new Error('Error retrieving Nodary off-chain values endpoint');
   }
-  await limitedCloseOpsGenieAlertWithAlias('api3-nodaryloader-index-retrieval-airseeker-monitoring', opsGenieConfig);
-
-  if (nodaryResponse.data.status !== 200) {
-    await limitedSendToOpsGenieLowLevel(
-      {
-        message: 'Error retrieving Nodary data in Airseeker Monitoring - bad status code',
-        priority: 'P4',
-        alias: 'api3-nodaryloader-index-retrieval-airseeker-monitoring-http-bad-status-code',
-        description: [`Error`, `${nodaryResponse.data.status}`, JSON.stringify(nodaryResponse.data, null, 2)].join(
-          '\n'
-        ),
-      },
-      opsGenieConfig
-    );
-    throw new Error('Error retrieving Nodary Data');
-  }
-  await limitedCloseOpsGenieAlertWithAlias(
-    'api3-nodaryloader-index-retrieval-airseeker-monitoring-http-bad-status-code',
-    opsGenieConfig
-  );
+  limitedCloseOpsGenieAlertWithAlias('api3-nodaryloader-index-retrieval-airseeker-monitoring', opsGenieConfig);
 
   const parsedResponse = nodaryResponse.data.data as NodaryPayload;
 
@@ -100,7 +139,6 @@ export const getNodaryData = async (): Promise<NodaryData> => {
 };
 
 /* Mutable stuff */
-let reporterRunning = false;
 let nodaryPricingData: NodaryData = {};
 let trimmedDapis: TrimmedDApi[] = [];
 const gatewayResults: Record<string, { badTries: number }> = {};
@@ -143,10 +181,15 @@ export const recordRpcProviderResponseSuccess = async (contract: Api3ServerV1, s
       ([_providerName, provider]) => provider.url === selector
     )![0];
 
-    if (newResultStatus.badTries > 3) {
+    if (newResultStatus.badTries > RPC_PROVIDER_BAD_TRIES_AFTER_WHICH_CONSIDERED_DEAD) {
       const providerCount = Object.values(chainConfig.providers).length;
 
-      await limitedSendToOpsGenieLowLevel(
+      const deadProvidersForThisChain = Object.values(chainConfig.providers)
+        .map((provider) => provider.url)
+        .map((url) => rpcProviderResults[url]?.badTries ?? 0)
+        .filter((badTries) => badTries > RPC_PROVIDER_BAD_TRIES_AFTER_WHICH_CONSIDERED_DEAD).length;
+
+      limitedSendToOpsGenieLowLevel(
         {
           message: `Dead RPC URL detected for ${chainName}/'${providerName}'`,
           priority: 'P3',
@@ -154,6 +197,7 @@ export const recordRpcProviderResponseSuccess = async (contract: Api3ServerV1, s
           description: [
             `An RPC URL has failed ${newResultStatus.badTries} times.`,
             `Airseeker usually has more than one provider per chain, for this chain it has ${providerCount}.`,
+            `Currently this chain has ${deadProvidersForThisChain} dead RPC URL Providers.`,
             `If Airseeker doesn't have enough providers for a chain, it won't be able to do its job.`,
             `We usually include a premium provider and a public RPC provider in Airseeker. The Public provider is`,
             `more likely to be rate limited and arbitrarily fail.`,
@@ -162,14 +206,12 @@ export const recordRpcProviderResponseSuccess = async (contract: Api3ServerV1, s
         opsGenieConfig
       );
     } else {
-      await limitedCloseOpsGenieAlertWithAlias(
-        `dead-rpc-url-${chainName}${generateOpsGenieAlias(selector)}`,
-        opsGenieConfig
-      );
+      limitedCloseOpsGenieAlertWithAlias(`dead-rpc-url-${chainName}${generateOpsGenieAlias(selector)}`, opsGenieConfig);
     }
 
-    await prismaActive.rPCFailures.create({
-      data: {
+    addRecord({
+      model: 'rPCFailures',
+      record: {
         chainName,
         hashedUrl: generateOpsGenieAlias(selector),
         providerName,
@@ -187,6 +229,19 @@ export const recordRpcProviderResponseSuccess = async (contract: Api3ServerV1, s
       )}`
     );
   }
+};
+
+export const getBaseUrl = (fullUrl: string) => {
+  const url = new URL(fullUrl);
+
+  return `${url.protocol}//${url.host}`;
+};
+
+const findGateway = (airnodeAddress: string, shortUrl: string) => {
+  const baseUrl = getBaseUrl(shortUrl);
+  const selector = `${airnodeAddress}-${baseUrl}`;
+
+  return (Object.entries(gatewayResults).find(([key]) => key.includes(selector)) ?? [undefined, undefined])[1];
 };
 
 /**
@@ -222,20 +277,36 @@ export const recordGatewayResponseSuccess = async (templateId: string, gatewayUr
     badTries: success ? 0 : existingGatewayResult.badTries + 1,
   });
 
-  if (newGatewayResultStatus.badTries > 3) {
-    await limitedSendToOpsGenieLowLevel(
+  const baseUrl = getBaseUrl(gatewayUrl);
+
+  const allGateways = state.config.gateways[airnodeAddress];
+  const allGatewaysCount = allGateways.length;
+
+  const deadGateways = allGateways
+    .map((gateway) => findGateway(airnodeAddress, gateway.url)?.badTries ?? 0)
+    .filter((badTries) => badTries > GATEWAYS_BAD_TRIES_AFTER_WHICH_CONSIDERED_DEAD).length;
+
+  if (newGatewayResultStatus.badTries > GATEWAYS_BAD_TRIES_AFTER_WHICH_CONSIDERED_DEAD) {
+    limitedSendToOpsGenieLowLevel(
       {
         message: `Dead gateway for Airnode Address ${airnodeAddress}`,
         priority: 'P3',
-        alias: `dead-gateway-${airnodeAddress}${generateOpsGenieAlias(gatewayUrl)}`,
+        alias: `dead-gateway-${airnodeAddress}${generateOpsGenieAlias(baseUrl)}`,
         description: [
           `A gateway has failed at least ${newGatewayResultStatus.badTries} times.`,
           `If the provider doesn't have enough active gateways Airseeker won't be able to get values with which to update the beacon set.`,
           `The beaconset can still be updated if a majority of feeds are available, but this isn't ideal.`,
-          `The URL is included below, it is sensitive data.`,
+          `The hashed URL is included below.`,
+          `The Airseeker has ${allGatewaysCount} gateways for this API provider, of which ${deadGateways} are currently dead.`,
           ``,
           `Airnode Address: ${airnodeAddress}`,
-          `Gateway URL: ${generateOpsGenieAlias(gatewayUrl)} (potentially sensitive)`,
+          `Hashed Gateway URL: ${generateOpsGenieAlias(baseUrl)}`,
+          `Generated as follows: keccak256(new TextEncoder().encode('https://gateway-url.com'));`,
+          baseUrl.includes('amazonaws')
+            ? 'The URL is an AWS URL.'
+            : baseUrl.includes('gateway.dev')
+            ? 'The URL is a GCP URL.'
+            : '',
           `and it affects the following beacon(s):`,
           ...affectedBeacons.map(([beaconId]) => beaconId),
         ].join('\n'),
@@ -243,41 +314,33 @@ export const recordGatewayResponseSuccess = async (templateId: string, gatewayUr
       opsGenieConfig
     );
   } else {
-    await limitedCloseOpsGenieAlertWithAlias(
-      `dead-gateway-${airnodeAddress}${generateOpsGenieAlias(gatewayUrl)}`,
+    limitedCloseOpsGenieAlertWithAlias(
+      `dead-gateway-${airnodeAddress}${generateOpsGenieAlias(baseUrl)}`,
       opsGenieConfig
     );
   }
 
-  try {
-    await prismaActive.gatewayFailures.create({
-      data: {
-        airnodeAddress: airnodeAddress,
-        hashedUrl: generateOpsGenieAlias(gatewayUrl),
-        count: newGatewayResultStatus.badTries,
-      },
-    });
-  } catch (e) {
-    logger.warn(`Error while processing gateway response success: ${JSON.stringify(e, null, 2)}`);
-  }
+  addRecord({
+    model: 'gatewayFailures',
+    record: {
+      airnodeAddress: airnodeAddress,
+      hashedUrl: generateOpsGenieAlias(gatewayUrl),
+      count: newGatewayResultStatus.badTries,
+    },
+  });
 };
 
-export const runReporterLoop = async () => {
-  let lastRun = 0;
-
+const dbTrimmedDapisUpdater = async () => {
   try {
     trimmedDapis = await prismaActive.trimmedDApi.findMany();
 
-    await limitedCloseOpsGenieAlertWithAlias(
-      'trimmed-dapis-retrieval-airseeker-monitoring-reporter-loop',
-      opsGenieConfig
-    );
+    limitedCloseOpsGenieAlertWithAlias('trimmed-dapis-retrieval-airseeker-monitoring-reporter-loop', opsGenieConfig);
   } catch (e) {
     logger.warn(`Error while grabbing trimmed dAPIs: ${JSON.stringify(e, null, 2)}`);
 
     const errTyped = e as Error;
 
-    await limitedSendToOpsGenieLowLevel(
+    limitedSendToOpsGenieLowLevel(
       {
         message: 'Error retrieving Trimmed dAPIs in Airseeker Monitoring',
         priority: 'P3',
@@ -295,42 +358,60 @@ export const runReporterLoop = async () => {
       opsGenieConfig
     );
   }
+};
 
-  while (reporterRunning) {
-    if (Date.now() - lastRun > 60_000) {
-      lastRun = Date.now();
-
-      try {
-        const nodaryData = await getNodaryData();
-        if (nodaryData) {
-          nodaryPricingData = nodaryData;
-        }
-        await limitedCloseOpsGenieAlertWithAlias('nodary-data-retrieval-airseeker-monitoring', opsGenieConfig);
-      } catch (e) {
-        logger.warn(`Error while retrieving data from Nodary: ${JSON.stringify(e, null, 2)}`);
-
-        const errTyped = e as Error;
-
-        await limitedSendToOpsGenieLowLevel(
-          {
-            message: 'Error retrieving Nodary data in Airseeker Monitoring',
-            priority: 'P3',
-            alias: 'nodary-data-retrieval-airseeker-monitoring',
-            description: [
-              `This failure will impact Airseeker's ability to assign names to records and also it's ability to check`,
-              `Nodary values against beaconSet values.`,
-              `Monitoring will therefore be impacted while this alert is open.`,
-              ``,
-              `Error`,
-              errTyped.message,
-              errTyped.stack,
-            ].join('\n'),
-          },
-          opsGenieConfig
-        );
-      }
+const nodaryUpdater = async () => {
+  try {
+    const nodaryData = await getNodaryData();
+    if (nodaryData) {
+      nodaryPricingData = nodaryData;
     }
-    await sleep(1_000);
+    limitedCloseOpsGenieAlertWithAlias('nodary-data-retrieval-airseeker-monitoring', opsGenieConfig);
+  } catch (e) {
+    logger.warn(`Error while retrieving data from Nodary: ${JSON.stringify(e, null, 2)}`);
+
+    const errTyped = e as Error;
+
+    limitedSendToOpsGenieLowLevel(
+      {
+        message: 'Error retrieving Nodary data in Airseeker Monitoring',
+        priority: 'P3',
+        alias: 'nodary-data-retrieval-airseeker-monitoring',
+        description: [
+          `This failure will impact Airseeker's ability to assign names to records and also it's ability to check`,
+          `Nodary values against beaconSet values.`,
+          `Monitoring will therefore be impacted while this alert is open.`,
+          ``,
+          `Error`,
+          errTyped.message,
+          errTyped.stack,
+        ].join('\n'),
+      },
+      opsGenieConfig
+    );
+  }
+};
+
+let intervalsConfigured = false;
+
+export const configureIntervals = async () => {
+  if (intervalsConfigured) {
+    return;
+  }
+
+  intervalsConfigured = true;
+
+  dbTrimmedDapisUpdater();
+  nodaryUpdater();
+
+  setInterval(nodaryUpdater, 30_000);
+  setInterval(writeRecords, 10_000);
+  setInterval(dbTrimmedDapisUpdater, 120_000);
+
+  if (process.env.DEBUG_DB_WRITER) {
+    setInterval(() => {
+      logger.log(`DB writer queue size: ${recordsToInsert.length} | ${(Date.now() - lastDbInsert) / 1_000}`);
+    }, 2_000);
   }
 };
 
@@ -383,10 +464,7 @@ export const checkAndReport = async (
   deviationAlertMultiplier = 2,
   heartbeatMultiplier = 1.1
 ) => {
-  if (!reporterRunning) {
-    reporterRunning = true;
-    runReporterLoop();
-  }
+  configureIntervals();
 
   if (type === 'Beacon') {
     return;
@@ -418,8 +496,9 @@ export const checkAndReport = async (
       ? Math.abs(nodaryBaseline.value / onChainValueNumber - 1) * 100.0
       : -1;
 
-    await prismaActive.compoundValues.create({
-      data: {
+    addRecord({
+      model: 'compoundValues',
+      record: {
         dapiName: thisDapi.name,
         dataFeedId,
         chainName,
@@ -448,7 +527,7 @@ export const checkAndReport = async (
         chainId,
       });
 
-      await limitedSendToOpsGenieLowLevel(
+      limitedSendToOpsGenieLowLevel(
         {
           priority: 'P2',
           alias: `nodary-missing-api-reference-${dataFeedId}${chainId}`,
@@ -463,7 +542,7 @@ export const checkAndReport = async (
         opsGenieConfig
       );
     } else {
-      await limitedCloseOpsGenieAlertWithAlias(`nodary-missing-api-reference-${dataFeedId}${chainId}`, opsGenieConfig);
+      limitedCloseOpsGenieAlertWithAlias(`nodary-missing-api-reference-${dataFeedId}${chainId}`, opsGenieConfig);
     }
 
     // We have the nodary deviation, so we can now do a shadow alert check too
@@ -484,7 +563,7 @@ export const checkAndReport = async (
         nodaryBaseline: nodaryBaseline?.value ?? -1,
       });
 
-      await limitedSendToOpsGenieLowLevel(
+      limitedSendToOpsGenieLowLevel(
         {
           priority: 'P2',
           alias: generateOpsGenieAlias(
@@ -501,49 +580,35 @@ export const checkAndReport = async (
         opsGenieConfig
       );
     } else {
-      await limitedCloseOpsGenieAlertWithAlias(
+      limitedCloseOpsGenieAlertWithAlias(
         generateOpsGenieAlias(`${UpdateStatus.DEVIATION_THRESHOLD_REACHED_MESSAGE}-nodary-${dataFeedId}${chainId}`),
         opsGenieConfig
       );
     }
   }
 
-  const prismaPromises = await Promise.allSettled([
-    prismaActive.dataFeedApiValue.create({
-      data: {
+  addRecord({
+    model: 'dataFeedApiValue',
+    record: {
+      dataFeedId,
+      apiValue: new Bnj.BigNumber(offChainValue.toString())
+        .dividedBy(new Bnj.BigNumber(10).pow(new Bnj.BigNumber(18)))
+        .toNumber(),
+      timestamp: new Date(offChainTimestamp * 1_000),
+      fromNodary: false,
+    },
+  });
+
+  if (reportedDeviation !== 0) {
+    addRecord({
+      model: 'deviationValue',
+      record: {
         dataFeedId,
-        apiValue: new Bnj.BigNumber(offChainValue.toString())
-          .dividedBy(new Bnj.BigNumber(10).pow(new Bnj.BigNumber(18)))
-          .toNumber(),
-        timestamp: new Date(offChainTimestamp * 1_000),
-        fromNodary: false,
+        deviation: reportedDeviation,
+        chainName,
       },
-    }),
-    reportedDeviation !== 0
-      ? prismaActive.deviationValue.create({
-          data: {
-            dataFeedId,
-            deviation: reportedDeviation,
-            chainName,
-          },
-        })
-      : undefined,
-  ]);
-  await Promise.allSettled(
-    prismaPromises
-      .filter((result) => result.status === 'rejected')
-      .map((failedPromise) =>
-        limitedSendToOpsGenieLowLevel(
-          {
-            priority: 'P2',
-            alias: generateOpsGenieAlias(`error-insert-record-airseeker-logger`),
-            message: `A Prisma error occurred while inserting a record in the Airseeker logger`,
-            description: JSON.stringify(failedPromise, null, 2),
-          },
-          opsGenieConfig
-        )
-      )
-  );
+    });
+  }
 
   const currentDeviation = new Bnj.BigNumber(calculateUpdateInPercentage(onChainValue, offChainValue).toString())
     .div(new Bnj.BigNumber(HUNDRED_PERCENT))
@@ -619,151 +684,167 @@ export const checkAndReport = async (
 // TODO this needs to come out of the DB or some other static resource
 export const DB_CHAINS = [
   {
-    id: '5001',
-    name: 'mantle-goerli-testnet',
-  },
-  {
-    id: '338',
-    name: 'cronos-testnet',
-  },
-  {
-    id: '2221',
-    name: 'kava-testnet',
-  },
-  {
-    id: '59140',
-    name: 'linea-goerli-testnet',
-  },
-  {
     id: '1101',
     name: 'polygon-zkevm',
-  },
-  {
-    id: '250',
-    name: 'fantom',
-  },
-  {
-    id: '534353',
-    name: 'scroll-goerli-testnet',
-  },
-  {
-    id: '84531',
-    name: 'base-goerli-testnet',
-  },
-  {
-    id: '43114',
-    name: 'avalanche',
-  },
-  {
-    id: '56',
-    name: 'bsc',
-  },
-  {
-    id: '42161',
-    name: 'arbitrum',
-  },
-  {
-    id: '10',
-    name: 'optimism',
-  },
-  {
-    id: '1284',
-    name: 'moonbeam',
-  },
-  {
-    id: '324',
-    name: 'zksync',
   },
   {
     id: '137',
     name: 'polygon',
   },
   {
-    id: '1',
-    name: 'mainnet',
-  },
-  {
     id: '1285',
     name: 'moonriver',
   },
   {
-    id: '100',
-    name: 'gnosis',
+    id: '59140',
+    name: 'linea-goerli-testnet',
   },
   {
-    id: '1088',
-    name: 'metis',
-  },
-  {
-    id: '97',
-    name: 'bsc-testnet',
-  },
-  {
-    id: '280',
-    name: 'zksync-goerli-testnet',
-  },
-  {
-    id: '599',
-    name: 'metis-testnet',
-  },
-  {
-    id: '420',
-    name: 'optimism-testnet',
-  },
-  {
-    id: '1442',
-    name: 'polygon-zkevm-testnet',
-  },
-  {
-    id: '31',
-    name: 'rsk-testnet',
-  },
-  {
-    id: '1287',
-    name: 'moonbeam-testnet',
-  },
-  {
-    id: '30',
-    name: 'rsk',
-  },
-  {
-    id: '5',
-    name: 'goerli',
-  },
-  {
-    id: '42170',
-    name: 'arbitrum-nova',
+    id: '200101',
+    name: 'milkomeda-c1-testnet',
   },
   {
     id: '4002',
     name: 'fantom-testnet',
   },
   {
-    id: '80001',
-    name: 'polygon-testnet',
+    id: '10200',
+    name: 'gnosis-testnet',
   },
   {
     id: '421613',
-    name: 'arbitrum-testnet',
+    name: 'arbitrum-goerli-testnet',
   },
   {
-    id: '10200',
-    name: 'gnosis-testnet',
+    id: '30',
+    name: 'rsk',
+  },
+  {
+    id: '56',
+    name: 'bsc',
+  },
+  {
+    id: '59144',
+    name: 'linea',
+  },
+  {
+    id: '8453',
+    name: 'base',
+  },
+  {
+    id: '324',
+    name: 'zksync',
+  },
+  {
+    id: '5001',
+    name: 'mantle-goerli-testnet',
+  },
+  {
+    id: '1287',
+    name: 'moonbeam-testnet',
+  },
+  {
+    id: '534353',
+    name: 'scroll-goerli-testnet',
+  },
+  {
+    id: '5',
+    name: 'goerli',
+  },
+  {
+    id: '42161',
+    name: 'arbitrum',
+  },
+  {
+    id: '250',
+    name: 'fantom',
+  },
+  {
+    id: '2222',
+    name: 'kava',
+  },
+  {
+    id: '5000',
+    name: 'mantle',
+  },
+  {
+    id: '84531',
+    name: 'base-goerli-testnet',
+  },
+  {
+    id: '420',
+    name: 'optimism-goerli-testnet',
+  },
+  {
+    id: '10',
+    name: 'optimism',
+  },
+  {
+    id: '2221',
+    name: 'kava-testnet',
+  },
+  {
+    id: '338',
+    name: 'cronos-testnet',
+  },
+  {
+    id: '1442',
+    name: 'polygon-zkevm-testnet',
+  },
+  {
+    id: '1',
+    name: 'mainnet',
+  },
+  {
+    id: '1284',
+    name: 'moonbeam',
+  },
+  {
+    id: '100',
+    name: 'gnosis',
+  },
+  {
+    id: '43114',
+    name: 'avalanche',
+  },
+  {
+    id: '1088',
+    name: 'metis',
+  },
+  {
+    id: '280',
+    name: 'zksync-goerli-testnet',
+  },
+  {
+    id: '97',
+    name: 'bsc-testnet',
+  },
+  {
+    id: '599',
+    name: 'metis-testnet',
+  },
+  {
+    id: '31',
+    name: 'rsk-testnet',
+  },
+  {
+    id: '42170',
+    name: 'arbitrum-nova',
+  },
+  {
+    id: '2001',
+    name: 'milkomeda-c1',
   },
   {
     id: '43113',
     name: 'avalanche-testnet',
   },
   {
-    id: '2001',
-    name: 'milkomeda',
-  },
-  {
-    id: '200101',
-    name: 'milkomeda-testnet',
-  },
-  {
     id: '11155111',
     name: 'sepolia',
+  },
+  {
+    id: '80001',
+    name: 'polygon-testnet',
   },
 ];
