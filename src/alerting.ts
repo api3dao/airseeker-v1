@@ -530,10 +530,10 @@ export const checkAndReport = async (
       limitedSendToOpsGenieLowLevel(
         {
           priority: 'P2',
-          alias: `nodary-missing-api-reference-${dataFeedId}${chainId}`,
-          message: `Missing Nodary Value | ${dataFeedId} on chain ${chainId}`, //`${UpdateStatus.DEVIATION_THRESHOLD_REACHED_MESSAGE} for ${type} with ${dataFeedId} on chain ${chainId}`,
+          alias: `missing-api-reference-${dataFeedId}${chainId}`,
+          message: `Missing Value | ${dataFeedId} on chain ${chainId}`, //`${UpdateStatus.DEVIATION_THRESHOLD_REACHED_MESSAGE} for ${type} with ${dataFeedId} on chain ${chainId}`,
           description: [
-            `We are missing a value for this datafeed from Nodary's API.`,
+            `We are missing a value for this datafeed from the reference data provider.`,
             `This is not critical, but not great either as we don't have a "shadow" reference.`,
             '',
             description,
@@ -542,7 +542,7 @@ export const checkAndReport = async (
         opsGenieConfig
       );
     } else {
-      limitedCloseOpsGenieAlertWithAlias(`nodary-missing-api-reference-${dataFeedId}${chainId}`, opsGenieConfig);
+      limitedCloseOpsGenieAlertWithAlias(`missing-api-reference-${dataFeedId}${chainId}`, opsGenieConfig);
     }
 
     // We have the nodary deviation, so we can now do a shadow alert check too
