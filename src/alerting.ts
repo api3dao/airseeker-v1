@@ -122,16 +122,16 @@ export const getNodaryData = async (): Promise<NodaryData> => {
   if (!nodaryResponse.success) {
     limitedSendToOpsGenieLowLevel(
       {
-        message: 'Error retrieving Nodary off-chain values in Airseeker Monitoring',
+        message: 'Error retrieving off-chain values in Airseeker Monitoring',
         priority: 'P4',
-        alias: 'api3-nodaryloader-index-retrieval-airseeker-monitoring',
+        alias: 'api3-dataloader-index-retrieval-airseeker-monitoring',
         description: [`Error`, nodaryResponse.error.message, nodaryResponse.error.stack].join('\n'),
       },
       opsGenieConfig
     );
-    throw new Error('Error retrieving Nodary off-chain values endpoint');
+    throw new Error('Error retrieving off-chain values endpoint');
   }
-  limitedCloseOpsGenieAlertWithAlias('api3-nodaryloader-index-retrieval-airseeker-monitoring', opsGenieConfig);
+  limitedCloseOpsGenieAlertWithAlias('api3-dataloader-index-retrieval-airseeker-monitoring', opsGenieConfig);
 
   const parsedResponse = nodaryResponse.data.data as NodaryPayload;
 
@@ -366,7 +366,7 @@ const nodaryUpdater = async () => {
     if (nodaryData) {
       nodaryPricingData = nodaryData;
     }
-    limitedCloseOpsGenieAlertWithAlias('nodary-data-retrieval-airseeker-monitoring', opsGenieConfig);
+    limitedCloseOpsGenieAlertWithAlias('provider-data-retrieval-airseeker-monitoring', opsGenieConfig);
   } catch (e) {
     logger.warn(`Error while retrieving data from Nodary: ${JSON.stringify(e, null, 2)}`);
 
@@ -374,12 +374,12 @@ const nodaryUpdater = async () => {
 
     limitedSendToOpsGenieLowLevel(
       {
-        message: 'Error retrieving Nodary data in Airseeker Monitoring',
+        message: 'Error retrieving provider data in Airseeker Monitoring',
         priority: 'P3',
-        alias: 'nodary-data-retrieval-airseeker-monitoring',
+        alias: 'provider-data-retrieval-airseeker-monitoring',
         description: [
           `This failure will impact Airseeker's ability to assign names to records and also it's ability to check`,
-          `Nodary values against beaconSet values.`,
+          `APIprovider values against beaconSet values.`,
           `Monitoring will therefore be impacted while this alert is open.`,
           ``,
           `Error`,
