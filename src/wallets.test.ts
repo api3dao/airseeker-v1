@@ -272,31 +272,6 @@ describe('hasEnoughBalance', () => {
     );
   });
 
-  it('should throw an error when failed to get gas price (mantle)', async () => {
-    const sponsorWallet = {
-      provider: {
-        getBlock: jest.fn().mockResolvedValue({
-          timestamp: Math.floor(Date.now() / 1000),
-        }),
-        network: {
-          chainId: 5000,
-          name: 'mantle',
-        },
-        send: jest.fn().mockImplementation((method: string) => {
-          if (method === 'rollup_gasPrices') {
-            throw new Error('getGasPrice: Unexpected');
-          }
-        }),
-        getGasPrice: jest.fn().mockResolvedValue(ethers.utils.parseUnits('10', 'gwei')),
-      },
-      getBalance: jest.fn().mockResolvedValue(ethers.utils.parseEther('1')),
-    };
-
-    await expect(hasEnoughBalance(sponsorWallet as any, {} as any, {} as any, undefined, logOptions)).rejects.toThrow(
-      'getGasPrice: Unexpected'
-    );
-  });
-
   it('should throw an error when failed to estimate gas', async () => {
     const sponsorWallet = {
       provider: {
