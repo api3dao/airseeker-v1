@@ -99,7 +99,10 @@ export type NodaryPayload = {
 };
 
 // Mocking the OpsGenie utils for tests can be a pain - this assists us
-let { limitedCloseOpsGenieAlertWithAlias, limitedSendToOpsGenieLowLevel } = utils.getOpsGenieLimiter();
+let { limitedCloseOpsGenieAlertWithAlias, limitedSendToOpsGenieLowLevel } = utils.getOpsGenieLimiter({
+  maxConcurrent: 5,
+  minTime: 10,
+});
 export { limitedCloseOpsGenieAlertWithAlias, limitedSendToOpsGenieLowLevel };
 
 export const opsGenieConfig = { apiKey: process.env.OPSGENIE_API_KEY ?? '', responders: [] };
