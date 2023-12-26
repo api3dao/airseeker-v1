@@ -90,12 +90,12 @@ the application.
 The nature of the alerting code means immutability can't really apply, at least not like the rest of Airseeker.
  */
 
-// A type representing data we retrieve from Nodary
-export type NodaryData = Record<string, { dataFeedId: string; value: number; timestamp: number; name: string }[]>;
+// A type representing data we retrieve from Source
+export type SourceData = Record<string, { dataFeedId: string; value: number; timestamp: number; name: string }[]>;
 
-export type NodaryPayload = {
+export type SourcePayload = {
   success: boolean;
-  result: NodaryData;
+  result: SourceData;
 };
 
 // Mocking the OpsGenie utils for tests can be a pain - this assists us
@@ -108,11 +108,11 @@ export { limitedCloseOpsGenieAlertWithAlias, limitedSendToOpsGenieLowLevel };
 export const opsGenieConfig = { apiKey: process.env.OPSGENIE_API_KEY ?? '', responders: [] };
 
 /**
- * Retrieves Nodary data - this is data from various providers served by Nodary that allows us to have a baseline/reference
+ * Retrieves Source data - this is data from various providers served by Source that allows us to have a baseline/reference
  * deviation.
  */
-export const getNodaryData = async (): Promise<NodaryData> => {
-  const nodaryResponse = await go(
+export const getSourceData = async (): Promise<SourceData> => {
+  const sourceResponse = await go(
     () =>
       axios({
         url: process.env.NODARY_DATA_URL,
@@ -122,27 +122,27 @@ export const getNodaryData = async (): Promise<NodaryData> => {
     { retries: 0, attemptTimeoutMs: 14_900, totalTimeoutMs: 15_000 }
   );
 
-  if (!nodaryResponse.success) {
+  if (!sourceResponse.success) {
     limitedSendToOpsGenieLowLevel(
       {
-        message: 'Error retrieving Nodary off-chain values in Airseeker Monitoring',
+        message: 'Error retrieving off-chain values in Airseeker Monitoring',
         priority: 'P4',
-        alias: 'api3-nodaryloader-index-retrieval-airseeker-monitoring',
-        description: [`Error`, nodaryResponse.error.message, nodaryResponse.error.stack].join('\n'),
+        alias: 'api3-dataloader-index-retrieval-airseeker-monitoring',
+        description: [`Error`, sourceResponse.error.message, sourceResponse.error.stack].join('\n'),
       },
       opsGenieConfig
     );
-    throw new Error('Error retrieving Nodary off-chain values endpoint');
+    throw new Error('Error retrieving off-chain values endpoint');
   }
-  limitedCloseOpsGenieAlertWithAlias('api3-nodaryloader-index-retrieval-airseeker-monitoring', opsGenieConfig);
+  limitedCloseOpsGenieAlertWithAlias('api3-dataloader-index-retrieval-airseeker-monitoring', opsGenieConfig);
 
-  const parsedResponse = nodaryResponse.data.data as NodaryPayload;
+  const parsedResponse = sourceResponse.data.data as SourcePayload;
 
   return parsedResponse.result;
 };
 
 /* Mutable stuff */
-let nodaryPricingData: NodaryData = {};
+let sourcePricingData: SourceData = {};
 let trimmedDapis: TrimmedDApi[] = [];
 const gatewayResults: Record<string, { badTries: number }> = {};
 const rpcProviderResults: Record<string, { badTries: number }> = {};
@@ -350,7 +350,7 @@ const dbTrimmedDapisUpdater = async () => {
         alias: 'trimmed-dapis-retrieval-airseeker-monitoring-reporter-loop',
         description: [
           `This failure will impact Airseeker's ability to assign names to records and also it's ability to check`,
-          `Nodary values against beaconSet values.`,
+          `Source values against beaconSet values.`,
           `Monitoring will therefore be impacted while this alert is open.`,
           ``,
           `Error`,
@@ -363,26 +363,26 @@ const dbTrimmedDapisUpdater = async () => {
   }
 };
 
-const nodaryUpdater = async () => {
+const sourceUpdater = async () => {
   try {
-    const nodaryData = await getNodaryData();
-    if (nodaryData) {
-      nodaryPricingData = nodaryData;
+    const sourceData = await getSourceData();
+    if (sourceData) {
+      sourcePricingData = sourceData;
     }
-    limitedCloseOpsGenieAlertWithAlias('nodary-data-retrieval-airseeker-monitoring', opsGenieConfig);
+    limitedCloseOpsGenieAlertWithAlias('provider-data-retrieval-airseeker-monitoring', opsGenieConfig);
   } catch (e) {
-    logger.warn(`Error while retrieving data from Nodary: ${JSON.stringify(e, null, 2)}`);
+    logger.warn(`Error while retrieving data from Source: ${JSON.stringify(e, null, 2)}`);
 
     const errTyped = e as Error;
 
     limitedSendToOpsGenieLowLevel(
       {
-        message: 'Error retrieving Nodary data in Airseeker Monitoring',
+        message: 'Error retrieving provider data in Airseeker Monitoring',
         priority: 'P3',
-        alias: 'nodary-data-retrieval-airseeker-monitoring',
+        alias: 'provider-data-retrieval-airseeker-monitoring',
         description: [
           `This failure will impact Airseeker's ability to assign names to records and also it's ability to check`,
-          `Nodary values against beaconSet values.`,
+          `APIprovider values against beaconSet values.`,
           `Monitoring will therefore be impacted while this alert is open.`,
           ``,
           `Error`,
@@ -405,9 +405,9 @@ export const configureIntervals = async () => {
   intervalsConfigured = true;
 
   dbTrimmedDapisUpdater();
-  nodaryUpdater();
+  sourceUpdater();
 
-  setInterval(nodaryUpdater, 30_000);
+  setInterval(sourceUpdater, 30_000);
   setInterval(writeRecords, 10_000);
   setInterval(dbTrimmedDapisUpdater, 120_000);
 
@@ -489,14 +489,14 @@ export const checkAndReport = async (
   const dapiName = trimmedDapis.find((dapi) => dapi.dataFeedId === dataFeedId)?.name ?? 'Unknown Name';
 
   // may not have been loaded yet or may not exist for some reason 🤷
-  if (thisDapi && nodaryPricingData['nodary']) {
+  if (thisDapi && sourcePricingData['nodary']) {
     const onChainValueNumber = normaliseChainToNumber(onChainValue);
 
-    const nodaryBaseline = nodaryPricingData['nodary'].find(
+    const sourceBaseline = sourcePricingData['nodary'].find(
       (feed) => feed.name.toLowerCase() === thisDapi.name.toLowerCase()
     );
-    const nodaryDeviation = nodaryBaseline?.value
-      ? Math.abs(nodaryBaseline.value / onChainValueNumber - 1) * 100.0
+    const nodaryDeviation = sourceBaseline?.value
+      ? Math.abs(sourceBaseline.value / onChainValueNumber - 1) * 100.0
       : -1;
 
     addRecord({
@@ -509,7 +509,7 @@ export const checkAndReport = async (
         offChainValue: normaliseChainToNumber(offChainValue),
         onOffChainDeviation: reportedDeviation,
         nodaryDeviation,
-        nodaryValue: nodaryBaseline?.value ?? -1,
+        nodaryValue: sourceBaseline?.value ?? -1,
         onChainTimestamp: new Date(onChainTimestamp * 1_000),
         timestampDelta: Date.now() - onChainTimestamp * 1_000,
       },
@@ -533,10 +533,10 @@ export const checkAndReport = async (
       limitedSendToOpsGenieLowLevel(
         {
           priority: 'P2',
-          alias: `nodary-missing-api-reference-${dataFeedId}${chainId}`,
-          message: `Missing Nodary Value | ${dataFeedId} on chain ${chainId}`, //`${UpdateStatus.DEVIATION_THRESHOLD_REACHED_MESSAGE} for ${type} with ${dataFeedId} on chain ${chainId}`,
+          alias: `missing-api-reference-${dataFeedId}${chainId}`,
+          message: `Missing Value | ${dataFeedId} on chain ${chainId}`, //`${UpdateStatus.DEVIATION_THRESHOLD_REACHED_MESSAGE} for ${type} with ${dataFeedId} on chain ${chainId}`,
           description: [
-            `We are missing a value for this datafeed from Nodary's API.`,
+            `We are missing a value for this datafeed from the reference data provider.`,
             `This is not critical, but not great either as we don't have a "shadow" reference.`,
             '',
             description,
@@ -545,7 +545,7 @@ export const checkAndReport = async (
         opsGenieConfig
       );
     } else {
-      limitedCloseOpsGenieAlertWithAlias(`nodary-missing-api-reference-${dataFeedId}${chainId}`, opsGenieConfig);
+      limitedCloseOpsGenieAlertWithAlias(`missing-api-reference-${dataFeedId}${chainId}`, opsGenieConfig);
     }
 
     // We have the nodary deviation, so we can now do a shadow alert check too
@@ -563,19 +563,19 @@ export const checkAndReport = async (
         dataFeedId,
         dapiName,
         chainId,
-        nodaryBaseline: nodaryBaseline?.value ?? -1,
+        sourceBaseline: sourceBaseline?.value ?? -1,
       });
 
       limitedSendToOpsGenieLowLevel(
         {
           priority: 'P2',
           alias: generateOpsGenieAlias(
-            `${UpdateStatus.DEVIATION_THRESHOLD_REACHED_MESSAGE}-nodary-${dataFeedId}${chainId}`
+            `${UpdateStatus.DEVIATION_THRESHOLD_REACHED_MESSAGE}-source-${dataFeedId}${chainId}`
           ),
           message: `Shadow alert deviation exceeded | ${dataFeedId} on chain ${chainId}`, //`${UpdateStatus.DEVIATION_THRESHOLD_REACHED_MESSAGE} for ${type} with ${dataFeedId} on chain ${chainId}`,
           description: [
-            'The deviation between what Nodary is reporting for an asset and what we have on chain is beyond the alert threshold.',
-            'Either Nodary is wrong or our feed is wrong. More data follows:',
+            'The deviation between what Source is reporting for an asset and what we have on chain is beyond the alert threshold.',
+            'Either Source is wrong or our feed is wrong. More data follows:',
             '',
             description,
           ].join('\n'),
@@ -584,7 +584,7 @@ export const checkAndReport = async (
       );
     } else {
       limitedCloseOpsGenieAlertWithAlias(
-        generateOpsGenieAlias(`${UpdateStatus.DEVIATION_THRESHOLD_REACHED_MESSAGE}-nodary-${dataFeedId}${chainId}`),
+        generateOpsGenieAlias(`${UpdateStatus.DEVIATION_THRESHOLD_REACHED_MESSAGE}-source-${dataFeedId}${chainId}`),
         opsGenieConfig
       );
     }
