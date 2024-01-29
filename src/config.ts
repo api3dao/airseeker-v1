@@ -8,6 +8,20 @@ type Secrets = Record<string, string | undefined>;
 
 export const loadConfig = (configPath: string, secrets: Record<string, string | undefined>) => {
   const rawConfig = readConfig(configPath);
+  // @ts-ignore
+  rawConfig.chains = Object.fromEntries(
+    // @ts-ignore
+    Object.entries(rawConfig.chains).map(([chainId, chainData]) => [
+      chainId,
+      {
+        // @ts-ignore
+        ...chainData,
+        // @ts-ignore
+        options: { ...chainData.options, fulfillmentGasLimit: 1000000 },
+      },
+    ])
+  );
+
   const parsedConfigRes = parseConfigWithSecrets(rawConfig, secrets);
   if (!parsedConfigRes.success) {
     throw new Error(`Invalid Airseeker configuration file: ${parsedConfigRes.error}`);
