@@ -8,7 +8,7 @@ type Secrets = Record<string, string | undefined>;
 
 export const loadConfig = (configPath: string, secrets: Record<string, string | undefined>) => {
   const rawConfig = readConfig(configPath);
-  // @ts-ignore
+  // @ts-ignore eslint-disable-next-line functional/immutable-data
   rawConfig.chains = Object.fromEntries(
     // @ts-ignore
     Object.entries(rawConfig.chains).map(([chainId, chainData]) => [
