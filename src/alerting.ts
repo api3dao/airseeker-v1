@@ -7,7 +7,7 @@ import axios from 'axios';
 import { go } from '@api3/promise-utils';
 import { TrimmedDApi } from '@prisma/client';
 import { Api3ServerV1 } from '@api3/airnode-protocol-v1';
-import { groupBy } from 'lodash';
+import { groupBy, uniq } from 'lodash';
 import prisma from './database';
 import { BeaconSetTrigger, BeaconTrigger } from './validation';
 import { calculateUpdateInPercentage } from './calculations';
@@ -144,8 +144,81 @@ export const getSourceData = async (): Promise<SourceData> => {
 /* Mutable stuff */
 let sourcePricingData: SourceData = {};
 let trimmedDapis: TrimmedDApi[] = [];
-const gatewayResults: Record<string, { badTries: number }> = {};
+const gatewayResults: Record<
+  string,
+  { badTries: number; informed: boolean; airnodeAddress: string; gatewayUrl: string; templateIds: string[] }
+> = {};
 const rpcProviderResults: Record<string, { badTries: number }> = {};
+
+let checkForDeadGatewaysInterval: NodeJS.Timeout | null = null;
+const checkForDeadGateways = async () => {
+  if (!checkForDeadGatewaysInterval) {
+    checkForDeadGatewaysInterval = setInterval(checkForDeadGateways, 30_000);
+  }
+
+  const gatewayResultsArray = Object.entries(gatewayResults);
+
+  for (const [selector, gatewayVitals] of gatewayResultsArray) {
+    const { badTries, informed, airnodeAddress, gatewayUrl, templateIds } = gatewayVitals;
+    const baseUrl = getBaseUrl(gatewayUrl);
+
+    if (!informed && badTries > GATEWAYS_BAD_TRIES_AFTER_WHICH_CONSIDERED_DEAD) {
+      const state = getState();
+      // eslint-disable-next-line functional/immutable-data
+      gatewayResults[selector].informed = true;
+
+      const affectedBeacons = Object.entries(state?.config?.beacons ?? {}).filter(([_beaconId, beacon]) =>
+        templateIds.includes(beacon.templateId)
+      );
+
+      if (affectedBeacons.length === 0) {
+        logger.error('Unable to record gateway response as no affected beacons found.');
+        return;
+      }
+
+      const allGateways = state.config.gateways[airnodeAddress];
+      const allGatewaysCount = allGateways.length;
+
+      const deadGateways = allGateways
+        .map((gateway) => findGateway(airnodeAddress, gateway.url)?.badTries ?? 0)
+        .filter((badTries) => badTries > GATEWAYS_BAD_TRIES_AFTER_WHICH_CONSIDERED_DEAD).length;
+
+      limitedSendToOpsGenieLowLevel(
+        {
+          message: `Dead gateway for Airnode Address ${airnodeAddress}`,
+          priority: 'P3',
+          alias: `dead-gateway-${airnodeAddress}${generateOpsGenieAlias(baseUrl)}`,
+          description: [
+            `A gateway has failed at least ${gatewayResults[selector].badTries} times.`,
+            `If the provider doesn't have enough active gateways Airseeker won't be able to get values with which to update the beacon set.`,
+            `The beaconset can still be updated if a majority of feeds are available, but this isn't ideal.`,
+            `The hashed URL is included below.`,
+            `The Airseeker has ${allGatewaysCount} gateways for this API provider, of which ${deadGateways} are currently dead.`,
+            ``,
+            `Airnode Address: ${airnodeAddress}`,
+            `Hashed Gateway URL: ${generateOpsGenieAlias(baseUrl)}`,
+            `Generated as follows: keccak256(new TextEncoder().encode('https://gateway-url.com'));`,
+            baseUrl.includes('amazonaws')
+              ? 'The URL is an AWS URL.'
+              : baseUrl.includes('gateway.dev')
+              ? 'The URL is a GCP URL.'
+              : '',
+            `and it affects the following beacon(s):`,
+            ...affectedBeacons.map(([beaconId]) => beaconId),
+          ].join('\n'),
+        },
+        opsGenieConfig
+      );
+    } else {
+      // eslint-disable-next-line functional/immutable-data
+      gatewayResults[selector].informed = false;
+      limitedCloseOpsGenieAlertWithAlias(
+        `dead-gateway-${airnodeAddress}${generateOpsGenieAlias(baseUrl)}`,
+        opsGenieConfig
+      );
+    }
+  }
+};
 
 /**
  * Handles response statuses from RPC Provider calls.
@@ -272,65 +345,30 @@ export const recordGatewayResponseSuccess = async (templateId: string, gatewayUr
 
   const selector = `${airnodeAddress}-${gatewayUrl}`;
 
-  const existingGatewayResult = gatewayResults[selector] ?? { badTries: 0 };
+  // { badTries: number; informed: boolean; airnodeAddress: string, gatewayUrl: string; templateIds: string[];
+  const existingGatewayResult = gatewayResults[selector] ?? {
+    badTries: 0,
+    gatewayUrl,
+    informed: false,
+    airnodeAddress,
+    templateIds: [templateId],
+  };
 
   // eslint-disable-next-line functional/immutable-data
   gatewayResults[selector] = {
     ...existingGatewayResult,
     badTries: success ? 0 : existingGatewayResult.badTries + 1,
+    templateIds: uniq([...existingGatewayResult.templateIds, templateId]),
   };
 
-  const baseUrl = getBaseUrl(gatewayUrl);
-
-  const allGateways = state.config.gateways[airnodeAddress];
-  const allGatewaysCount = allGateways.length;
-
-  const deadGateways = allGateways
-    .map((gateway) => findGateway(airnodeAddress, gateway.url)?.badTries ?? 0)
-    .filter((badTries) => badTries > GATEWAYS_BAD_TRIES_AFTER_WHICH_CONSIDERED_DEAD).length;
-
-  if (gatewayResults[selector].badTries > GATEWAYS_BAD_TRIES_AFTER_WHICH_CONSIDERED_DEAD) {
-    limitedSendToOpsGenieLowLevel(
-      {
-        message: `Dead gateway for Airnode Address ${airnodeAddress}`,
-        priority: 'P3',
-        alias: `dead-gateway-${airnodeAddress}${generateOpsGenieAlias(baseUrl)}`,
-        description: [
-          `A gateway has failed at least ${gatewayResults[selector].badTries} times.`,
-          `If the provider doesn't have enough active gateways Airseeker won't be able to get values with which to update the beacon set.`,
-          `The beaconset can still be updated if a majority of feeds are available, but this isn't ideal.`,
-          `The hashed URL is included below.`,
-          `The Airseeker has ${allGatewaysCount} gateways for this API provider, of which ${deadGateways} are currently dead.`,
-          ``,
-          `Airnode Address: ${airnodeAddress}`,
-          `Hashed Gateway URL: ${generateOpsGenieAlias(baseUrl)}`,
-          `Generated as follows: keccak256(new TextEncoder().encode('https://gateway-url.com'));`,
-          baseUrl.includes('amazonaws')
-            ? 'The URL is an AWS URL.'
-            : baseUrl.includes('gateway.dev')
-            ? 'The URL is a GCP URL.'
-            : '',
-          `and it affects the following beacon(s):`,
-          ...affectedBeacons.map(([beaconId]) => beaconId),
-        ].join('\n'),
-      },
-      opsGenieConfig
-    );
-  } else {
-    limitedCloseOpsGenieAlertWithAlias(
-      `dead-gateway-${airnodeAddress}${generateOpsGenieAlias(baseUrl)}`,
-      opsGenieConfig
-    );
-  }
-
-  addRecord({
-    model: 'gatewayFailures',
-    record: {
-      airnodeAddress: airnodeAddress,
-      hashedUrl: generateOpsGenieAlias(gatewayUrl),
-      count: gatewayResults[selector].badTries,
-    },
-  });
+  // addRecord({
+  //   model: 'gatewayFailures',
+  //   record: {
+  //     airnodeAddress: airnodeAddress,
+  //     hashedUrl: generateOpsGenieAlias(gatewayUrl),
+  //     count: gatewayResults[selector].badTries,
+  //   },
+  // });
 };
 
 const dbTrimmedDapisUpdater = async () => {
@@ -410,6 +448,7 @@ export const configureIntervals = async () => {
   setInterval(sourceUpdater, 30_000);
   setInterval(writeRecords, 10_000);
   setInterval(dbTrimmedDapisUpdater, 120_000);
+  void checkForDeadGateways();
 
   if (process.env.DEBUG_DB_WRITER) {
     setInterval(() => {
