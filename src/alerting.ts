@@ -289,7 +289,11 @@ export const recordGatewayResponseSuccess = async (templateId: string, gatewayUr
     .map((gateway) => findGateway(airnodeAddress, gateway.url)?.badTries ?? 0)
     .filter((badTries) => badTries > GATEWAYS_BAD_TRIES_AFTER_WHICH_CONSIDERED_DEAD).length;
 
-  if (newGatewayResultStatus.badTries > GATEWAYS_BAD_TRIES_AFTER_WHICH_CONSIDERED_DEAD) {
+  if (
+    newGatewayResultStatus.badTries > GATEWAYS_BAD_TRIES_AFTER_WHICH_CONSIDERED_DEAD &&
+    deadGateways > 0 &&
+    allGatewaysCount < deadGateways
+  ) {
     limitedSendToOpsGenieLowLevel(
       {
         message: `Dead gateway for Airnode Address ${airnodeAddress}`,
