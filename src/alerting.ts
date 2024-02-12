@@ -275,10 +275,10 @@ export const recordGatewayResponseSuccess = async (templateId: string, gatewayUr
   const existingGatewayResult = gatewayResults[selector] ?? { badTries: 0 };
 
   // eslint-disable-next-line functional/immutable-data
-  gatewayResults[selector] = {
+  const newGatewayResultStatus = (gatewayResults[selector] = {
     ...existingGatewayResult,
     badTries: success ? 0 : existingGatewayResult.badTries + 1,
-  };
+  });
 
   const baseUrl = getBaseUrl(gatewayUrl);
 
@@ -289,14 +289,18 @@ export const recordGatewayResponseSuccess = async (templateId: string, gatewayUr
     .map((gateway) => findGateway(airnodeAddress, gateway.url)?.badTries ?? 0)
     .filter((badTries) => badTries > GATEWAYS_BAD_TRIES_AFTER_WHICH_CONSIDERED_DEAD).length;
 
-  if (gatewayResults[selector].badTries > GATEWAYS_BAD_TRIES_AFTER_WHICH_CONSIDERED_DEAD) {
+  if (
+    newGatewayResultStatus.badTries > GATEWAYS_BAD_TRIES_AFTER_WHICH_CONSIDERED_DEAD &&
+    deadGateways > 0 &&
+    allGatewaysCount < deadGateways
+  ) {
     limitedSendToOpsGenieLowLevel(
       {
         message: `Dead gateway for Airnode Address ${airnodeAddress}`,
         priority: 'P3',
         alias: `dead-gateway-${airnodeAddress}${generateOpsGenieAlias(baseUrl)}`,
         description: [
-          `A gateway has failed at least ${gatewayResults[selector].badTries} times.`,
+          `A gateway has failed at least ${newGatewayResultStatus.badTries} times.`,
           `If the provider doesn't have enough active gateways Airseeker won't be able to get values with which to update the beacon set.`,
           `The beaconset can still be updated if a majority of feeds are available, but this isn't ideal.`,
           `The hashed URL is included below.`,
@@ -328,7 +332,7 @@ export const recordGatewayResponseSuccess = async (templateId: string, gatewayUr
     record: {
       airnodeAddress: airnodeAddress,
       hashedUrl: generateOpsGenieAlias(gatewayUrl),
-      count: gatewayResults[selector].badTries,
+      count: newGatewayResultStatus.badTries,
     },
   });
 };
