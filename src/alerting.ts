@@ -285,11 +285,13 @@ export const recordGatewayResponseSuccess = async (templateId: string, gatewayUr
   const allGateways = state.config.gateways[airnodeAddress];
   const allGatewaysCount = allGateways.length;
 
+  const thisGatewayIsDead = newGatewayResultStatus.badTries > GATEWAYS_BAD_TRIES_AFTER_WHICH_CONSIDERED_DEAD;
+
   const deadGateways = allGateways
     .map((gateway) => findGateway(airnodeAddress, gateway.url)?.badTries ?? 0)
     .filter((badTries) => badTries > GATEWAYS_BAD_TRIES_AFTER_WHICH_CONSIDERED_DEAD).length;
 
-  if (newGatewayResultStatus.badTries > GATEWAYS_BAD_TRIES_AFTER_WHICH_CONSIDERED_DEAD) {
+  if (thisGatewayIsDead) {
     limitedSendToOpsGenieLowLevel(
       {
         message: `Dead gateway for Airnode Address ${airnodeAddress}`,
@@ -300,7 +302,9 @@ export const recordGatewayResponseSuccess = async (templateId: string, gatewayUr
           `If the provider doesn't have enough active gateways Airseeker won't be able to get values with which to update the beacon set.`,
           `The beaconset can still be updated if a majority of feeds are available, but this isn't ideal.`,
           `The hashed URL is included below.`,
-          `The Airseeker has ${allGatewaysCount} gateways for this API provider, of which ${deadGateways} are currently dead.`,
+          deadGateways > 0
+            ? `The Airseeker has ${allGatewaysCount} gateways for this API provider, of which ${deadGateways} are currently dead. This dead gateways count is based on the count when this alert was created.`
+            : `The Airseeker has ${allGatewaysCount} gateways for this API provider.`,
           ``,
           `Airnode Address: ${airnodeAddress}`,
           `Hashed Gateway URL: ${generateOpsGenieAlias(baseUrl)}`,
