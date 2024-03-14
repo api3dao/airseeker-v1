@@ -727,4 +727,3 @@ export const DB_CHAINS = [
   { name: 'ethereum-sepolia-testnet', id: '11155111' },
   { name: 'polygon-testnet', id: '80001' },
 ];
-
