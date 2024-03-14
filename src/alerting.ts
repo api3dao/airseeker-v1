@@ -690,168 +690,40 @@ export const checkAndReport = async (
 
 // TODO this needs to come out of the DB or some other static resource
 export const DB_CHAINS = [
-  {
-    id: '1101',
-    name: 'polygon-zkevm',
-  },
-  {
-    id: '137',
-    name: 'polygon',
-  },
-  {
-    id: '1285',
-    name: 'moonriver',
-  },
-  {
-    id: '59140',
-    name: 'linea-goerli-testnet',
-  },
-  {
-    id: '200101',
-    name: 'milkomeda-c1-testnet',
-  },
-  {
-    id: '4002',
-    name: 'fantom-testnet',
-  },
-  {
-    id: '10200',
-    name: 'gnosis-testnet',
-  },
-  {
-    id: '421613',
-    name: 'arbitrum-goerli-testnet',
-  },
-  {
-    id: '30',
-    name: 'rsk',
-  },
-  {
-    id: '56',
-    name: 'bsc',
-  },
-  {
-    id: '59144',
-    name: 'linea',
-  },
-  {
-    id: '8453',
-    name: 'base',
-  },
-  {
-    id: '324',
-    name: 'zksync',
-  },
-  {
-    id: '5001',
-    name: 'mantle-goerli-testnet',
-  },
-  {
-    id: '1287',
-    name: 'moonbeam-testnet',
-  },
-  {
-    id: '534353',
-    name: 'scroll-goerli-testnet',
-  },
-  {
-    id: '5',
-    name: 'goerli',
-  },
-  {
-    id: '42161',
-    name: 'arbitrum',
-  },
-  {
-    id: '250',
-    name: 'fantom',
-  },
-  {
-    id: '2222',
-    name: 'kava',
-  },
-  {
-    id: '5000',
-    name: 'mantle',
-  },
-  {
-    id: '84531',
-    name: 'base-goerli-testnet',
-  },
-  {
-    id: '420',
-    name: 'optimism-goerli-testnet',
-  },
-  {
-    id: '10',
-    name: 'optimism',
-  },
-  {
-    id: '2221',
-    name: 'kava-testnet',
-  },
-  {
-    id: '338',
-    name: 'cronos-testnet',
-  },
-  {
-    id: '1442',
-    name: 'polygon-zkevm-testnet',
-  },
-  {
-    id: '1',
-    name: 'mainnet',
-  },
-  {
-    id: '1284',
-    name: 'moonbeam',
-  },
-  {
-    id: '100',
-    name: 'gnosis',
-  },
-  {
-    id: '43114',
-    name: 'avalanche',
-  },
-  {
-    id: '1088',
-    name: 'metis',
-  },
-  {
-    id: '280',
-    name: 'zksync-goerli-testnet',
-  },
-  {
-    id: '97',
-    name: 'bsc-testnet',
-  },
-  {
-    id: '599',
-    name: 'metis-testnet',
-  },
-  {
-    id: '31',
-    name: 'rsk-testnet',
-  },
-  {
-    id: '42170',
-    name: 'arbitrum-nova',
-  },
-  {
-    id: '2001',
-    name: 'milkomeda-c1',
-  },
-  {
-    id: '43113',
-    name: 'avalanche-testnet',
-  },
-  {
-    id: '11155111',
-    name: 'sepolia',
-  },
-  {
-    id: '80001',
-    name: 'polygon-testnet',
-  },
+  { name: 'arbitrum-goerli-testnet', id: '421613' },
+  { name: 'linea-goerli-testnet', id: '59140' },
+  { name: 'blast-sepolia-testnet', id: '168587773' },
+  { name: 'blast', id: '81457' },
+  { name: 'linea', id: '59144' },
+  { name: 'fantom', id: '250' },
+  { name: 'gnosis-testnet', id: '10200' },
+  { name: 'fantom-testnet', id: '4002' },
+  { name: 'arbitrum', id: '42161' },
+  { name: 'polygon-zkevm', id: '1101' },
+  { name: 'moonbeam', id: '1284' },
+  { name: 'kava', id: '2222' },
+  { name: 'scroll-goerli-testnet', id: '534353' },
+  { name: 'zksync', id: '324' },
+  { name: 'mantle-goerli-testnet', id: '5001' },
+  { name: 'moonbeam-testnet', id: '1287' },
+  { name: 'moonriver', id: '1285' },
+  { name: 'base', id: '8453' },
+  { name: 'ethereum-goerli-testnet', id: '5' },
+  { name: 'base-goerli-testnet', id: '84531' },
+  { name: 'optimism', id: '10' },
+  { name: 'polygon-zkevm-goerli-testnet', id: '1442' },
+  { name: 'cronos-testnet', id: '338' },
+  { name: 'kava-testnet', id: '2221' },
+  { name: 'ethereum', id: '1' },
+  { name: 'avalanche', id: '43114' },
+  { name: 'bsc', id: '56' },
+  { name: 'polygon', id: '137' },
+  { name: 'mantle', id: '5000' },
+  { name: 'gnosis', id: '100' },
+  { name: 'rsk', id: '30' },
+  { name: 'bsc-testnet', id: '97' },
+  { name: 'rsk-testnet', id: '31' },
+  { name: 'avalanche-testnet', id: '43113' },
+  { name: 'ethereum-sepolia-testnet', id: '11155111' },
+  { name: 'polygon-testnet', id: '80001' },
 ];
